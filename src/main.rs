@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::fs::{DirEntry, File};
-use std::io::Read;
+use std::io::{Read, Seek, SeekFrom};
 use std::path::PathBuf;
 use std::{env, fs, io, iter};
 
@@ -43,10 +43,6 @@ fn main() {
             Some(m) if m.size == size => return acc.push(m),
             _ if acc.len() < 2 => {}
             _ => {
-                // count += 1;
-                // println!("\n{}", size.human_repr());
-                // acc.sort_unstable();
-                // acc.iter().for_each(|m| println!("{}", m.name));
                 let mut split = HashMap::with_capacity(acc.len());
                 acc.iter().for_each(|&m| {
                     split
@@ -92,8 +88,11 @@ impl From<(PathBuf, u64)> for Media {
 impl Media {
     fn sample(&self) -> io::Result<[u8; SAMPLE_SIZE]> {
         let mut file = File::open(&self.name)?;
+        // sample the center of the file.
+        let len = file.metadata()?.len();
+        file.seek(SeekFrom::Start(len.saturating_sub(SAMPLE_SIZE as u64) / 2))?;
         let mut buf = [0u8; SAMPLE_SIZE];
-        let _ = file.read(&mut buf);
+        file.read(&mut buf)?;
         Ok(buf)
     }
 }

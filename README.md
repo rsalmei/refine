@@ -44,7 +44,8 @@ total files: 13512 (1567 duplicates)
 Send as many sources as you want.
 
 ## Changelog
-- 1.0.0 May 26, 2022: first release, detect duplicated files, fixed sampling strategy
+- 0.1.1 May 27, 2022: samples the center of the files, which seems to fix false positives
+- 0.1.0 May 25, 2022: first release, detects duplicated files, simple sampling strategy (1KB from the start of the files)
 
 
 ## License
