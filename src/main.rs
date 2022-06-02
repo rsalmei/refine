@@ -1,3 +1,4 @@
+use human_repr::HumanRepr;
 use std::collections::HashMap;
 use std::fs::{DirEntry, File};
 use std::io::{Read, Seek, SeekFrom};
@@ -52,7 +53,7 @@ fn main() {
                 });
                 split.values_mut().filter(|v| v.len() > 1).for_each(|v| {
                     count += 1;
-                    println!("\n{}", size.human_repr());
+                    println!("\n{}", size.human_count_bytes());
                     v.sort_unstable();
                     v.iter().for_each(|m| println!("{}", m.name));
                 })
