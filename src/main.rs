@@ -96,25 +96,3 @@ impl Media {
         Ok(buf)
     }
 }
-
-trait HumanRepr {
-    fn human_repr(self) -> String;
-}
-
-impl HumanRepr for u64 {
-    fn human_repr(self) -> String {
-        const SPEC: &[&str] = &["", "K", "M", "G", "T", "P", "E", "Z", "Y"];
-        let mut value = self as f64;
-        for scale in SPEC {
-            match value {
-                // _ if value < 9.995 => return format!("{value:1.2} {scale}B"),
-                // _ if value < 99.95 => return format!("{value:2.1} {scale}B"),
-                // _ if value < 999.5 => return format!("{value:3.0} {scale}B"),
-                _ if value < 999.95 => return format!("{value:3.1} {scale}B"),
-                _ => value /= 1000.,
-            }
-        }
-
-        format!("{value:3} +B")
-    }
-}
