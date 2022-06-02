@@ -1,13 +1,13 @@
-# files
-### Files deduplication in Rust!
+# refine
+### Refine your drives deduplicating files with Rust!
 
 ## What it does
 
 This is a simple tool that will scan some given paths, and report the possibly duplicated files.
 
-It is blazingly fast, since it is in Rust, and tiny.
+It is blazingly fast and tiny. It does not try to change anything anywhere, it just reports what it does find.
 
-In the future, it could make more than just detecting duplicates, like for example renaming files, hence the name just `files`.
+In the future, this could make more than just detecting duplicates, like for instance moving those files, renaming them, it could have a GUI to enable easily acting upon them, etc., hence the name just `refine`.
 
 ## How it works
 
@@ -15,7 +15,7 @@ It will:
 - recursively detect all files in the given paths (excluding hidden .folders and .files)
 - sort all the files by their sizes
 - for each group with the exact same size, a sample of each file will be retrieved and compared
-- each same size/same sample group will be listed as a possible duplicate:
+- each same size/same sample groups will be listed as possible duplicates:
 
 ```
 132.1 KB
@@ -37,13 +37,16 @@ total files: 13512 (1567 duplicates)
 
 ## How to use it
 
+Install with `cargo install refine`, then just:
+
 ```bash
-❯ cargo run ~/Downloads /Volumes/Drive ...
+❯ refine ~/Downloads /Volumes/Drive ...
 ```
 
 Send as many sources as you want.
 
 ## Changelog
+- 0.2.0 Jun 01, 2022: publish, use split crate `human-repr`
 - 0.1.1 May 27, 2022: samples the center of the files, which seems to fix false positives
 - 0.1.0 May 25, 2022: first release, detects duplicated files, simple sampling strategy (1KB from the start of the files)
 
