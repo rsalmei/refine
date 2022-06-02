@@ -1,9 +1,14 @@
 [package]
-name = "files"
-version = "0.1.1"
+name = "refine"
+version = "0.2.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+authors = ["Rogério Sampaio de Almeida <rsalmei@gmail.com>"]
+description = "Refine your drives deduplicating files with Rust!"
+keywords = ["files", "duplicated", "deduplicate", "scan", "report"]
+repository = "https://github.com/rsalmei/files"
+readme = "README.md"
+license = "MIT"
 
 [dependencies]
 human-repr = { version = "0", features = [] }
