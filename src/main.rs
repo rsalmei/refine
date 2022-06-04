@@ -1,9 +1,10 @@
+mod media;
+
 use human_repr::HumanRepr;
+use media::Media;
 use std::collections::HashMap;
-use std::fs::{DirEntry, File};
-use std::io::{Read, Seek, SeekFrom};
 use std::path::PathBuf;
-use std::{env, fs, io, iter};
+use std::{env, fs, iter};
 
 fn main() {
     fn entries(de: DirEntry) -> Box<dyn Iterator<Item = DirEntry>> {
@@ -67,33 +68,4 @@ fn main() {
     });
 
     println!("\ntotal files: {} ({count} duplicates)", files.len());
-}
-
-const SAMPLE_SIZE: usize = 1024;
-
-#[derive(PartialOrd, Ord, Eq, PartialEq)]
-struct Media {
-    name: String,
-    size: u64,
-}
-
-impl From<(PathBuf, u64)> for Media {
-    fn from((path, size): (PathBuf, u64)) -> Self {
-        Media {
-            name: path.to_string_lossy().into_owned(),
-            size,
-        }
-    }
-}
-
-impl Media {
-    fn sample(&self) -> io::Result<[u8; SAMPLE_SIZE]> {
-        let mut file = File::open(&self.name)?;
-        // sample the center of the file.
-        let len = file.metadata()?.len();
-        file.seek(SeekFrom::Start(len.saturating_sub(SAMPLE_SIZE as u64) / 2))?;
-        let mut buf = [0u8; SAMPLE_SIZE];
-        file.read(&mut buf)?;
-        Ok(buf)
-    }
 }
