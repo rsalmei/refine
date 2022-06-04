@@ -7,34 +7,33 @@ use std::path::PathBuf;
 use std::{env, fs, iter};
 
 fn main() {
-    fn entries(de: DirEntry) -> Box<dyn Iterator<Item = DirEntry>> {
-        if de.file_name().to_string_lossy().starts_with(".") {
+    fn entries(pb: PathBuf) -> Box<dyn Iterator<Item = PathBuf>> {
+        if pb.file_name().unwrap().to_string_lossy().starts_with(".") {
             return Box::new(iter::empty());
         }
-        match de.path().is_dir() {
-            true => match fs::read_dir(de.path()) {
-                Ok(reader) => Box::new(reader.flatten().map(entries).flatten()),
+        match pb.is_dir() {
+            true => match fs::read_dir(pb.as_path()) {
+                Ok(reader) => Box::new(reader.flat_map(|r| match r {
+                    Ok(de) => entries(de.path()),
+                    Err(err) => {
+                        eprintln!("{err:?}");
+                        Box::new(iter::empty())
+                    }
+                })),
                 Err(err) => {
-                    eprintln!("{} -> {err:?}", de.path().display());
+                    eprintln!("{} -> {err:?}", pb.display());
                     Box::new(iter::empty())
                 }
             },
-            false => Box::new(iter::once(de)),
+            false => Box::new(iter::once(pb)),
         }
     }
 
     let mut files = env::args()
         .skip(1)
-        .flat_map(|p| match fs::read_dir(&p) {
-            Ok(reader) => Some(reader),
-            Err(err) => {
-                eprintln!("{p} -> {err:?}");
-                None
-            }
-        })
-        .flatten()
-        .flat_map(|r| entries(r.unwrap()))
-        .filter_map(|de| de.metadata().map(|m| (de.path(), m.len())).ok())
+        .map(|s| s.parse::<PathBuf>().unwrap())
+        .flat_map(entries)
+        .filter_map(|pb| pb.metadata().map(|m| (pb, m.len())).ok())
         .map(Media::from)
         .collect::<Vec<_>>();
     files.sort_unstable_by_key(|m| m.size);
@@ -54,7 +53,7 @@ fn main() {
                 });
                 split.values_mut().filter(|v| v.len() > 1).for_each(|v| {
                     count += 1;
-                    println!("\n{}", size.human_count_bytes());
+                    println!("\n{} x{}", size.human_count_bytes(), v.len());
                     v.sort_unstable();
                     v.iter().for_each(|m| println!("{}", m.name));
                 })
