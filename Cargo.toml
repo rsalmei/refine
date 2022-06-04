@@ -11,4 +11,4 @@ readme = "README.md"
 license = "MIT"
 
 [dependencies]
-human-repr = { version = "0", features = [] }
+human-repr = { path = "../human-repr", version = "0", features = [] }
