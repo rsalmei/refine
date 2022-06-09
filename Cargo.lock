@@ -4,11 +4,11 @@ version = 3
 
 [[package]]
 name = "human-repr"
-version = "0.5.0"
+version = "0.6.0"
 
 [[package]]
 name = "refine"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "human-repr",
 ]

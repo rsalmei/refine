@@ -46,6 +46,7 @@ Install with `cargo install refine`, then just:
 Send as many sources as you want.
 
 ## Changelog
+- 0.2.2 Jun 04, 2022: use 2KB sample size
 - 0.2.1 Jun 04, 2022: improve error handling
 - 0.2.0 Jun 01, 2022: publish, use split crate `human-repr`
 - 0.1.1 May 27, 2022: samples the center of the files, which seems to fix false positives
