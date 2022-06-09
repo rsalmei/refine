@@ -3,7 +3,7 @@ use std::io;
 use std::io::{Read, Seek, SeekFrom};
 use std::path::PathBuf;
 
-const SAMPLE_SIZE: usize = 6 * 1024;
+const SAMPLE_SIZE: usize = 2 * 1024;
 
 #[derive(PartialOrd, Ord, Eq, PartialEq)]
 pub struct Media {
