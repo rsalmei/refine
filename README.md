@@ -1,5 +1,5 @@
 # refine
-### Refine your drives deduplicating files with Rust!
+### Refine your filesystem by deduplicating files with Rust!
 
 ## What it does
 
@@ -46,6 +46,7 @@ Install with `cargo install refine`, then just:
 Send as many sources as you want.
 
 ## Changelog
+- 0.3.0 Nov 07, 2023: include dedup by both size and name
 - 0.2.2 Jun 04, 2022: use 2KB sample size
 - 0.2.1 Jun 04, 2022: improve error handling
 - 0.2.0 Jun 01, 2022: publish, use split crate `human-repr`
