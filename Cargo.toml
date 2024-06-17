@@ -1,11 +1,11 @@
 [package]
 name = "refine"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
 
 authors = ["Rogério Sampaio de Almeida <rsalmei@gmail.com>"]
-description = "Refine your drives deduplicating files with Rust!"
-keywords = ["files", "duplicated", "deduplicate", "scan", "detect"]
+description = "Refine your file collection using Rust!"
+keywords = ["files", "deduplicate", "rename", "scan", "strip"]
 categories = ["command-line-utilities", "filesystem"]
 documentation = "https://docs.rs/refine/"
 repository = "https://github.com/rsalmei/refine"
@@ -14,3 +14,5 @@ license = "MIT"
 
 [dependencies]
 human-repr = { version = "1", features = [] }
+clap = { version = "4", features = ["derive"] }
+anyhow = "1"
