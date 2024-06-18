@@ -28,7 +28,7 @@ pub(crate) fn find_dupes(files: impl Iterator<Item = PathBuf>, opt: Dupes) -> Re
     OPT.set(opt).unwrap();
 
     let mut medias = files
-        .flat_map(|p| match Media::new(p) {
+        .flat_map(|p| match Media::try_from(p) {
             Ok(m) => Some(m),
             Err(err) => {
                 eprintln!("error: couldn't load: {err:?}");
@@ -100,8 +100,10 @@ struct Media {
     sample: Option<Option<Vec<u8>>>, // only populated if needed, and double to remember when already tried.
 }
 
-impl Media {
-    fn new(path: PathBuf) -> Result<Self> {
+impl TryFrom<PathBuf> for Media {
+    type Error = anyhow::Error;
+
+    fn try_from(path: PathBuf) -> Result<Self> {
         Ok(Media {
             size: fs::metadata(&path)?.len(),
             words: Media::words(&path)?,
@@ -109,7 +111,9 @@ impl Media {
             sample: None,
         })
     }
+}
 
+impl Media {
     fn words(path: &Path) -> Result<Vec<String>> {
         let mut words = path
             .file_name()
