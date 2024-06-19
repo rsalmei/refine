@@ -15,7 +15,7 @@ pub(crate) struct Dupes {
     #[arg(short, long, default_value_t = 2 * 1024)]
     pub sample: usize,
     /// Case-sensitive file name comparison.
-    #[arg(short, long, default_value_t = false)]
+    #[arg(short, long)]
     pub case: bool,
 }
 
