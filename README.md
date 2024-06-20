@@ -19,10 +19,12 @@ just `refine`.
 
 It will:
 
-- recursively detect all files in the given paths (excluding hidden .folders and .files)
-- sort all the files by their sizes
-- for each group with the exact same size, a sample of each file will be retrieved and compared
-- each same size/same sample groups will be listed as possible duplicates:
+- recursively detect all files in the given paths (excluding hidden .folders)
+    - can optionally run only a shallow scan too.
+- sort all the files by their sizes and by their words
+    - the word extractor ignores repetition systems like -1, -2, and copy, copy 2.
+- for each group with the exact same value, a sample of each file will be retrieved and compared
+- each coincidence will be listed as possible duplicates:
 
 ```
 -- by size
@@ -67,6 +69,7 @@ Send as many sources as you want.
 
 ## Changelog
 
+- 0.5.0 Jun 20, 2024: support for shallow scan, verbose mode, dupes cmd ignores repetition systems.
 - 0.4.0 Jun 17, 2024: include `dupes` command, support match case and changing sample size.
 - 0.3.0 Nov 07, 2023: include dedup by both size and name.
 - 0.2.2 Jun 04, 2022: use 2KB sample size.
