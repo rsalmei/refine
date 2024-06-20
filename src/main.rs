@@ -37,15 +37,9 @@ fn main() -> Result<()> {
     ARGS.set(Args::parse()).unwrap();
 
     // lists files from the given paths, or the current directory if no paths were given.
-    let current_dir = args().paths.is_empty().then(|| ".".into());
-    let mut files = Box::new(
-        args()
-            .paths
-            .iter()
-            .cloned()
-            .chain(current_dir)
-            .flat_map(|p| entries(p, args().shallow, args().verbose)),
-    ) as Box<dyn Iterator<Item = PathBuf>>;
+    let cd = args().paths.is_empty().then(|| ".".into());
+    let mut files = Box::new(args().paths.iter().cloned().chain(cd).flat_map(entries))
+        as Box<dyn Iterator<Item = PathBuf>>;
     if args().verbose {
         files = Box::new(files.inspect(|f| println!("including: {}", f.display())));
     }
@@ -55,35 +49,37 @@ fn main() -> Result<()> {
     }
 }
 
-fn entries(dir: PathBuf, shallow: bool, verbose: bool) -> Box<dyn Iterator<Item = PathBuf>> {
+fn entries(dir: PathBuf) -> Box<dyn Iterator<Item = PathBuf>> {
     fn is_hidden(path: &Path) -> bool {
         path.file_name()
             .and_then(|s| s.to_str())
             .is_some_and(|s| s.starts_with('.'))
     }
-    let ignored = move |path: PathBuf| {
-        if verbose {
+    fn ignored(path: PathBuf) -> Box<dyn Iterator<Item = PathBuf>> {
+        if args().verbose {
             eprintln!(" ignoring: {}", path.display()); // the size of "including".
         }
         Box::new(iter::empty())
-    };
+    }
 
     // now this allows hidden directories, if the user directly asks for them.
     match std::fs::read_dir(&dir) {
-        Ok(rd) => Box::new(rd.flat_map(move |r| match r {
-            Ok(de) => {
+        Ok(rd) => Box::new(
+            rd.inspect(move |r| {
+                if let Err(err) = r {
+                    eprintln!("error reading entry {}: {err:?}", dir.display());
+                }
+            })
+            .flatten()
+            .flat_map(move |de| {
                 let path = de.path();
-                match (path.is_dir(), is_hidden(&path), shallow) {
+                match (path.is_dir(), is_hidden(&path), args().shallow) {
                     (false, false, _) => Box::new(iter::once(path)),
-                    (true, false, false) => entries(path, shallow, verbose),
+                    (true, false, false) => entries(path),
                     _ => ignored(path),
                 }
-            }
-            Err(err) => {
-                eprintln!("error reading entry {}: {err:?}", dir.display());
-                Box::new(iter::empty())
-            }
-        })),
+            }),
+        ),
         Err(err) => {
             eprintln!("error reading dir {}: {err}", dir.display());
             Box::new(iter::empty())
@@ -93,15 +89,15 @@ fn entries(dir: PathBuf, shallow: bool, verbose: bool) -> Box<dyn Iterator<Item 
 
 fn gen_medias<T>(files: impl Iterator<Item = PathBuf>) -> Vec<T>
 where
-    T: TryFrom<PathBuf, Error: std::fmt::Debug>,
+    T: TryFrom<PathBuf, Error: fmt::Debug>,
 {
     files
-        .flat_map(|p| match T::try_from(p) {
-            Ok(m) => Some(m),
-            Err(err) => {
+        .map(|p| T::try_from(p))
+        .inspect(|m| {
+            if let Err(err) = m {
                 eprintln!("error loading media: {err:?}");
-                None
             }
         })
+        .flatten()
         .collect::<Vec<_>>()
 }
