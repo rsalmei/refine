@@ -20,14 +20,17 @@ pub struct Dupes {
     pub case: bool,
 }
 
-static OPT: OnceLock<Dupes> = OnceLock::new();
+fn opt() -> &'static Dupes {
+    match &super::args().cmd {
+        super::Command::Dupes(opt) => opt,
+        _ => unreachable!(),
+    }
+}
 
-pub fn find_dupes(files: impl Iterator<Item = PathBuf>, opt: Dupes, _verbose: bool) -> Result<()> {
+pub fn find_dupes(mut medias: Vec<Media>) -> Result<()> {
     println!("Detecting duplicate files...");
-    println!("  - sample bytes: {}", opt.sample.human_count_bytes());
-    println!("  - match case: {}", opt.case);
-    OPT.set(opt).unwrap();
-    let mut medias = super::gen_medias(files); // gen medias only after setting OPT.
+    println!("  - sample bytes: {}", opt().sample.human_count_bytes());
+    println!("  - match case: {}", opt().case);
 
     // first by size.
     println!("\n-- by size");
@@ -123,7 +126,7 @@ impl Media {
             .split(&[' ', '.', '-', '_'])
             .filter(|s| !s.is_empty())
             .filter(|s| !(s.len() == 1 && s.is_ascii())) // remove vowels.
-            .map(|s| match OPT.get().unwrap().case {
+            .map(|s| match opt().case {
                 true => s.to_owned(),
                 false => s.to_lowercase(),
             })
@@ -137,7 +140,7 @@ impl Media {
         if self.sample.is_none() {
             let grab_sample = || {
                 let mut file = File::open(&self.path)?;
-                let mut buf = vec![0; OPT.get().unwrap().sample];
+                let mut buf = vec![0; opt().sample];
                 let mut read = 0;
                 while read < buf.len() {
                     let n = file.read(&mut buf[read..])?;

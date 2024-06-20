@@ -2,8 +2,9 @@ mod dupes;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use std::iter;
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
+use std::{fmt, iter};
 
 #[derive(Debug, Parser)]
 #[command(version, about, long_about = None)]
@@ -27,23 +28,30 @@ enum Command {
     Dupes(dupes::Dupes),
 }
 
+static ARGS: OnceLock<Args> = OnceLock::new();
+fn args() -> &'static Args {
+    ARGS.get().unwrap()
+}
+
 fn main() -> Result<()> {
-    let args = Args::parse();
+    ARGS.set(Args::parse()).unwrap();
 
     // lists files from the given paths, or the current directory if no paths were given.
-    let current_dir = args.paths.is_empty().then(|| ".".into());
+    let current_dir = args().paths.is_empty().then(|| ".".into());
     let mut files = Box::new(
-        args.paths
-            .into_iter()
+        args()
+            .paths
+            .iter()
+            .cloned()
             .chain(current_dir)
-            .flat_map(|p| entries(p, args.shallow, args.verbose)),
+            .flat_map(|p| entries(p, args().shallow, args().verbose)),
     ) as Box<dyn Iterator<Item = PathBuf>>;
-    if args.verbose {
+    if args().verbose {
         files = Box::new(files.inspect(|f| println!("including: {}", f.display())));
     }
 
-    match args.cmd {
-        Command::Dupes(dupes) => dupes::find_dupes(files, dupes, args.verbose),
+    match args().cmd {
+        Command::Dupes(_) => dupes::find_dupes(gen_medias(files)),
     }
 }
 
