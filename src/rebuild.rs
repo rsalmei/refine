@@ -1,5 +1,3 @@
-#![allow(unused_variables, dead_code, unused_mut)]
-
 use anyhow::{anyhow, Result};
 use clap::Args;
 use regex::Regex;
@@ -90,7 +88,7 @@ pub fn rebuild(mut medias: Vec<Media>) -> Result<()> {
             });
         });
 
-    let mut changes = medias
+    let changes = medias
         .iter()
         .filter(|m| m.new_name != m.path.file_name().unwrap().to_str().unwrap())
         .map(|m| {
