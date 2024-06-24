@@ -4,27 +4,29 @@
 
 ## What it does
 
-This is a tool that will scan some given paths, and report the possibly duplicated files both by
-size and by name.
-It will also load some sample bytes from each file, in order to guarantee they are indeed similar.
+This is a tool that will scan any given paths, and run some command on them.
 
-It is blazingly fast and tiny. It does not try to change anything anywhere, it just reports what it
-finds.
+The `dupes` command will analyze and report the possibly duplicated files, both by size and name.
+It will even load a sample from each file, in order to guarantee they are indeed duplicated.
 
-In the future, this could make more than just detecting duplicates, like for instance moving those
-files, renaming them, it could have a GUI to enable easily acting upon them, etc., hence the name
-just `refine`.
+The new `rebuild` command is a marvel of engineering! If I say so myself.
+It will rebuild the filenames of your entire collection!
+
+It is blazingly fast and tiny, made 100% in Rust 🦀!
+
+In the future, this tool could make much more, like for instance moving duplicated files, including
+a GUI to enable easily acting upon them, etc., hence the open name `refine`...
 
 ## How it works
 
-It will:
+### The `dupes` command
 
-- recursively detect all files in the given paths (excluding hidden .folders)
+1. recursively detect all files in the given paths (excluding hidden .folders)
     - can optionally run only a shallow scan too.
-- sort all the files by their sizes and by their words
+2. sort all the files by their sizes and by their words
     - the word extractor ignores repetition systems like -1, -2, and copy, copy 2.
-- for each group with the exact same value, a sample of each file will be retrieved and compared
-- each coincidence will be listed as possible duplicates:
+3. for each group with the exact same value, a sample of each file will be retrieved and compared
+4. each coincidence will be listed as possible duplicates:
 
 ```
 -- by size
@@ -38,15 +40,12 @@ It will:
 /Users/you/Downloads/video.mp4
 /Volumes/External/backup-path/video.mpg.bak
 
-...
-
 -- by name
 
 ["bin", "cache", "query"] x2
 904.2kB: ./target/debug/incremental/refine-1uzt8yoeb0t1e/s-gx7knsxvbx-1oc90bk-working/query-cache.bin
 904.9kB: ./target/debug/incremental/refine-1uzt8yoeb0t1e/s-gx7knwsqka-w784iw-6s3nzkfcj1wxagnjubj1pm4v6/query-cache.bin
 
-...
 ```
 
 And, finally, a brief receipt will be printed:
@@ -57,6 +56,34 @@ total files: 13512
   by name: 12 duplicates
 ```
 
+### The `rebuild` command
+
+1. strip parts of the filenames, either before or after some matches, or exact ones in the middle;
+2. remove all sequence numbers they might have, like "copy 2" or "-3";
+3. smartly remove spaces and underscores to detect misspelled names;
+4. group the names according to the rest;
+5. smartly choose the most likely correct name among the group;
+6. sort the group entries by created date;
+7. regenerate a unified sequence with this new order; <-- Note this occurs on the whole group,
+   regardless
+   of the directory the file resides!
+8. renames the files to the new pattern.
+
+```
+/Users/you/Downloads/path/file.mp4 --> file-1.mp4
+/Users/you/Downloads/path/video ok.mp4 --> video__ok-1.mp4
+/Users/you/Downloads/another-path/video_ok.mp4 --> video__ok-2.mp4
+/Volumes/External/backup-path/Video__OK.mp4 --> video__ok-3.mp4
+/Users/you/Downloads/another-path/video not ok.mp4 --> video_not_ok-1.mp4
+```
+
+And, finally, a brief receipt will be printed:
+
+```
+total files: 21126
+  changes: 1432
+```
+
 ## How to use it
 
 Install with `cargo install refine`, then just:
@@ -65,10 +92,17 @@ Install with `cargo install refine`, then just:
 ❯ refine dupes ~/Downloads /Volumes/Drive ...
 ```
 
+Or:
+
+```bash
+❯ refine rebuild ~/Downloads /Volumes/Drive ...
+```
+
 Send as many sources as you want.
 
 ## Changelog
 
+- 0.6.0 Jun 24, 2024: new `rebuild` command, general polishing overall.
 - 0.5.0 Jun 20, 2024: support for shallow scan, verbose mode, dupes cmd ignores repetition systems.
 - 0.4.0 Jun 17, 2024: include `dupes` command, support match case and changing sample size.
 - 0.3.0 Nov 07, 2023: include dedup by both size and name.
