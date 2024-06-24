@@ -1,13 +1,11 @@
 use anyhow::{anyhow, Result};
 use clap::Args;
 use human_repr::HumanCount;
-use regex::Regex;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::sync::OnceLock;
 use std::{fs, io};
 
 #[derive(Debug, Args)]
@@ -110,18 +108,11 @@ impl TryFrom<PathBuf> for Media {
 
 impl Media {
     fn words(path: &Path) -> Result<Box<[String]>> {
-        static RE_WORDS_COPY: OnceLock<Regex> = OnceLock::new();
-        static RE_WORDS_MULT: OnceLock<Regex> = OnceLock::new();
-        let rec = RE_WORDS_COPY.get_or_init(|| Regex::new(r" copy( \d+)?$").unwrap());
-        let rem = RE_WORDS_MULT.get_or_init(|| Regex::new(r"-\d+$").unwrap());
-
-        let name = path
-            .file_stem()
-            .and_then(|x| x.to_str())
-            .ok_or_else(|| anyhow!("no file name: {path:?}"))?;
-        let name = rec.split(name).next().ok_or_else(|| anyhow!("only copy"))?;
-        let name = rem.split(name).next().ok_or_else(|| anyhow!("only -#"))?;
-
+        let name = super::strip_sequence(
+            path.file_stem()
+                .and_then(|x| x.to_str())
+                .ok_or_else(|| anyhow!("no file name: {path:?}"))?,
+        );
         let mut words = name
             .split(&[' ', '.', '-', '_'])
             .filter(|s| !s.is_empty())
