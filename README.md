@@ -8,13 +8,56 @@ This is a tool that will scan any given paths, and run some command on them.
 
 The `dupes` command will analyze and report the possibly duplicated files, both by size and name. It will even load a sample from each file, in order to guarantee they are indeed duplicated.
 
-The new `rebuild` command is a great achievement, if I say so myself. It can smartly rebuild the filenames of your entire collection! It will strip parts of filenames, remove previous sequence numbers, smartly detect misspelled names by comparing with the other files, sort the detected file groups by creation date, and finally regenerate the sequence numbers, renaming all files accordingly...
+The new `rebuild` command is a great achievement, if I say so myself, which will smartly rebuild the filenames of your entire collection! It can strip parts of filenames, remove previous sequence numbers, smartly detect misspelled names by comparing with the other files, sort the detected file groups by creation date, and finally regenerate the sequence numbers, renaming all files accordingly...
 
 It is blazingly fast and tiny, made 100% in Rust 🦀!
 
 In the future, this tool could make much more, like for instance moving duplicated files, including a GUI to enable easily acting upon them, etc., hence the open name `refine`...
 
+## How to use it
+
+Install with:
+
+```
+cargo install refine
+```
+
+Then just call it anywhere:
+
+```bash
+❯ refine dupes ~/Downloads /Volumes/Drive ...
+```
+
+Or:
+
+```bash
+❯ refine rebuild ~/Downloads /Volumes/Drive ...
+```
+
+Send as many sources as you want.
+
 ## How it works
+
+Command options:
+
+```
+Refine your file collection using Rust!
+
+Usage: refine [OPTIONS] [PATHS]... <COMMAND>
+
+Commands:
+  dupes    Find possibly duplicated files by both size and filename
+  rebuild  Rebuild the filenames of collections of files intelligently
+  help     Print this message or the help of the given subcommand(s)
+
+Arguments:
+  [PATHS]...  Paths to scan
+
+Options:
+      --shallow  Do not recurse into subdirectories
+  -h, --help     Print help
+  -V, --version  Print version
+```
 
 ### The `dupes` command
 
@@ -24,6 +67,25 @@ In the future, this tool could make much more, like for instance moving duplicat
     - the word extractor ignores repetition systems like -1, -2, and copy, copy 2.
 3. for each group with the exact same value, a sample of each file will be retrieved and compared
 4. each coincidence will be listed as possible duplicates:
+
+Command options:
+
+```
+Find possibly duplicated files by both size and filename
+
+Usage: refine dupes [OPTIONS] [PATHS]...
+
+Arguments:
+  [PATHS]...  Paths to scan
+
+Options:
+  -s, --sample <SAMPLE>  Sample size in bytes (0 to disable) [default: 2048]
+  -c, --case             Case-sensitive file name comparison
+      --shallow          Do not recurse into subdirectories
+  -h, --help             Print help
+```
+
+Output:
 
 ```
 -- by size
@@ -66,6 +128,29 @@ total files: 13512
    of the directory the file resides!
 8. renames the files to the new pattern.
 
+Command options:
+
+```
+Rebuild the filenames of collections of files intelligently
+
+Usage: refine rebuild [OPTIONS] [PATHS]...
+
+Arguments:
+  [PATHS]...  Paths to scan
+
+Options:
+  -b, --strip-before <STRIP_BEFORE>  Remove from the start of the filename to this str; blanks are automatically removed
+  -a, --strip-after <STRIP_AFTER>    Remove from this str to the end of the filename; blanks are automatically removed
+  -e, --strip-exact <STRIP_EXACT>    Remove all occurrences of this str in the filename; blanks are automatically removed
+      --shallow                      Do not recurse into subdirectories
+  -s, --no-smart-detect              Detects and fixes similar filenames (e.g. "foo bar.mp4" and "foo__bar.mp4")
+      --dry-run                      Do not touch the filesystem, just print what would be done
+  -h, --help                         Print help
+
+```
+
+Output:
+
 ```
 /Users/you/Downloads/path/file.mp4 --> file-1.mp4
 /Users/you/Downloads/path/video ok.mp4 --> video__ok-1.mp4
@@ -80,22 +165,6 @@ And, finally, a brief receipt will be printed:
 total files: 21126
   changes: 1432
 ```
-
-## How to use it
-
-Install with `cargo install refine`, then just:
-
-```bash
-❯ refine dupes ~/Downloads /Volumes/Drive ...
-```
-
-Or:
-
-```bash
-❯ refine rebuild ~/Downloads /Volumes/Drive ...
-```
-
-Send as many sources as you want.
 
 ## Changelog
 
