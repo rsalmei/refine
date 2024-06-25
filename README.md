@@ -6,16 +6,13 @@
 
 This is a tool that will scan any given paths, and run some command on them.
 
-The `dupes` command will analyze and report the possibly duplicated files, both by size and name.
-It will even load a sample from each file, in order to guarantee they are indeed duplicated.
+The `dupes` command will analyze and report the possibly duplicated files, both by size and name. It will even load a sample from each file, in order to guarantee they are indeed duplicated.
 
-The new `rebuild` command is a marvel of engineering! If I say so myself.
-It will rebuild the filenames of your entire collection!
+The new `rebuild` command is a great achievement, if I say so myself. It can smartly rebuild the filenames of your entire collection! It will strip parts of filenames, remove previous sequence numbers, smartly detect misspelled names by comparing with the other files, sort the detected file groups by creation date, and finally regenerate the sequence numbers, renaming all files accordingly...
 
 It is blazingly fast and tiny, made 100% in Rust 🦀!
 
-In the future, this tool could make much more, like for instance moving duplicated files, including
-a GUI to enable easily acting upon them, etc., hence the open name `refine`...
+In the future, this tool could make much more, like for instance moving duplicated files, including a GUI to enable easily acting upon them, etc., hence the open name `refine`...
 
 ## How it works
 
