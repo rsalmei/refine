@@ -72,17 +72,18 @@ where
     medias.sort_unstable_by(|m1, m2| grouping(m1).cmp(grouping(m2)));
     medias
         .chunk_by_mut(|m, m2| grouping(m) == grouping(m2))
-        .flat_map(|acc| {
-            acc.iter_mut().for_each(|m| {
+        .filter(|g| g.len() > 1)
+        .flat_map(|g| {
+            g.iter_mut().for_each(|m| {
                 m.cache_sample(); // warm up samples.
             });
-            let mut split = HashMap::with_capacity(acc.len());
-            acc.iter()
+            let mut split = HashMap::with_capacity(g.len());
+            g.iter()
                 .map(|m| (m, m.sample.as_ref().unwrap()))
                 .for_each(|(m, sample)| split.entry(sample).or_insert_with(Vec::new).push(m));
             split.into_values().filter(|v| v.len() > 1)
         })
-        .map(|acc| show(grouping(acc[0]), acc))
+        .map(|g| show(grouping(g[0]), g))
         .count()
 }
 
