@@ -98,6 +98,25 @@ pub fn rebuild(mut medias: Vec<Media>) -> Result<()> {
     if !changes.is_empty() && !opt().yes {
         utils::prompt_yes_no("apply changes?")?;
     }
+    apply_renames(&mut changes);
+    if changes.is_empty() {
+        return Ok(());
+    }
+
+    println!("attempting to fix {} errors", changes.len());
+    changes.iter_mut().for_each(|m| {
+        let temp = format!("__refine+{}__", m.new_name);
+        let dest = m.path.with_file_name(&temp);
+        match fs::rename(&m.path, &dest) {
+            Ok(()) => m.path = dest,
+            Err(err) => eprintln!("error: {err:?}: {:?} --> {temp:?}", m.path),
+        }
+    });
+    apply_renames(&mut changes);
+    if !changes.is_empty() {
+        println!("still {} errors, giving up", changes.len());
+    }
+
     Ok(())
 }
 
@@ -149,6 +168,26 @@ fn apply_new_names(medias: &mut [Media]) {
                 write!(m.new_name, "{base}-{}.{}", i + 1, m.ext).unwrap();
             });
         });
+}
+
+fn apply_renames(changes: &mut Vec<Media>) {
+    changes.retain(|m| {
+        let dest = m.path.with_file_name(&m.new_name);
+        if dest.exists() {
+            eprintln!("error: path already exists: {dest:?}");
+            return true;
+        }
+        match fs::rename(&m.path, &dest) {
+            Ok(()) => false,
+            Err(err) => {
+                eprintln!("error: {err:?}: {:?} --> {:?}", m.path, m.new_name);
+                true
+            }
+        }
+    });
+    if changes.is_empty() {
+        println!("done");
+    }
 }
 #[derive(Debug)]
 pub struct Media {
