@@ -1,5 +1,6 @@
 mod dupes;
 mod rebuild;
+mod utils;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
@@ -113,15 +114,4 @@ where
         })
         .flatten()
         .collect::<Vec<_>>()
-}
-
-/// Util function to strip sequence numbers from a filename.
-fn strip_sequence(name: &str) -> &str {
-    static RE_MULTI_MACOS: OnceLock<Regex> = OnceLock::new();
-    static RE_MULTI_LOCAL: OnceLock<Regex> = OnceLock::new();
-    let rem = RE_MULTI_MACOS.get_or_init(|| Regex::new(r" copy( \d+)?$").unwrap());
-    let rel = RE_MULTI_LOCAL.get_or_init(|| Regex::new(r"-\d+$").unwrap());
-
-    let name = rem.split(name).next().unwrap(); // even if the name is " copy", this returns an empty str.
-    rel.split(name).next().unwrap() // same as above, even if the name is "-1", this returns an empty str.
 }

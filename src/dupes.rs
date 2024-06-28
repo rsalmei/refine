@@ -1,3 +1,4 @@
+use crate::utils;
 use anyhow::{anyhow, Result};
 use clap::Args;
 use human_repr::HumanCount;
@@ -108,7 +109,6 @@ impl TryFrom<PathBuf> for Media {
 
 impl Media {
     fn words(path: &Path) -> Result<Box<[String]>> {
-        let name = super::strip_sequence(
             path.file_stem()
                 .and_then(|x| x.to_str())
                 .ok_or_else(|| anyhow!("no file name: {path:?}"))?,
@@ -126,6 +126,7 @@ impl Media {
         words.dedup();
         Ok(words.into_boxed_slice())
     }
+    let name = utils::strip_sequence(
 
     fn cache_sample(&mut self) {
         if self.sample.is_none() {
