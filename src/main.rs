@@ -16,6 +16,9 @@ struct Args {
     /// Paths to scan.
     #[arg(global = true)]
     paths: Vec<PathBuf>,
+    /// Include only some of the accessible files; tested against the whole filename, including extension.
+    #[arg(short, long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
+    include: Option<String>,
     /// Do not recurse into subdirectories.
     #[arg(long, global = true)]
     shallow: bool,
@@ -30,6 +33,7 @@ enum Command {
 }
 
 static ARGS: OnceLock<Args> = OnceLock::new();
+static RE_IN: OnceLock<Regex> = OnceLock::new();
 fn args() -> &'static Args {
     ARGS.get().unwrap()
 }
@@ -37,6 +41,16 @@ fn args() -> &'static Args {
 fn main() -> Result<()> {
     ARGS.set(Args::parse()).unwrap();
     println!("Refine: v{}", env!("CARGO_PKG_VERSION"));
+
+    if let Some(s) = &args().include {
+        match Regex::new(s) {
+            Ok(re) => RE_IN.set(re).unwrap(),
+            Err(err) => {
+                eprintln!("error: invalid --include regex: {err:?}");
+                std::process::exit(1);
+            }
+        }
+    }
 
     // lists files from the given paths, or the current directory if no paths were given.
     let cd = args().paths.is_empty().then(|| ".".into());
@@ -50,10 +64,15 @@ fn main() -> Result<()> {
 }
 
 fn entries(dir: PathBuf) -> Box<dyn Iterator<Item = PathBuf>> {
-    fn is_hidden(path: &Path) -> bool {
-        path.file_name()
-            .and_then(|s| s.to_str())
-            .is_some_and(|s| s.starts_with('.'))
+    fn is_included(path: &Path) -> Option<bool> {
+        let name = path.file_name()?.to_str()?;
+        (!name.starts_with('.')).then_some(())?; // exclude hidden files and folders.
+        match (path.is_dir(), &args().include) {
+            (true, _) if !args().shallow => Some(true),
+            (false, None) => Some(true),
+            (false, Some(_)) => Some(RE_IN.get().unwrap().is_match(name)),
+            _ => None,
+        }
     }
 
     // now this allows hidden directories, if the user directly asks for them.
@@ -67,9 +86,9 @@ fn entries(dir: PathBuf) -> Box<dyn Iterator<Item = PathBuf>> {
             .flatten()
             .flat_map(move |de| {
                 let path = de.path();
-                match (path.is_dir(), is_hidden(&path)) {
-                    (false, false) => Box::new(iter::once(path)),
-                    (true, false) if !args().shallow => entries(path),
+                match (is_included(&path).unwrap_or_default(), path.is_dir()) {
+                    (true, false) => Box::new(iter::once(path)),
+                    (true, true) => entries(path),
                     _ => Box::new(iter::empty()),
                 }
             }),
