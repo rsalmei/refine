@@ -12,7 +12,7 @@ use std::{fs, io};
 #[derive(Debug, Args)]
 pub struct Dupes {
     /// Sample size in bytes (0 to disable).
-    #[arg(short, long, default_value_t = 2 * 1024)]
+    #[arg(short, long, default_value_t = 2 * 1024, value_name = "BYTES")]
     pub sample: usize,
     /// Case-sensitive file name comparison.
     #[arg(short, long)]
@@ -30,9 +30,10 @@ pub fn find_dupes(mut medias: Vec<Media>) -> Result<()> {
     println!("Detecting duplicate files...");
     println!("  - sample bytes: {}", opt().sample.human_count_bytes());
     println!("  - match case: {}", opt().case);
+    println!();
 
     // first by size.
-    println!("\n-- by size");
+    println!("-- by size");
     let size_count = detect_duplicates(
         &mut medias,
         |m| &m.size,
@@ -101,34 +102,35 @@ impl TryFrom<PathBuf> for Media {
     fn try_from(path: PathBuf) -> Result<Self> {
         Ok(Media {
             size: fs::metadata(&path)?.len(),
-            words: Media::words(&path)?,
+            words: words(&path)?,
             path, // I can use path above before moving it here!
             sample: None,
         })
     }
 }
 
-impl Media {
-    fn words(path: &Path) -> Result<Box<[String]>> {
-            path.file_stem()
-                .and_then(|x| x.to_str())
-                .ok_or_else(|| anyhow!("no file name: {path:?}"))?,
-        );
-        let mut words = name
-            .split(&[' ', '.', '-', '_'])
-            .filter(|s| !s.is_empty())
-            .filter(|s| !(s.len() == 1 && s.is_ascii())) // remove vowels.
-            .map(|s| match opt().case {
-                true => s.to_owned(),
-                false => s.to_lowercase(),
-            })
-            .collect::<Vec<_>>();
-        words.sort_unstable();
-        words.dedup();
-        Ok(words.into_boxed_slice())
-    }
+fn words(path: &Path) -> Result<Box<[String]>> {
     let name = utils::strip_sequence(
+        path.file_stem()
+            .ok_or_else(|| anyhow!("no file name: {path:?}"))?
+            .to_str()
+            .ok_or_else(|| anyhow!("file name str: {path:?}"))?,
+    );
+    let mut words = name
+        .split(&[' ', '.', '-', '_'])
+        .filter(|s| !s.is_empty())
+        .filter(|s| !(s.len() == 1 && s.is_ascii())) // remove vowels.
+        .map(|s| match opt().case {
+            true => s.to_owned(),
+            false => s.to_lowercase(),
+        })
+        .collect::<Vec<_>>();
+    words.sort_unstable();
+    words.dedup();
+    Ok(words.into_boxed_slice())
+}
 
+impl Media {
     fn cache_sample(&mut self) {
         if self.sample.is_none() {
             let grab_sample = || {
@@ -149,7 +151,7 @@ impl Media {
             self.sample = match grab_sample() {
                 Ok(buf) => Some(Some(buf.into_boxed_slice())),
                 Err(err) => {
-                    eprintln!("  {err}");
+                    eprintln!("error: load sample: {err:?}");
                     Some(None)
                 }
             };

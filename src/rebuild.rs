@@ -1,4 +1,6 @@
+use crate::utils;
 use anyhow::{anyhow, Result};
+use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
 use regex::Regex;
 use std::borrow::Cow;
@@ -12,15 +14,15 @@ use std::time::SystemTime;
 #[derive(Debug, Args)]
 pub struct Rebuild {
     /// Remove from the start of the filename to this str; blanks are automatically removed.
-    #[arg(short = 'b', long)]
+    #[arg(short = 'b', long, value_name = "STR|REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     pub strip_before: Vec<String>,
     /// Remove from this str to the end of the filename; blanks are automatically removed.
-    #[arg(short = 'a', long)]
+    #[arg(short = 'a', long, value_name = "STR|REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     pub strip_after: Vec<String>,
     /// Remove all occurrences of this str in the filename; blanks are automatically removed.
-    #[arg(short = 'e', long)]
+    #[arg(short = 'e', long, value_name = "STR|REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     pub strip_exact: Vec<String>,
-    /// Detects and fixes similar filenames (e.g. "foo bar.mp4" and "foo__bar.mp4").
+    /// Detect and fix similar filenames (e.g. "foo bar.mp4" and "foo__bar.mp4").
     #[arg(short = 's', long)]
     pub no_smart_detect: bool,
     /// Easily set filenames for new files. BEWARE: use only with new files on already organized folders.
@@ -207,8 +209,8 @@ pub struct Media {
 }
 
 impl Media {
-    fn smart_group(&self) -> &str {
-        self.smart_group.as_deref().unwrap_or(&self.new_name)
+    fn group(&self) -> &str {
+        self.smart_group.as_deref().unwrap_or(&self.wname)
     }
 }
 

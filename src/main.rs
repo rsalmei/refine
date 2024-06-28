@@ -2,7 +2,7 @@ mod dupes;
 mod rebuild;
 mod utils;
 
-use anyhow::Result;
+use clap::builder::NonEmptyStringValueParser;
 use clap::{Parser, Subcommand};
 use regex::Regex;
 use std::path::{Path, PathBuf};
@@ -10,26 +10,26 @@ use std::sync::OnceLock;
 use std::{fmt, iter};
 
 #[derive(Debug, Parser)]
-#[command(version, about, long_about = None)]
+#[command(version, about, long_about = None, after_help = "For more information, see https://github.com/rsalmei/refine")]
 struct Args {
     #[command(subcommand)]
     cmd: Command,
     /// Paths to scan.
-    #[arg(global = true)]
+    #[arg(global = true, help_heading = Some("Global"))]
     paths: Vec<PathBuf>,
     /// Include only some of the accessible files; tested against the whole filename, including extension.
     #[arg(short, long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     include: Option<String>,
     /// Do not recurse into subdirectories.
-    #[arg(long, global = true)]
+    #[arg(long, global = true, help_heading = Some("Global"))]
     shallow: bool,
 }
 
 #[derive(Debug, Subcommand)]
 enum Command {
-    /// Find possibly duplicated files by both size and name.
+    /// Find possibly duplicated files by both size and filename.
     Dupes(dupes::Dupes),
-    /// Rebuild names of collections of files intelligently.
+    /// Rebuild the filenames of collections of files intelligently.
     Rebuild(rebuild::Rebuild),
 }
 
@@ -39,7 +39,7 @@ fn args() -> &'static Args {
     ARGS.get().unwrap()
 }
 
-fn main() -> Result<()> {
+fn main() {
     ARGS.set(Args::parse()).unwrap();
     println!("Refine: v{}", env!("CARGO_PKG_VERSION"));
 
@@ -58,9 +58,12 @@ fn main() -> Result<()> {
     let files = Box::new(args().paths.iter().cloned().chain(cd).flat_map(entries))
         as Box<dyn Iterator<Item = PathBuf>>;
 
-    match args().cmd {
+    if let Err(err) = match args().cmd {
         Command::Dupes(_) => dupes::find_dupes(gen_medias(files)),
         Command::Rebuild(_) => rebuild::rebuild(gen_medias(files)),
+    } {
+        eprintln!("error: {err:?}");
+        std::process::exit(1);
     }
 }
 
@@ -81,7 +84,7 @@ fn entries(dir: PathBuf) -> Box<dyn Iterator<Item = PathBuf>> {
         Ok(rd) => Box::new(
             rd.inspect(move |r| {
                 if let Err(err) = r {
-                    eprintln!("error reading entry {}: {err:?}", dir.display());
+                    eprintln!("error: read entry {}: {err:?}", dir.display());
                 }
             })
             .flatten()
@@ -95,7 +98,7 @@ fn entries(dir: PathBuf) -> Box<dyn Iterator<Item = PathBuf>> {
             }),
         ),
         Err(err) => {
-            eprintln!("error reading dir {}: {err}", dir.display());
+            eprintln!("error: read dir {}: {err:?}", dir.display());
             Box::new(iter::empty())
         }
     }
@@ -109,9 +112,9 @@ where
         .map(|p| T::try_from(p))
         .inspect(|m| {
             if let Err(err) = m {
-                eprintln!("error loading media: {err:?}");
+                eprintln!("error: load media: {err:?}");
             }
         })
         .flatten()
-        .collect::<Vec<_>>()
+        .collect()
 }
