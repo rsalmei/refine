@@ -6,7 +6,7 @@ use std::collections::HashSet;
 use std::fmt::Write;
 use std::fs;
 use std::path::PathBuf;
-use std::sync::OnceLock;
+use std::sync::{Mutex, OnceLock};
 use std::time::SystemTime;
 
 #[derive(Debug, Args)]
@@ -189,12 +189,20 @@ fn apply_renames(changes: &mut Vec<Media>) {
         println!("done");
     }
 }
+
 #[derive(Debug)]
 pub struct Media {
+    /// The original path to the file.
     path: PathBuf,
-    new_name: String,
-    ext: String,
+    /// The working copy of the name, where the rules are applied.
+    wname: String,
+    /// The smart group (if enabled and wname has spaces or _).
     smart_group: Option<String>,
+    /// The final name, after the rules and the sequence have been applied.
+    new_name: String,
+    /// A cached version of the file extension.
+    ext: &'static str,
+    /// The creation time of the file.
     ts: SystemTime,
 }
 
@@ -209,18 +217,53 @@ impl TryFrom<PathBuf> for Media {
 
     fn try_from(path: PathBuf) -> Result<Self> {
         let name = path
-            .file_name()
+            .file_stem()
             .ok_or_else(|| anyhow!("no file name: {path:?}"))?
             .to_str()
             .ok_or_else(|| anyhow!("file name str: {path:?}"))?;
-        let (name, ext) = name.split_once('.').unwrap_or((name, ""));
-        let (_, ext) = ext.rsplit_once('.').unwrap_or(("", ext));
+        let ext = path.extension().unwrap_or_default().to_str().unwrap_or("");
+
+        let mut wname = name.trim().to_lowercase();
+        let name = utils::strip_sequence(&wname);
+        if name != wname {
+            wname.truncate(name.len());
+        }
+
         Ok(Media {
+            smart_group: group(&wname),
+            wname,
+            new_name: String::new(),
+            ext: ext_cache(ext),
             ts: fs::metadata(&path)?.created()?,
-            new_name: name.trim().to_lowercase(),
-            ext: ext.to_lowercase(),
-            smart_group: None,
             path,
         })
+    }
+}
+
+fn group(wname: &str) -> Option<String> {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    let re = RE.get_or_init(|| Regex::new(r"[\s_]+").unwrap());
+
+    match opt().no_smart_detect {
+        true => None,
+        false => match re.replace_all(wname, "") {
+            Cow::Owned(x) => Some(x),
+            _ => None,
+        },
+    }
+}
+
+fn ext_cache(ext: &str) -> &'static str {
+    static EXT: OnceLock<Mutex<HashSet<&'static str>>> = OnceLock::new();
+    let m = EXT.get_or_init(Default::default);
+
+    let mut m = m.lock().unwrap();
+    match m.get(ext) {
+        Some(x) => x,
+        None => {
+            let ext = Box::leak(ext.to_owned().into_boxed_str());
+            m.insert(ext);
+            ext
+        }
     }
 }
