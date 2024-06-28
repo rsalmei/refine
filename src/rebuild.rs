@@ -23,12 +23,12 @@ pub struct Rebuild {
     /// Detects and fixes similar filenames (e.g. "foo bar.mp4" and "foo__bar.mp4").
     #[arg(short = 's', long)]
     pub no_smart_detect: bool,
-    /// Do not touch the filesystem, just print what would be done.
-    #[arg(long)]
-    pub dry_run: bool,
     /// Easily set filenames for new files. BEWARE: use only with new files on already organized folders.
     #[arg(short, long, value_name = "STR", value_parser = NonEmptyStringValueParser::new())]
     pub force: Option<String>,
+    /// Skip the confirmation prompt, useful for automation.
+    #[arg(short, long)]
+    pub yes: bool,
 }
 
 fn opt() -> &'static Rebuild {
@@ -44,8 +44,9 @@ pub fn rebuild(mut medias: Vec<Media>) -> Result<()> {
     println!("  - strip after: {:?}", opt().strip_after);
     println!("  - strip exact: {:?}", opt().strip_exact);
     println!("  - smart detect: {}", !opt().no_smart_detect);
-    println!("  - dry run: {}", opt().dry_run);
     println!("  - force: {:?}", opt().force);
+    println!("  - interactive: {}", !opt().yes);
+    println!();
 
     apply_strip(&mut medias, Pos::Before, &opt().strip_before)?;
     apply_strip(&mut medias, Pos::After, &opt().strip_after)?;
@@ -85,19 +86,18 @@ pub fn rebuild(mut medias: Vec<Media>) -> Result<()> {
         .filter(|m| m.new_name != m.path.file_name().unwrap().to_str().unwrap()) // the list might have changed on force.
         .inspect(|m| {
             println!("{} --> {}", m.path.display(), m.new_name);
-            if !opt().dry_run {
-                let dest = m.path.with_file_name(&m.new_name);
-                if dest.exists() {
-                    println!("  EXISTS {:?}", m.path);
-                } else if let Err(e) = fs::rename(&m.path, &dest) {
-                    println!("  FAILED: {e:?}");
-                }
-            }
         })
         .collect::<Vec<_>>();
 
-    println!("\ntotal files: {}", medias.len());
-    println!("  changes: {changes}");
+    if !changes.is_empty() || !empty.is_empty() {
+        println!();
+    }
+    println!("total files: {total}");
+    println!("  changes: {}", changes.len());
+
+    if !changes.is_empty() && !opt().yes {
+        utils::prompt_yes_no("apply changes?")?;
+    }
     Ok(())
 }
 
