@@ -71,6 +71,10 @@ pub fn rebuild(mut medias: Vec<Media>) -> Result<()> {
         eprintln!("warning: rules cleared name: {}", m.path.display());
     });
 
+    if !opt().no_smart_detect {
+        apply_smart_groups(&mut medias);
+    }
+
     apply_new_names(&mut medias);
     if let Some(force) = &opt().force {
         medias
@@ -146,6 +150,17 @@ fn apply_strip(medias: &mut [Media], pos: Pos, rules: &[String]) -> Result<()> {
         })
     }
     Ok(())
+}
+
+fn apply_smart_groups(medias: &mut [Media]) {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    let re = RE.get_or_init(|| Regex::new(r"[\s_]+").unwrap());
+
+    medias.iter_mut().for_each(|m| {
+        if let Cow::Owned(x) = re.replace_all(&m.wname, "") {
+            m.smart_group = Some(x);
+        }
+    });
 }
 
 fn apply_new_names(medias: &mut [Media]) {
@@ -232,26 +247,13 @@ impl TryFrom<PathBuf> for Media {
         }
 
         Ok(Media {
-            smart_group: group(&wname),
             wname,
             new_name: String::new(),
             ext: ext_cache(ext),
             ts: fs::metadata(&path)?.created()?,
+            smart_group: None,
             path,
         })
-    }
-}
-
-fn group(wname: &str) -> Option<String> {
-    static RE: OnceLock<Regex> = OnceLock::new();
-    let re = RE.get_or_init(|| Regex::new(r"[\s_]+").unwrap());
-
-    match opt().no_smart_detect {
-        true => None,
-        false => match re.replace_all(wname, "") {
-            Cow::Owned(x) => Some(x),
-            _ => None,
-        },
     }
 }
 
