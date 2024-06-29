@@ -47,7 +47,7 @@ Send as many sources as you want.
 
 ## How it works
 
-Command options:
+<details> <summary>Command options</summary>
 
 ```
 Refine your file collection using Rust!
@@ -64,12 +64,14 @@ Options:
   -V, --version  Print version
 
 Global:
-  -i, --include <REGEX>  Include only some of the accessible files; tested against the whole filename, including extension
+  -i, --include <REGEX>  Include only some files; tested against filename+extension, case-insensitive
       --shallow          Do not recurse into subdirectories
   [PATHS]...         Paths to scan
 
 For more information, see https://github.com/rsalmei/refine
 ```
+
+</details>
 
 ### The `dupes` command
 
@@ -80,7 +82,7 @@ For more information, see https://github.com/rsalmei/refine
 3. for each group with the exact same value, a sample of each file will be retrieved and compared
 4. each coincidence will be listed as possible duplicates
 
-Command options:
+<details> <summary>Command options</summary>
 
 ```
 Find possibly duplicated files by both size and filename
@@ -93,10 +95,12 @@ Options:
   -h, --help            Print help
 
 Global:
-  -i, --include <REGEX>  Include only some of the accessible files; tested against the whole filename, including extension
+  -i, --include <REGEX>  Include only some files; tested against filename+extension, case-insensitive
       --shallow          Do not recurse into subdirectories
   [PATHS]...         Paths to scan
 ```
+
+</details>
 
 Output:
 
@@ -139,7 +143,7 @@ total files: 13512
 7. regenerate a unified sequence with this ordering; <-- Note this occurs on the whole group, regardless of the directory the file resides!
 8. renames the files to the new pattern, after your review and confirmation
 
-Command options:
+<details> <summary>Command options</summary>
 
 ```
 Rebuild the filenames of collections of files intelligently
@@ -151,24 +155,26 @@ Options:
   -a, --strip-after <STR|REGEX>   Remove from this str to the end of the filename; blanks are automatically removed
   -e, --strip-exact <STR|REGEX>   Remove all occurrences of this str in the filename; blanks are automatically removed
   -s, --no-smart-detect           Detect and fix similar filenames (e.g. "foo bar.mp4" and "foo__bar.mp4")
-  -f, --force <STR>               Easily set filenames for new files. BEWARE: use only with new files on already organized folders
+  -f, --force <STR>               Easily set filenames for new files. BEWARE: use only on already organized collections
   -y, --yes                       Skip the confirmation prompt, useful for automation
   -h, --help                      Print help
 
 Global:
-  -i, --include <REGEX>  Include only some of the accessible files; tested against the whole filename, including extension
+  -i, --include <REGEX>  Include only some files; tested against filename+extension, case-insensitive
       --shallow          Do not recurse into subdirectories
   [PATHS]...         Paths to scan
 ```
 
+</details>
+
 Output:
 
 ```
-/Users/you/Downloads/path/sketch.mp4 --> sketch-1.mp4
-/Users/you/Downloads/path/video ok.mp4 --> video_ok-1.mp4                   | note these files, regardless of different
-/Users/you/Downloads/another-path/video_ok-5.mp4 --> video_ok-2.mp4         | paths and different names, they were smarly
-/Volumes/External/backup-path/Video_OK copy.mp4 --> video_ok-3.mp4          | detected and renamed as the same group!
-/Users/you/Downloads/another-path/video not ok.mp4 --> video_not_ok-1.mp4
+/Users/you/Downloads/sketch.mp4 --> sketch-1.mp4
+/Users/you/Downloads/video ok.mp4 --> video_ok-1.mp4               | note these three files, regardless of different
+/Users/you/Downloads/path/video_ok-5.mp4 --> video_ok-2.mp4        | paths and different names, they were smarly
+/Volumes/External/backup/Video_OK copy.mp4 --> video_ok-3.mp4      | detected and renamed as the same group!
+/Users/you/Downloads/path/video not ok.mp4 --> video_not_ok-1.mp4
 ```
 
 And, finally, a brief receipt will be printed, as well as the interactive prompt:
@@ -181,7 +187,8 @@ apply changes? [y|n]: _
 
 ## Changelog highlights
 
-- 0.7.0 Jun 27, 2024: global: new --include, rebuild: new --force, rebuild: new interactive mode, rebuild: new --yes, rebuild: auto fix rename errors, dupes: improved performance, rebuild: smaller memory consumption.
+- 0.7.1 Jun 28, 2024: global: --include is now case-insensitive, rebuild: fix smart detect bug not grouping some files, rebuild: strip rules remove hyphens too.
+- 0.7.0 Jun 27, 2024: global: new --include, rebuild: new --force, rebuild: new interactive mode, rebuild: new --yes, rebuild: auto fix rename errors, rebuild: smaller memory consumption, dupes: improved performance.
 - 0.6.0 Jun 24, 2024: new `rebuild` command, general polishing overall.
 - 0.5.0 Jun 20, 2024: support for shallow scan, verbose mode, dupes cmd ignores repetition systems.
 - 0.4.0 Jun 17, 2024: include `dupes` command, support match case and changing sample size.
