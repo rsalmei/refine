@@ -17,7 +17,7 @@ struct Args {
     /// Paths to scan.
     #[arg(global = true, help_heading = Some("Global"))]
     paths: Vec<PathBuf>,
-    /// Include only some of the accessible files; tested against the whole filename, including extension.
+    /// Include only some files; tested against filename+extension, case-insensitive.
     #[arg(short, long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     include: Option<String>,
     /// Do not recurse into subdirectories.
@@ -44,7 +44,7 @@ fn main() {
     println!("Refine: v{}", env!("CARGO_PKG_VERSION"));
 
     if let Some(s) = &args().include {
-        match Regex::new(s) {
+        match Regex::new(&format!("(?i){s}")) {
             Ok(re) => RE_IN.set(re).unwrap(),
             Err(err) => {
                 eprintln!("error: invalid --include regex: {err:?}");
