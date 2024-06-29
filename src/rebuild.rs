@@ -134,10 +134,11 @@ enum Pos {
 }
 
 fn apply_strip(medias: &mut [Media], pos: Pos, rules: &[String]) -> Result<()> {
+    const BOUND: &str = r"\s*-*\s*";
     let (px, sx) = match pos {
-        Pos::Before => (r"^.*", r"\s*"),
-        Pos::After => (r"\s*", r".*$"),
-        Pos::Exact => (r"\s*", r"\s*"),
+        Pos::Before => (r"^.*", BOUND),
+        Pos::After => (BOUND, r".*$"),
+        Pos::Exact => (BOUND, BOUND),
     };
     for rule in rules {
         let re = Regex::new(&format!("(?i){px}{rule}{sx}"))?;
