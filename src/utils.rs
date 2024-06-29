@@ -11,6 +11,7 @@ pub fn strip_sequence(name: &str) -> &str {
     let rem = RE_MULTI_MACOS.get_or_init(|| Regex::new(r" copy( \d+)?$").unwrap());
     let rel = RE_MULTI_LOCAL.get_or_init(|| Regex::new(r"-\d+$").unwrap());
 
+    // replace_all() would allocate a new string, which would be a waste.
     let name = rem.split(name).next().unwrap(); // even if the name is " copy", this returns an empty str.
     rel.split(name).next().unwrap() // same as above, even if the name is "-1", this returns an empty str.
 }

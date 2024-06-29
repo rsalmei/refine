@@ -25,7 +25,7 @@ pub struct Rebuild {
     /// Detect and fix similar filenames (e.g. "foo bar.mp4" and "foo__bar.mp4").
     #[arg(short = 's', long)]
     pub no_smart_detect: bool,
-    /// Easily set filenames for new files. BEWARE: use only with new files on already organized folders.
+    /// Easily set filenames for new files. BEWARE: use only on already organized collections.
     #[arg(short, long, value_name = "STR", value_parser = NonEmptyStringValueParser::new())]
     pub force: Option<String>,
     /// Skip the confirmation prompt, useful for automation.
@@ -50,9 +50,20 @@ pub fn rebuild(mut medias: Vec<Media>) -> Result<()> {
     println!("  - interactive: {}", !opt().yes);
     println!();
 
+    // step: strip sequence numbers.
+    medias.iter_mut().for_each(|m| {
+        let name = utils::strip_sequence(&m.wname);
+        if name != m.wname {
+            m.wname.truncate(name.len()); // sequence numbers are at the end of the filename.
+        }
+    });
+
+    // step: apply rules.
     apply_strip(&mut medias, Pos::Before, &opt().strip_before)?;
     apply_strip(&mut medias, Pos::After, &opt().strip_after)?;
     apply_strip(&mut medias, Pos::Exact, &opt().strip_exact)?;
+
+    // step: force names.
     if let Some(force) = &opt().force {
         medias
             .iter_mut()
@@ -62,20 +73,25 @@ pub fn rebuild(mut medias: Vec<Media>) -> Result<()> {
             })
     }
 
+    // step: remove medias where the rules cleared the name.
     let total = medias.len();
-    let (mut medias, mut empty) = medias
+    let (mut medias, mut cleared) = medias
         .into_iter()
         .partition::<Vec<_>, _>(|m| !m.wname.is_empty());
-    empty.sort_unstable_by(|a, b| a.path.cmp(&b.path));
-    empty.iter().for_each(|m| {
+    cleared.sort_unstable_by(|a, b| a.path.cmp(&b.path));
+    cleared.iter().for_each(|m| {
         eprintln!("warning: rules cleared name: {}", m.path.display());
     });
 
+    // step: smart detect.
     if !opt().no_smart_detect {
         apply_smart_groups(&mut medias);
     }
 
+    // step: generate new names to compute the changes.
     apply_new_names(&mut medias);
+
+    // step: if forced, apply it only to the effective changes and regenerate new names.
     if let Some(force) = &opt().force {
         medias
             .iter_mut()
@@ -87,6 +103,7 @@ pub fn rebuild(mut medias: Vec<Media>) -> Result<()> {
         apply_new_names(&mut medias);
     }
 
+    // step: settle changes, and display the results.
     let mut changes = medias
         .into_iter()
         .filter(|m| m.new_name != m.path.file_name().unwrap().to_str().unwrap()) // the list might have changed on force.
@@ -95,12 +112,14 @@ pub fn rebuild(mut medias: Vec<Media>) -> Result<()> {
         })
         .collect::<Vec<_>>();
 
-    if !changes.is_empty() || !empty.is_empty() {
+    // step: display receipt summary.
+    if !changes.is_empty() || !cleared.is_empty() {
         println!();
     }
     println!("total files: {total}");
     println!("  changes: {}", changes.len());
 
+    // step: apply changes, if the user agrees.
     if !changes.is_empty() && !opt().yes {
         utils::prompt_yes_no("apply changes?")?;
     }
@@ -109,6 +128,7 @@ pub fn rebuild(mut medias: Vec<Media>) -> Result<()> {
         return Ok(());
     }
 
+    // step: fix file already exists errors.
     println!("attempting to fix {} errors", changes.len());
     changes.iter_mut().for_each(|m| {
         let temp = format!("__refine+{}__", m.new_name);
@@ -192,7 +212,7 @@ fn apply_renames(changes: &mut Vec<Media>) {
     changes.retain(|m| {
         let dest = m.path.with_file_name(&m.new_name);
         if dest.exists() {
-            eprintln!("error: path already exists: {dest:?}");
+            eprintln!("error: file already exists: {dest:?}");
             return true;
         }
         match fs::rename(&m.path, &dest) {
@@ -241,14 +261,8 @@ impl TryFrom<PathBuf> for Media {
             .ok_or_else(|| anyhow!("file name str: {path:?}"))?;
         let ext = path.extension().unwrap_or_default().to_str().unwrap_or("");
 
-        let mut wname = name.trim().to_lowercase();
-        let name = utils::strip_sequence(&wname);
-        if name != wname {
-            wname.truncate(name.len());
-        }
-
         Ok(Media {
-            wname,
+            wname: name.trim().to_lowercase(),
             new_name: String::new(),
             ext: ext_cache(ext),
             ts: fs::metadata(&path)?.created()?,
