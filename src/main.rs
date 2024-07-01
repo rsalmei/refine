@@ -1,4 +1,5 @@
 mod dupes;
+mod list;
 mod rebuild;
 mod utils;
 
@@ -31,10 +32,13 @@ enum Command {
     Dupes(dupes::Dupes),
     /// Rebuild the filenames of collections of files intelligently.
     Rebuild(rebuild::Rebuild),
+    /// List files from the given paths.
+    List(list::List),
 }
 
-static ARGS: OnceLock<Args> = OnceLock::new();
 static RE_IN: OnceLock<Regex> = OnceLock::new();
+
+static ARGS: OnceLock<Args> = OnceLock::new();
 fn args() -> &'static Args {
     ARGS.get().unwrap()
 }
@@ -61,6 +65,7 @@ fn main() {
     if let Err(err) = match args().cmd {
         Command::Dupes(_) => dupes::find_dupes(gen_medias(files)),
         Command::Rebuild(_) => rebuild::rebuild(gen_medias(files)),
+        Command::List(_) => list::list(gen_medias(files)),
     } {
         eprintln!("error: {err:?}");
         std::process::exit(1);

@@ -4,15 +4,23 @@
 
 ## What it does
 
-This is a tool that will help you manage your media collection. It will scan some given paths, and detect duplicated files, or even rebuild all their filenames according to your rules!
+This is the tool that will help you manage your file collection! It will scan some given paths and analyze all files, performing some advanced operations on them, such as finding possibly duplicated files, or even automatically grouping and rebuilding their filenames (according to your rules)!
 
 The `dupes` command will analyze and report the possibly duplicated files, either by size or name. It will even load a sample from each file, in order to guarantee they are indeed duplicated. It is a small sample by default but can help reduce false positives a lot, and you can increase it if you want.
 
-The new `rebuild` command is a great achievement, if I say so myself. It will smartly rebuild the filenames of your entire collection by stripping parts of filenames you don't want, removing any sequence numbers, smartly detecting misspelled names by comparing with adjacent files, sorting the detected groups deterministically by creation date, regenerating sequence numbers, and finally renaming all these files! It's awesome to quickly find your video or music library neatly sorted automatically... And the next time you run it, since it is deterministic, it will only detect the new files added since the last time. Pretty cool, huh? And don't worry, you can review all the changes before applying them.
+The `rebuild` command is a great achievement, if I say so myself. It will smartly rebuild the filenames of your entire collection by stripping parts of filenames you don't want, removing any sequence numbers, smartly detecting misspelled names by comparing with adjacent files, sorting the detected groups deterministically by creation date, regenerating sequence numbers, and finally renaming all these files! It's awesome to quickly find your video or music library neatly sorted automatically... And the next time you run it, since it is deterministic, it will only detect the new files added since the last time. Pretty cool, huh? And don't worry, you can review all the changes before applying them.
+
+The `list` command will gather all the files in the given paths, sort them by name, size, or path, and display them in a friendly format.
 
 It is blazingly fast and tiny, made 100% in Rust 🦀!
 
 In the future, this tool could make much more, like for instance moving duplicated files, renaming files without rebuilding everything, perhaps supporting aliases for names, including a GUI to enable easily acting upon files, etc., hence the open `refine` name...
+
+## New in 0.8
+
+- new "list" command
+
+<details><summary>Previous changes</summary>
 
 ## New in 0.7
 
@@ -22,6 +30,8 @@ In the future, this tool could make much more, like for instance moving duplicat
 - rebuild: auto fix renaming errors
 - dupes: faster performance by ignoring groups with 1 file (thus avoiding loading samples)
 - rebuild: smaller memory consumption by caching file extensions
+
+</details>
 
 ## How to use it
 
@@ -35,19 +45,23 @@ Then just call it anywhere:
 
 ```bash
 ❯ refine dupes ~/Downloads /Volumes/Drive ...
-```
-
-Or:
-
-```bash
 ❯ refine rebuild ~/Downloads /Volumes/Drive ...
+❯ refine list ~/Downloads /Volumes/Drive ...
 ```
 
 Send as many sources as you want.
 
-## How it works
+## Commands
 
-<details> <summary>Command options</summary>
+All commands will:
+
+1. recursively detect all files in the given paths (excluding hidden .folders)
+    - can optionally perform only a shallow scan
+    - can optionally include only some of the files based on a regex
+2. load the metadata the command requires to run (e.g. file size, creation date, etc.) for each file
+3. execute the command and print the results
+
+<details><summary>Command help</summary>
 
 ```
 Refine your file collection using Rust!
@@ -57,6 +71,7 @@ Usage: refine [OPTIONS] [PATHS]... <COMMAND>
 Commands:
   dupes    Find possibly duplicated files by both size and filename
   rebuild  Rebuild the filenames of collections of files intelligently
+  list     List files from the given paths
   help     Print this message or the help of the given subcommand(s)
 
 Options:
@@ -75,14 +90,14 @@ For more information, see https://github.com/rsalmei/refine
 
 ### The `dupes` command
 
-1. recursively detect all files in the given paths (excluding hidden .folders)
-    - can optionally run only a shallow scan, or only include some of the files
-2. sort all the files by their sizes and by their words
-    - the word extractor ignores sequence numbers like file-1, file-2, file copy, etc.
-3. for each group with the exact same value, a sample of each file will be retrieved and compared
-4. each coincidence will be listed as possible duplicates
+1. group all the files by size
+2. for each group with the exact same value, load a sample of its files
+3. compare the samples with each other and find possible duplicates
+4. group all the files by words in their names
+    - the word extractor ignores sequence numbers like file-1, file copy, file-3 copy 2, etc.
+5. run 2. and 3. again, and print the results
 
-<details> <summary>Command options</summary>
+<details><summary>Command help</summary>
 
 ```
 Find possibly duplicated files by both size and filename
@@ -116,34 +131,33 @@ Output:
 /Users/you/Downloads/video.mp4
 /Volumes/External/backup-path/video.mpg.bak
 
+...
+
 -- by name
 
 ["bin", "cache", "query"] x2
 904.2kB: ./target/debug/incremental/refine-1uzt8yoeb0t1e/s-gx7knsxvbx-1oc90bk-working/query-cache.bin
 904.9kB: ./target/debug/incremental/refine-1uzt8yoeb0t1e/s-gx7knwsqka-w784iw-6s3nzkfcj1wxagnjubj1pm4v6/query-cache.bin
 
-```
+...
 
-And, finally, a brief receipt will be printed:
-
-```
 total files: 13512
   by size: 339 duplicates
-  by name: 12 duplicates
+  by name: 42 duplicates
 ```
 
 ### The `rebuild` command
 
-1. strip parts of the filenames, either before, or after, or exact some matches
-2. remove any sequence numbers they might have, like "-3" or " copy 2"
-3. smartly remove spaces and underscores, and detect misspelled names
-4. group the resulting names accordingly
-5. smartly choose the most likely correct name among the group
-6. sort the entries according to their created date
-7. regenerate a unified sequence with this ordering; <-- Note this occurs on the whole group, regardless of the directory the file resides!
-8. renames the files to the new pattern, after your review and confirmation
+1. remove any sequence numbers like file-1, file copy, file-3 copy 2, etc.
+2. strip parts of the filenames, either before, after, or exactly a certain string
+3. smartly remove spaces and underscores, in order to detect misspelled names
+4. group the resulting names, and smartly choose the most likely correct name among the group
+5. sort the group according to the file created date
+6. regenerate the sequence numbers for the group <-- Note this occurs on the whole group, regardless of the directory the file currently resides in
+7. print the resulting changes to the filenames, and ask for confirmation
+8. if the user confirms, apply the changes to the filenames
 
-<details> <summary>Command options</summary>
+<details><summary>Command options</summary>
 
 ```
 Rebuild the filenames of collections of files intelligently
@@ -175,18 +189,52 @@ Output:
 /Users/you/Downloads/path/video_ok-5.mp4 --> video_ok-2.mp4        | paths and different names, they were smarly
 /Volumes/External/backup/Video_OK copy.mp4 --> video_ok-3.mp4      | detected and renamed as the same group!
 /Users/you/Downloads/path/video not ok.mp4 --> video_not_ok-1.mp4
-```
+...
 
-And, finally, a brief receipt will be printed, as well as the interactive prompt:
-
-```
 total files: 21126
   changes: 142
 apply changes? [y|n]: _
 ```
 
+## The `list` command
+
+1. sort all files by either name, size, or path
+    - ascending by default, or optionally descending
+2. print the results
+
+<details><summary>Command options</summary>
+
+```
+List files from the given paths
+
+Usage: refine list [OPTIONS] [PATHS]...
+
+Options:
+  -b, --by <BY>  [default: name] [possible values: name, size, path]
+  -d, --desc
+  -h, --help     Print help
+
+Global:
+  -i, --include <REGEX>  Include only some files; tested against filename+extension, case-insensitive
+      --shallow          Do not recurse into subdirectories
+  [PATHS]...         Paths to scan
+```
+
+</details>
+
+Output:
+
+```
+1.21GB - /Users/you/Downloads/movie.mkv
+3.1GB - /Volumes/External/path/music.mp3
+...
+
+total files: 3367 (787.19GB)
+```
+
 ## Changelog highlights
 
+- 0.8.0 Jun 30, 2024: new `list` command.
 - 0.7.1 Jun 28, 2024: global: --include is now case-insensitive, rebuild: fix smart detect bug not grouping some files, rebuild: strip rules remove hyphens too.
 - 0.7.0 Jun 27, 2024: global: new --include, rebuild: new --force, rebuild: new interactive mode, rebuild: new --yes, rebuild: auto fix rename errors, rebuild: smaller memory consumption, dupes: improved performance.
 - 0.6.0 Jun 24, 2024: new `rebuild` command, general polishing overall.
