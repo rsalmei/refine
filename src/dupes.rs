@@ -42,7 +42,7 @@ pub fn find_dupes(mut medias: Vec<Media>) -> Result<()> {
 
     // first by size.
     println!("-- by size");
-    let size_count = detect_duplicates(
+    let by_size = detect_duplicates(
         &mut medias,
         |m| &m.size,
         |&size, mut acc| {
@@ -54,7 +54,7 @@ pub fn find_dupes(mut medias: Vec<Media>) -> Result<()> {
 
     // then by name.
     println!("\n-- by name");
-    let name_count = detect_duplicates(
+    let by_name = detect_duplicates(
         &mut medias,
         |m| &m.words,
         |words, mut acc| {
@@ -65,9 +65,10 @@ pub fn find_dupes(mut medias: Vec<Media>) -> Result<()> {
         },
     );
 
-    println!("\ntotal files: {}", medias.len());
-    println!("  by size: {size_count} duplicates");
-    println!("  by name: {name_count} duplicates");
+    let total = medias.len();
+    println!("\ntotal files: {total}{}", utils::aborted(by_size == 0));
+    println!("  by size: {by_size} dupes{}", utils::aborted(by_name == 0));
+    println!("  by name: {by_name} dupes{}", utils::aborted(true));
     Ok(())
 }
 
@@ -81,6 +82,7 @@ where
     medias.sort_unstable_by(|m1, m2| grouping(m1).cmp(grouping(m2)));
     medias
         .chunk_by_mut(|m, m2| grouping(m) == grouping(m2))
+        .filter(|_| utils::running())
         .filter(|g| g.len() > 1)
         .flat_map(|g| {
             g.iter_mut().for_each(|m| {

@@ -14,13 +14,20 @@ The `list` command will gather all the files in the given paths, sort them by na
 
 It is blazingly fast and tiny, made 100% in Rust 🦀!
 
-In the future, this tool could make much more, like for instance moving duplicated files, renaming files without rebuilding everything, perhaps supporting aliases for names, including a GUI to enable easily acting upon files, etc., hence the open `refine` name...
+In the future, this tool could make much more, like for instance moving duplicated files, renaming files without rebuilding everything, perhaps supporting aliases for names, including a GUI to enable easily acting upon files, etc., hence the open `refine` (your filesystem) name...
+
+## New in 0.9
+
+- new support for Ctrl-C, to abort all operations and gracefully exit the program at any time.
+    - all commands will stop collecting files when Ctrl-C is pressed
+    - both `dupes` and `list` command will show partial results
+    - the `rebuild` command will just exit, as it needs all the files to run
+
+<details><summary>Previous changes</summary>
 
 ## New in 0.8
 
 - new "list" command
-
-<details><summary>Previous changes</summary>
 
 ## New in 0.7
 
@@ -234,6 +241,7 @@ total files: 3367 (787.19GB)
 
 ## Changelog highlights
 
+- 0.9.0 Jul 01, 2024: support for CTRL-C.
 - 0.8.0 Jun 30, 2024: new `list` command.
 - 0.7.1 Jun 28, 2024: global: --include is now case-insensitive, rebuild: fix smart detect bug not grouping some files, rebuild: strip rules remove hyphens too.
 - 0.7.0 Jun 27, 2024: global: new --include, rebuild: new --force, rebuild: new interactive mode, rebuild: new --yes, rebuild: auto fix rename errors, rebuild: smaller memory consumption, dupes: improved performance.

@@ -1,8 +1,9 @@
-use anyhow::anyhow;
+use anyhow::{anyhow, Result};
 use regex::Regex;
 use std::io;
 use std::io::Write;
-use std::sync::OnceLock;
+use std::sync::atomic::AtomicBool;
+use std::sync::{atomic, Arc, OnceLock};
 
 /// Strip sequence numbers from a filename.
 pub fn strip_sequence(name: &str) -> &str {
@@ -17,7 +18,7 @@ pub fn strip_sequence(name: &str) -> &str {
 }
 
 /// Prompt the user for confirmation.
-pub fn prompt_yes_no(msg: &str) -> anyhow::Result<()> {
+pub fn prompt_yes_no(msg: &str) -> Result<()> {
     let mut input = String::new();
     loop {
         print!("{msg} [y|n]: ");
@@ -30,4 +31,31 @@ pub fn prompt_yes_no(msg: &str) -> anyhow::Result<()> {
             _ => {}
         }
     }
+}
+
+/// The running flag, used to check if the user aborted.
+pub fn running_flag() -> &'static Arc<AtomicBool> {
+    static RUNNING: OnceLock<Arc<AtomicBool>> = OnceLock::new();
+    RUNNING.get_or_init(|| Arc::new(AtomicBool::new(true)))
+}
+
+/// Check whether the program should continue running.
+pub fn running() -> bool {
+    running_flag().load(atomic::Ordering::Relaxed)
+}
+
+/// Check whether the user asked to abort. It's the same as `!running()`, but return a Result.
+pub fn user_aborted() -> Result<()> {
+    match running() {
+        true => Ok(()),
+        false => Err(anyhow!("aborted")),
+    }
+}
+
+/// Return a static string, suitable for displaying, regarding the state of some computation
+/// that might have been aborted.
+pub fn aborted(cond: bool) -> &'static str {
+    (cond && !running())
+        .then_some(" (partial, aborted)")
+        .unwrap_or_default()
 }

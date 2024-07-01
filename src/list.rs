@@ -7,8 +7,10 @@ use std::path::PathBuf;
 
 #[derive(Debug, Args)]
 pub struct List {
+    /// Sort by.
     #[arg(short, long, value_enum, default_value_t = By::Name)]
     by: By,
+    /// Use descending order.
     #[arg(short, long)]
     desc: bool,
 }

@@ -89,6 +89,8 @@ pub fn rebuild(mut medias: Vec<Media>) -> Result<()> {
             })
     }
 
+    utils::user_aborted()?;
+
     // step: remove medias where the rules cleared the name.
     let total = medias.len();
     let (mut medias, mut cleared) = medias
@@ -118,6 +120,8 @@ pub fn rebuild(mut medias: Vec<Media>) -> Result<()> {
             });
         apply_new_names(&mut medias);
     }
+
+    utils::user_aborted()?;
 
     // step: settle changes, and display the results.
     let mut changes = medias
