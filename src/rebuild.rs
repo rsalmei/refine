@@ -40,6 +40,22 @@ fn opt() -> &'static Rebuild {
     }
 }
 
+#[derive(Debug)]
+pub struct Media {
+    /// The original path to the file.
+    path: PathBuf,
+    /// The working copy of the name, where the rules are applied.
+    wname: String,
+    /// The smart group (if enabled and wname has spaces or _).
+    smart_group: Option<String>,
+    /// The final name, after the rules and the sequence have been applied.
+    new_name: String,
+    /// A cached version of the file extension.
+    ext: &'static str,
+    /// The creation time of the file.
+    ts: SystemTime,
+}
+
 pub fn rebuild(mut medias: Vec<Media>) -> Result<()> {
     println!("Rebuilding file names...");
     println!("  - strip before: {:?}", opt().strip_before);
@@ -226,22 +242,6 @@ fn apply_renames(changes: &mut Vec<Media>) {
     if changes.is_empty() {
         println!("done");
     }
-}
-
-#[derive(Debug)]
-pub struct Media {
-    /// The original path to the file.
-    path: PathBuf,
-    /// The working copy of the name, where the rules are applied.
-    wname: String,
-    /// The smart group (if enabled and wname has spaces or _).
-    smart_group: Option<String>,
-    /// The final name, after the rules and the sequence have been applied.
-    new_name: String,
-    /// A cached version of the file extension.
-    ext: &'static str,
-    /// The creation time of the file.
-    ts: SystemTime,
 }
 
 impl Media {
