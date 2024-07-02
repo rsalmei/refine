@@ -21,11 +21,13 @@ pub fn strip_sequence(name: &str) -> &str {
 pub fn prompt_yes_no(msg: &str) -> Result<()> {
     let mut input = String::new();
     loop {
+        user_aborted()?;
         print!("{msg} [y|n]: ");
         io::stdout().flush()?;
         input.clear();
         io::stdin().read_line(&mut input)?;
         match input.trim() {
+            _ if !running() => continue, // never return Ok or cancelled if the user has aborted.
             "y" => break Ok(()),
             "n" => break Err(anyhow!("cancelled")),
             _ => {}
