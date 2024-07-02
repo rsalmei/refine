@@ -18,9 +18,12 @@ struct Args {
     /// Paths to scan.
     #[arg(global = true, help_heading = Some("Global"))]
     paths: Vec<PathBuf>,
-    /// Include only some files; tested against filename+extension, case-insensitive.
+    /// Include these files; tested against filename+extension, case-insensitive.
     #[arg(short, long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     include: Option<String>,
+    /// Exclude these files; tested against filename+extension, case-insensitive.
+    #[arg(short = 'x', long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
+    exclude: Option<String>,
     /// Do not recurse into subdirectories.
     #[arg(long, global = true, help_heading = Some("Global"))]
     shallow: bool,
@@ -37,6 +40,18 @@ enum Command {
 }
 
 static RE_IN: OnceLock<Regex> = OnceLock::new();
+static RE_EX: OnceLock<Regex> = OnceLock::new();
+fn set_re(value: &Option<String>, var: &'static OnceLock<Regex>, param: &str) {
+    if let Some(s) = value {
+        match Regex::new(&format!("(?i){s}")) {
+            Ok(re) => var.set(re).unwrap(),
+            Err(err) => {
+                eprintln!("error: invalid --{param}: {err}");
+                std::process::exit(1);
+            }
+        }
+    }
+}
 
 static ARGS: OnceLock<Args> = OnceLock::new();
 fn args() -> &'static Args {
@@ -46,6 +61,16 @@ fn args() -> &'static Args {
 fn main() {
     ARGS.set(Args::parse()).unwrap();
     println!("Refine: v{}", env!("CARGO_PKG_VERSION"));
+    set_re(&args().include, &RE_IN, "include");
+    set_re(&args().exclude, &RE_EX, "exclude");
+    let s = if args().shallow { "not " } else { "" };
+    println!("  - paths ({s}recursive): {:?}", args().paths);
+    match (args().include.as_ref(), args().exclude.as_ref()) {
+        (Some(si), None) => println!("  - include: {si:?}"),
+        (None, Some(se)) => println!("  - exclude: {se:?}"),
+        (Some(si), Some(se)) => println!("  - include: {si:?}, exclude: {se:?}"),
+        (None, None) => {}
+    }
 
     ctrlc::set_handler({
         let running = Arc::clone(utils::running_flag());
@@ -55,16 +80,6 @@ fn main() {
         }
     })
     .expect("Error setting Ctrl-C handler");
-
-    if let Some(s) = &args().include {
-        match Regex::new(&format!("(?i){s}")) {
-            Ok(re) => RE_IN.set(re).unwrap(),
-            Err(err) => {
-                eprintln!("error: invalid --include regex: {err:?}");
-                std::process::exit(1);
-            }
-        }
-    }
 
     // lists files from the given paths, or the current directory if no paths were given.
     let cd = args().paths.is_empty().then(|| ".".into());
@@ -84,11 +99,14 @@ fn entries(dir: PathBuf) -> Box<dyn Iterator<Item = PathBuf>> {
     fn is_included(path: &Path) -> Option<bool> {
         let name = path.file_name()?.to_str()?;
         (!name.starts_with('.')).then_some(())?; // exclude hidden files and folders.
-        match (path.is_dir(), &args().include) {
-            (true, _) if !args().shallow => Some(true),
-            (false, None) => Some(true),
-            (false, Some(_)) => Some(RE_IN.get().unwrap().is_match(name)),
-            _ => None,
+        match (path.is_dir(), &args().include, &args().exclude) {
+            (true, _, _) => Some(!args().shallow),
+            (false, None, None) => Some(true),
+            (false, Some(_), None) => Some(RE_IN.get().unwrap().is_match(name)),
+            (false, None, Some(_)) => Some(!RE_EX.get().unwrap().is_match(name)),
+            (false, Some(_), Some(_)) => {
+                Some(!RE_EX.get().unwrap().is_match(name) && RE_IN.get().unwrap().is_match(name))
+            }
         }
     }
 
