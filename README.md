@@ -42,21 +42,13 @@ In the future, this tool could make much more, like for instance moving duplicat
 
 ## How to use it
 
-Install with:
+Install `refine` with:
 
 ```
 cargo install refine
 ```
 
-Then just call it anywhere:
-
-```bash
-❯ refine dupes ~/Downloads /Volumes/Drive ...
-❯ refine rebuild ~/Downloads /Volumes/Drive ...
-❯ refine list ~/Downloads /Volumes/Drive ...
-```
-
-Send as many sources as you want.
+That's it, and you can then just call it anywhere!
 
 ## Commands
 
@@ -124,9 +116,15 @@ Global:
 
 </details>
 
-Output:
+Example:
 
 ```
+❯ refine dupes ~/Downloads /Volumes/External --sample 20480
+Refine: vX.X.X
+Detecting duplicate files...
+  - sample bytes: 20kB
+  - match case: false
+
 -- by size
 
 132.1kB x3
@@ -188,14 +186,25 @@ Global:
 
 </details>
 
-Output:
+Example:
 
 ```
-/Users/you/Downloads/sketch.mp4 --> sketch-1.mp4
-/Users/you/Downloads/video ok.mp4 --> video_ok-1.mp4               | note these three files, regardless of different
-/Users/you/Downloads/path/video_ok-5.mp4 --> video_ok-2.mp4        | paths and different names, they were smarly
-/Volumes/External/backup/Video_OK copy.mp4 --> video_ok-3.mp4      | detected and renamed as the same group!
-/Users/you/Downloads/path/video not ok.mp4 --> video_not_ok-1.mp4
+❯ refine rebuild ~/media /Volumes/External -a 720p -a Bluray -b xpto -e old
+Refine: vX.X.X
+Rebuilding file names...
+  - strip before: ["xpto"]
+  - strip after: ["720p", "Bluray"]
+  - strip exact: ["old"]
+  - smart detect: true
+  - force: None
+  - interactive: true
+
+/Users/you/media/sketch - 720p.mp4 --> sketch-1.mp4
+/Users/you/media/video ok Bluray.H264.mp4 --> video_ok-1.mp4   | note these three files, regardless of different
+/Users/you/media/path/video_ok-5.mp4 --> video_ok-2.mp4        | paths and different names, they were smarly
+/Volumes/External/backup/Video_OK copy.mp4 --> video_ok-3.mp4  | detected and renamed as the same group!
+/Volumes/External/backup/old project copy 2.mp4 --> project-1.mp4
+/Users/you/media/path/downloaded by XPTO - video not ok.mp4 --> video_not_ok-1.mp4
 ...
 
 total files: 21126
@@ -229,11 +238,17 @@ Global:
 
 </details>
 
-Output:
+Example:
 
 ```
-1.21GB - /Users/you/Downloads/movie.mkv
-3.1GB - /Volumes/External/path/music.mp3
+❯ refine list ~/Downloads /Volumes/External --by size --desc
+Refine: vX.X.X
+Listing files...
+  - by: Size (desc)
+
+3.1GB - /Volumes/External/path/movie.mkv
+1.21GB - /Users/you/Downloads/event.mp4
+730MB - /Users/you/Downloads/show.avi
 ...
 
 total files: 3367 (787.19GB)
