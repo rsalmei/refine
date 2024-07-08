@@ -39,13 +39,13 @@ pub trait WorkingName {
 
 pub fn strip_names(medias: &mut [impl WorkingName], pos: StripPos, rules: &[String]) -> Result<()> {
     const BOUND: &str = r"\s*-*\s*";
-    let (px, sx) = match pos {
-        StripPos::Before => (r"^.*", BOUND),
-        StripPos::After => (BOUND, r".*$"),
-        StripPos::Exact => (BOUND, BOUND),
-    };
     for rule in rules {
-        let re = Regex::new(&format!("(?i){px}{rule}{sx}"))?;
+        let regex = match pos {
+            StripPos::Before => &format!("(?i)^.*{rule}{BOUND}"),
+            StripPos::After => &format!("(?i){BOUND}{rule}.*$"),
+            StripPos::Exact => &format!(r"(?i)\s+{rule}\b|\b{rule}\s+|{rule}"),
+        };
+        let re = Regex::new(regex)?;
         medias.iter_mut().for_each(|m| {
             *m.name() = re
                 .split(m.name())
