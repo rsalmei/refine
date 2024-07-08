@@ -62,14 +62,15 @@ fn main() {
         (None, None) => {}
     }
 
-    ctrlc::set_handler({
+    if let Err(err) = ctrlc::set_handler({
         let running = Arc::clone(utils::running_flag());
         move || {
             eprintln!("aborting...");
             running.store(false, atomic::Ordering::Relaxed);
         }
-    })
-    .expect("Error setting Ctrl-C handler");
+    }) {
+        eprintln!("error: setting Ctrl-C handler: {err:?}");
+    }
 
     // lists files from the given paths, or the current directory if no paths were given.
     let cd = args().paths.is_empty().then(|| ".".into());
