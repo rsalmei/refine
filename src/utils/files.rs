@@ -27,7 +27,7 @@ pub fn strip_sequence(name: &str) -> &str {
 }
 
 #[derive(Debug)]
-pub enum RulePos {
+pub enum StripPos {
     Before,
     After,
     Exact,
@@ -37,12 +37,12 @@ pub trait WorkingName {
     fn name(&mut self) -> &mut String;
 }
 
-pub fn strip_names(medias: &mut [impl WorkingName], pos: RulePos, rules: &[String]) -> Result<()> {
+pub fn strip_names(medias: &mut [impl WorkingName], pos: StripPos, rules: &[String]) -> Result<()> {
     const BOUND: &str = r"\s*-*\s*";
     let (px, sx) = match pos {
-        RulePos::Before => (r"^.*", BOUND),
-        RulePos::After => (BOUND, r".*$"),
-        RulePos::Exact => (BOUND, BOUND),
+        StripPos::Before => (r"^.*", BOUND),
+        StripPos::After => (BOUND, r".*$"),
+        StripPos::Exact => (BOUND, BOUND),
     };
     for rule in rules {
         let re = Regex::new(&format!("(?i){px}{rule}{sx}"))?;

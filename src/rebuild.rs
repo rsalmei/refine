@@ -1,4 +1,4 @@
-use crate::utils::{self, RulePos};
+use crate::utils::{self, StripPos};
 use anyhow::Result;
 use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
@@ -75,9 +75,9 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
     });
 
     // step: apply strip rules.
-    utils::strip_names(&mut medias, RulePos::Before, &opt().strip_before)?;
-    utils::strip_names(&mut medias, RulePos::After, &opt().strip_after)?;
-    utils::strip_names(&mut medias, RulePos::Exact, &opt().strip_exact)?;
+    utils::strip_names(&mut medias, StripPos::Before, &opt().strip_before)?;
+    utils::strip_names(&mut medias, StripPos::After, &opt().strip_after)?;
+    utils::strip_names(&mut medias, StripPos::Exact, &opt().strip_exact)?;
 
     // step: force names.
     if let Some(force) = &opt().force {
