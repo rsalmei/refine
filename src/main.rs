@@ -41,17 +41,6 @@ enum Command {
 
 static RE_IN: OnceLock<Regex> = OnceLock::new();
 static RE_EX: OnceLock<Regex> = OnceLock::new();
-fn set_re(value: &Option<String>, var: &'static OnceLock<Regex>, param: &str) {
-    if let Some(s) = value {
-        match Regex::new(&format!("(?i){s}")) {
-            Ok(re) => var.set(re).unwrap(),
-            Err(err) => {
-                eprintln!("error: invalid --{param}: {err}");
-                std::process::exit(1);
-            }
-        }
-    }
-}
 
 static ARGS: OnceLock<Args> = OnceLock::new();
 fn args() -> &'static Args {
@@ -61,8 +50,9 @@ fn args() -> &'static Args {
 fn main() {
     ARGS.set(Args::parse()).unwrap();
     println!("Refine: v{}", env!("CARGO_PKG_VERSION"));
-    set_re(&args().include, &RE_IN, "include");
-    set_re(&args().exclude, &RE_EX, "exclude");
+    utils::set_re(&args().include, "(?i)", &RE_IN, "include");
+    utils::set_re(&args().exclude, "(?i)", &RE_EX, "exclude");
+
     let s = if args().shallow { "not " } else { "" };
     println!("  - paths ({s}recursive): {:?}", args().paths);
     match (args().include.as_ref(), args().exclude.as_ref()) {
