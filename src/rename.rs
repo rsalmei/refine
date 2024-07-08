@@ -67,6 +67,7 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
     medias
         .iter_mut()
         .try_for_each(|m| write!(m.wname, ".{}", m.ext))?;
+    medias.sort_unstable_by(|a, b| a.path.cmp(&b.path));
     let mut changes = medias
         .into_iter()
         .filter(|m| m.wname != m.path.file_name().unwrap().to_str().unwrap())
