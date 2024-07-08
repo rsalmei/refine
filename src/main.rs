@@ -123,7 +123,7 @@ fn entries(dir: PathBuf) -> Box<dyn Iterator<Item = PathBuf>> {
                 let path = de.path();
                 match (is_included(&path).unwrap_or_default(), path.is_dir()) {
                     (true, false) => Box::new(iter::once(path)),
-                    (true, true) if utils::running() => entries(path),
+                    (true, true) if utils::is_running() => entries(path),
                     _ => Box::new(iter::empty()),
                 }
             }),

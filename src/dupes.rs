@@ -82,7 +82,7 @@ where
     medias.sort_unstable_by(|m1, m2| grouping(m1).cmp(grouping(m2)));
     medias
         .chunk_by_mut(|m, m2| grouping(m) == grouping(m2))
-        .filter(|_| utils::running())
+        .filter(|_| utils::is_running())
         .filter(|g| g.len() > 1)
         .flat_map(|g| {
             g.iter_mut().for_each(|m| {
