@@ -1,5 +1,5 @@
-use crate::utils;
-use anyhow::{anyhow, Result};
+use crate::utils::{self, RulePos};
+use anyhow::Result;
 use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
 use regex::Regex;
@@ -7,7 +7,7 @@ use std::borrow::Cow;
 use std::collections::HashSet;
 use std::fmt::Write;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use std::time::SystemTime;
 
@@ -74,10 +74,10 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
         }
     });
 
-    // step: apply rules.
-    apply_strip(&mut medias, Pos::Before, &opt().strip_before)?;
-    apply_strip(&mut medias, Pos::After, &opt().strip_after)?;
-    apply_strip(&mut medias, Pos::Exact, &opt().strip_exact)?;
+    // step: apply strip rules.
+    utils::strip_names(&mut medias, RulePos::Before, &opt().strip_before)?;
+    utils::strip_names(&mut medias, RulePos::After, &opt().strip_after)?;
+    utils::strip_names(&mut medias, RulePos::Exact, &opt().strip_exact)?;
 
     // step: force names.
     if let Some(force) = &opt().force {
@@ -143,8 +143,9 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
     if !changes.is_empty() && !opt().yes {
         utils::prompt_yes_no("apply changes?")?;
     }
-    apply_renames(&mut changes);
+    utils::rename_consuming(&mut changes);
     if changes.is_empty() {
+        println!("done");
         return Ok(());
     }
 
@@ -158,39 +159,29 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
             Err(err) => eprintln!("error: {err:?}: {:?} --> {temp:?}", m.path),
         }
     });
-    apply_renames(&mut changes);
-    if !changes.is_empty() {
-        println!("still {} errors, giving up", changes.len());
+    utils::rename_consuming(&mut changes);
+    match changes.is_empty() {
+        true => println!("done"),
+        false => println!("still {} errors, giving up", changes.len()),
     }
 
     Ok(())
 }
 
-#[derive(Debug)]
-enum Pos {
-    Before,
-    After,
-    Exact,
+impl utils::WorkingName for Media {
+    fn name(&mut self) -> &mut String {
+        &mut self.wname
+    }
 }
 
-fn apply_strip(medias: &mut [Media], pos: Pos, rules: &[String]) -> Result<()> {
-    const BOUND: &str = r"\s*-*\s*";
-    let (px, sx) = match pos {
-        Pos::Before => (r"^.*", BOUND),
-        Pos::After => (BOUND, r".*$"),
-        Pos::Exact => (BOUND, BOUND),
-    };
-    for rule in rules {
-        let re = Regex::new(&format!("(?i){px}{rule}{sx}"))?;
-        medias.iter_mut().for_each(|m| {
-            m.wname = re
-                .split(&m.wname)
-                .filter(|s| !s.is_empty())
-                .collect::<Vec<_>>()
-                .join(""); // only actually used on Pos::Exact, the other two always return a single element.
-        })
+impl utils::Rename for Media {
+    fn path(&self) -> &Path {
+        &self.path
     }
-    Ok(())
+
+    fn new_name(&self) -> &str {
+        &self.new_name
+    }
 }
 
 fn apply_smart_groups(medias: &mut [Media]) {
@@ -219,33 +210,13 @@ fn apply_new_names(medias: &mut [Media]) {
             };
             let base = match base.contains(' ') {
                 true => base.replace(' ', "_"),
-                false => base.to_owned(), // needed because g[m].name is borrowed, and I need to mutate it below.
+                false => base.to_owned(), // needed because g is borrowed, and I need to mutate it below.
             };
             g.iter_mut().enumerate().for_each(|(i, m)| {
                 m.new_name.clear(); // because of the force option.
                 write!(m.new_name, "{base}-{}.{}", i + 1, m.ext).unwrap();
             });
         });
-}
-
-fn apply_renames(changes: &mut Vec<Media>) {
-    changes.retain(|m| {
-        let dest = m.path.with_file_name(&m.new_name);
-        if dest.exists() {
-            eprintln!("error: file already exists: {dest:?}");
-            return true;
-        }
-        match fs::rename(&m.path, &dest) {
-            Ok(()) => false,
-            Err(err) => {
-                eprintln!("error: {err:?}: {:?} --> {:?}", m.path, m.new_name);
-                true
-            }
-        }
-    });
-    if changes.is_empty() {
-        println!("done");
-    }
 }
 
 impl Media {
@@ -258,13 +229,7 @@ impl TryFrom<PathBuf> for Media {
     type Error = anyhow::Error;
 
     fn try_from(path: PathBuf) -> Result<Self> {
-        let name = path
-            .file_stem()
-            .ok_or_else(|| anyhow!("no file name: {path:?}"))?
-            .to_str()
-            .ok_or_else(|| anyhow!("file name str: {path:?}"))?;
-        let ext = path.extension().unwrap_or_default().to_str().unwrap_or("");
-
+        let (name, ext) = utils::file_stem_ext(&path)?;
         Ok(Media {
             wname: name.trim().to_lowercase(),
             new_name: String::new(),
