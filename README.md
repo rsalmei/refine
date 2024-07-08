@@ -8,19 +8,26 @@ This is the tool that will help you manage your file collection! It will scan so
 
 The `dupes` command will analyze and report the possibly duplicated files, either by size or name. It will even load a sample from each file, in order to guarantee they are indeed duplicated. It is a small sample by default but can help reduce false positives a lot, and you can increase it if you want.
 
-The `rebuild` command is a great achievement, if I say so myself. It will smartly rebuild the filenames of your entire collection by stripping parts of filenames you don't want, removing any sequence numbers, smartly detecting misspelled names by comparing with adjacent files, sorting the detected groups deterministically by creation date, regenerating sequence numbers, and finally renaming all these files! It's awesome to quickly find your video or music library neatly sorted automatically... And the next time you run it, since it is deterministic, it will only detect the new files added since the last time. Pretty cool, huh? And don't worry, you can review all the changes before applying them.
+The `rebuild` command is a great achievement, if I say so myself. It will smartly rebuild the filenames of an entire collection when it is composed by user ids or streamer names, for instance. It will do so by removing sequence numbers, stripping parts of filenames you don't want, smartly detecting misspelled names by comparing with adjacent files, sorting the detected groups deterministically by creation date, regenerating the sequence numbers, and finally renaming all the files accordingly. It's awesome to quickly find your video or music library neatly sorted automatically... And the next time you run it, it will detect new files added since the last time, and include them in the correct group! Pretty cool, huh? And don't worry, you can review all the changes before applying them.
 
 The `list` command will gather all the files in the given paths, sort them by name, size, or path, and display them in a friendly format.
+
+The `rename` command will let you batch rename files like no other tool. You can quickly strip common prefixes, suffixes, and exact parts of the filenames.
 
 It is blazingly fast and tiny, made 100% in Rust 🦀!
 
 In the future, this tool could make much more, like for instance moving duplicated files, renaming files without rebuilding everything, perhaps supporting aliases for names, including a GUI to enable easily acting upon files, etc., hence the open `refine` (your filesystem) name...
 
+## What's new in 0.11
+
+- new `rename` command
+- rebuild, rename: improve strip exact, not removing more spaces than needed
+
+<details><summary>Previous changes</summary>
+
 ## New in 0.10
 
 - global: new --exclude option to exclude files
-
-<details><summary>Previous changes</summary>
 
 ## New in 0.9
 
@@ -73,8 +80,9 @@ Usage: refine [OPTIONS] [PATHS]... <COMMAND>
 
 Commands:
   dupes    Find possibly duplicated files by both size and filename
-  rebuild  Rebuild the filenames of collections of files intelligently
+  rebuild  Rebuild the filenames of media collections intelligently
   list     List files from the given paths
+  rename   Rename files in batch, according to the given rules
   help     Print this message or the help of the given subcommand(s)
 
 Options:
@@ -126,31 +134,6 @@ Example:
 
 ```
 ❯ refine dupes ~/Downloads /Volumes/External --sample 20480
-Refine: vX.X.X
-Detecting duplicate files...
-  - sample bytes: 20kB
-  - match case: false
-
--- by size
-
-248.6MB x3
-/Users/you/Downloads/video.mp4
-/Users/you/Downloads/another-path/video.mpg
-/Volumes/External/backup/video.mpg.bak
-
-...
-
--- by name
-
-["bin", "cache", "query"] x2
-904.2kB: ./target/debug/incremental/refine-1uzt8yoeb0t1e/s-gx7knsxvbx-1oc90bk-working/query-cache.bin
-904.9kB: ./target/debug/incremental/refine-1uzt8yoeb0t1e/s-gx7knwsqka-w784iw-6s3nzkfcj1wxagnjubj1pm4v6/query-cache.bin
-
-...
-
-total files: 13512
-  by size: 339 duplicates
-  by name: 42 duplicates
 ```
 
 ### The `rebuild` command
@@ -167,7 +150,7 @@ total files: 13512
 <details><summary>Command options</summary>
 
 ```
-Rebuild the filenames of collections of files intelligently
+Rebuild the filenames of media collections intelligently
 
 Usage: refine rebuild [OPTIONS] [PATHS]...
 
@@ -193,26 +176,6 @@ Example:
 
 ```
 ❯ refine rebuild ~/media /Volumes/External -a 720p -a Bluray -b xpto -e old
-Refine: vX.X.X
-Rebuilding file names...
-  - strip before: ["xpto"]
-  - strip after: ["720p", "Bluray"]
-  - strip exact: ["old"]
-  - smart detect: true
-  - force: None
-  - interactive: true
-
-/Users/you/media/sketch - 720p.mp4 --> sketch-1.mp4
-/Users/you/media/video ok Bluray.H264.mp4 --> video_ok-1.mp4   | note these three files, regardless of different
-/Users/you/media/path/video_ok-5.mp4 --> video_ok-2.mp4        | paths and different names, they were smarly
-/Volumes/External/backup/Video_OK copy.mp4 --> video_ok-3.mp4  | detected and renamed as the same group!
-/Volumes/External/backup/old project copy 2.mp4 --> project-1.mp4
-/Users/you/media/path/downloaded by XPTO - video not ok.mp4 --> video_not_ok-1.mp4
-...
-
-total files: 21126
-  changes: 142
-apply changes? [y|n]: _
 ```
 
 ## The `list` command
@@ -245,20 +208,46 @@ Example:
 
 ```
 ❯ refine list ~/Downloads /Volumes/External --by size --desc
-Refine: vX.X.X
-Listing files...
-  - by: Size (desc)
+```
 
-3.1GB - /Volumes/External/path/movie.mkv
-1.21GB - /Users/you/Downloads/event.mp4
-730MB - /Users/you/Downloads/show.avi
-...
+## The `rename` command
 
-total files: 3367 (787.19GB)
+1. strip parts of the filenames, either before, after, or exactly a certain string
+2. print the resulting changes to the filenames, and ask for confirmation
+3. if the user confirms, apply the changes to the filenames
+
+<details><summary>Command options</summary>
+
+```
+Rename files in batch, according to the given rules
+
+Usage: refine rename [OPTIONS] [PATHS]...
+
+Options:
+  -b, --strip-before <STR|REGEX>  Remove from the start of the filename to this str; blanks are automatically removed
+  -a, --strip-after <STR|REGEX>   Remove from this str to the end of the filename; blanks are automatically removed
+  -e, --strip-exact <STR|REGEX>   Remove all occurrences of this str in the filename; blanks are automatically removed
+  -y, --yes                       Skip the confirmation prompt, useful for automation
+  -h, --help                      Print help
+
+Global:
+  -i, --include <REGEX>  Include these files; tested against filename+extension, case-insensitive
+  -x, --exclude <REGEX>  Exclude these files; tested against filename+extension, case-insensitive
+      --shallow          Do not recurse into subdirectories
+  [PATHS]...         Paths to scan
+```
+
+</details>
+
+Example:
+
+```
+❯ refine rename ~/media /Volumes/External -a 720p -a Bluray -b xpto -e old
 ```
 
 ## Changelog highlights
 
+- 0.11.0 Jul 08, 2024: new `rename` command, improve strip exact.
 - 0.10.0 Jul 02, 2024: global: new --exclude.
 - 0.9.0 Jul 01, 2024: global: support for CTRL-C.
 - 0.8.0 Jun 30, 2024: new `list` command.
