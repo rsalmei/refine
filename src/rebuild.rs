@@ -8,7 +8,7 @@ use std::collections::HashSet;
 use std::fmt::Write;
 use std::fs;
 use std::path::PathBuf;
-use std::sync::{Mutex, OnceLock};
+use std::sync::OnceLock;
 use std::time::SystemTime;
 
 #[derive(Debug, Args)]
@@ -268,25 +268,10 @@ impl TryFrom<PathBuf> for Media {
         Ok(Media {
             wname: name.trim().to_lowercase(),
             new_name: String::new(),
-            ext: ext_cache(ext),
+            ext: utils::intern(ext),
             ts: fs::metadata(&path)?.created()?,
             smart_group: None,
             path,
         })
-    }
-}
-
-fn ext_cache(ext: &str) -> &'static str {
-    static EXT: OnceLock<Mutex<HashSet<&'static str>>> = OnceLock::new();
-    let m = EXT.get_or_init(Default::default);
-
-    let mut m = m.lock().unwrap();
-    match m.get(ext) {
-        Some(x) => x,
-        None => {
-            let ext = Box::leak(ext.to_owned().into_boxed_str());
-            m.insert(ext);
-            ext
-        }
     }
 }

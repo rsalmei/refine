@@ -1,9 +1,10 @@
 use anyhow::{anyhow, Result};
 use regex::Regex;
+use std::collections::HashSet;
 use std::io;
 use std::io::Write;
 use std::sync::atomic::AtomicBool;
-use std::sync::{atomic, Arc, OnceLock};
+use std::sync::{atomic, Arc, Mutex, OnceLock};
 
 /// Strip sequence numbers from a filename.
 pub fn strip_sequence(name: &str) -> &str {
@@ -31,6 +32,22 @@ pub fn prompt_yes_no(msg: &str) -> Result<()> {
             "y" => break Ok(()),
             "n" => break Err(anyhow!("cancelled")),
             _ => {}
+        }
+    }
+}
+
+/// Intern a string, to prevent duplicates and redundant allocations.
+pub fn intern(text: &str) -> &'static str {
+    static CACHE: OnceLock<Mutex<HashSet<&'static str>>> = OnceLock::new();
+    let m = CACHE.get_or_init(Default::default);
+
+    let mut cache = m.lock().unwrap();
+    match cache.get(text) {
+        Some(x) => x,
+        None => {
+            let interned = Box::leak(text.to_owned().into_boxed_str());
+            cache.insert(interned);
+            interned
         }
     }
 }
