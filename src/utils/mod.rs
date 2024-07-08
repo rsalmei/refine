@@ -1,22 +1,13 @@
+mod files;
+
 use anyhow::{anyhow, Result};
+pub use files::*;
 use regex::Regex;
 use std::collections::HashSet;
 use std::io;
 use std::io::Write;
 use std::sync::atomic::AtomicBool;
 use std::sync::{atomic, Arc, Mutex, OnceLock};
-
-/// Strip sequence numbers from a filename.
-pub fn strip_sequence(name: &str) -> &str {
-    static RE_MULTI_MACOS: OnceLock<Regex> = OnceLock::new();
-    static RE_MULTI_LOCAL: OnceLock<Regex> = OnceLock::new();
-    let rem = RE_MULTI_MACOS.get_or_init(|| Regex::new(r" copy( \d+)?$").unwrap());
-    let rel = RE_MULTI_LOCAL.get_or_init(|| Regex::new(r"-\d+$").unwrap());
-
-    // replace_all() would allocate a new string, which would be a waste.
-    let name = rem.split(name).next().unwrap(); // even if the name is " copy", this returns an empty str.
-    rel.split(name).next().unwrap() // same as above, even if the name is "-1", this returns an empty str.
-}
 
 /// Prompt the user for confirmation.
 pub fn prompt_yes_no(msg: &str) -> Result<()> {
@@ -48,6 +39,19 @@ pub fn intern(text: &str) -> &'static str {
             let interned = Box::leak(text.to_owned().into_boxed_str());
             cache.insert(interned);
             interned
+        }
+    }
+}
+
+/// Set an optional regex, or exit with an error.
+pub fn set_re(value: &Option<String>, flags: &str, var: &'static OnceLock<Regex>, param: &str) {
+    if let Some(s) = value {
+        match Regex::new(&format!("{flags}{s}")) {
+            Ok(re) => var.set(re).unwrap(),
+            Err(err) => {
+                eprintln!("error: invalid --{param}: {err}");
+                std::process::exit(1);
+            }
         }
     }
 }
