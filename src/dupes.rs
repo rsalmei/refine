@@ -34,7 +34,7 @@ pub struct Media {
     sample: Option<Option<Box<[u8]>>>, // only populated if needed, and double to remember when already tried.
 }
 
-pub fn find_dupes(mut medias: Vec<Media>) -> Result<()> {
+pub fn run(mut medias: Vec<Media>) -> Result<()> {
     println!("Detecting duplicate files...");
     println!("  - sample bytes: {}", opt().sample.human_count_bytes());
     println!("  - match case: {}", opt().case);

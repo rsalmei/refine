@@ -86,9 +86,9 @@ fn main() {
     let files = args().paths.iter().cloned().chain(cd).flat_map(entries);
 
     if let Err(err) = match args().cmd {
-        Command::Dupes(_) => dupes::find_dupes(gen_medias(files)),
-        Command::Rebuild(_) => rebuild::rebuild(gen_medias(files)),
-        Command::List(_) => list::list(gen_medias(files)),
+        Command::Dupes(_) => dupes::run(gen_medias(files)),
+        Command::Rebuild(_) => rebuild::run(gen_medias(files)),
+        Command::List(_) => list::run(gen_medias(files)),
     } {
         eprintln!("error: {err:?}");
         std::process::exit(1);

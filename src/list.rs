@@ -36,7 +36,7 @@ pub struct Media {
     size: u64,
 }
 
-pub fn list(mut medias: Vec<Media>) -> Result<()> {
+pub fn run(mut medias: Vec<Media>) -> Result<()> {
     println!("Listing files...");
     let desc = if opt().desc { " (desc)" } else { "" };
     println!("  - by: {:?}{}", opt().by, desc);

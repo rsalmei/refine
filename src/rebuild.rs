@@ -56,7 +56,7 @@ pub struct Media {
     ts: SystemTime,
 }
 
-pub fn rebuild(mut medias: Vec<Media>) -> Result<()> {
+pub fn run(mut medias: Vec<Media>) -> Result<()> {
     println!("Rebuilding file names...");
     println!("  - strip before: {:?}", opt().strip_before);
     println!("  - strip after: {:?}", opt().strip_after);
