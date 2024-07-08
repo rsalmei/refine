@@ -1,4 +1,5 @@
-use anyhow::{anyhow, Result};
+use crate::utils;
+use anyhow::Result;
 use clap::{Args, ValueEnum};
 use human_repr::HumanCount;
 use std::cmp::Ordering;
@@ -68,11 +69,7 @@ impl TryFrom<PathBuf> for Media {
     type Error = anyhow::Error;
 
     fn try_from(path: PathBuf) -> Result<Self> {
-        let name = path
-            .file_stem()
-            .ok_or_else(|| anyhow!("no file name: {path:?}"))?
-            .to_str()
-            .ok_or_else(|| anyhow!("file name str: {path:?}"))?;
+        let (name, _) = utils::file_stem_ext(&path)?;
         Ok(Self {
             name: name.to_lowercase(),
             size: fs::metadata(&path)?.len(),
