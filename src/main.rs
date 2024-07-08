@@ -1,6 +1,7 @@
 mod dupes;
 mod list;
 mod rebuild;
+mod rename;
 mod utils;
 
 use clap::builder::NonEmptyStringValueParser;
@@ -37,6 +38,8 @@ enum Command {
     Rebuild(rebuild::Rebuild),
     /// List files from the given paths.
     List(list::List),
+    /// List files from the given paths.
+    Rename(rename::Rename),
 }
 
 static RE_IN: OnceLock<Regex> = OnceLock::new();
@@ -80,6 +83,7 @@ fn main() {
         Command::Dupes(_) => dupes::run(gen_medias(files)),
         Command::Rebuild(_) => rebuild::run(gen_medias(files)),
         Command::List(_) => list::run(gen_medias(files)),
+        Command::Rename(_) => rename::run(gen_medias(files)),
     } {
         eprintln!("error: {err:?}");
         std::process::exit(1);
