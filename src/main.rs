@@ -34,11 +34,11 @@ struct Args {
 enum Command {
     /// Find possibly duplicated files by both size and filename.
     Dupes(dupes::Dupes),
-    /// Rebuild the filenames of collections of files intelligently.
+    /// Rebuild the filenames of media collections intelligently.
     Rebuild(rebuild::Rebuild),
     /// List files from the given paths.
     List(list::List),
-    /// List files from the given paths.
+    /// Rename files in batch, according to the given rules.
     Rename(rename::Rename),
 }
 
