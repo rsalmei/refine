@@ -168,22 +168,6 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
     Ok(())
 }
 
-impl utils::WorkingName for Media {
-    fn name(&mut self) -> &mut String {
-        &mut self.wname
-    }
-}
-
-impl utils::Rename for Media {
-    fn path(&self) -> &Path {
-        &self.path
-    }
-
-    fn new_name(&self) -> &str {
-        &self.new_name
-    }
-}
-
 fn apply_smart_groups(medias: &mut [Media]) {
     static RE: OnceLock<Regex> = OnceLock::new();
     let re = RE.get_or_init(|| Regex::new(r"[\s_]+").unwrap());
@@ -220,6 +204,22 @@ fn apply_new_names(medias: &mut [Media]) {
                 }
             });
         });
+}
+
+impl utils::WorkingName for Media {
+    fn name(&mut self) -> &mut String {
+        &mut self.wname
+    }
+}
+
+impl utils::Rename for Media {
+    fn path(&self) -> &Path {
+        &self.path
+    }
+
+    fn new_name(&self) -> &str {
+        &self.new_name
+    }
 }
 
 impl Media {
