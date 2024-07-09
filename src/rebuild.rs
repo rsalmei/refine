@@ -214,7 +214,10 @@ fn apply_new_names(medias: &mut [Media]) {
             };
             g.iter_mut().enumerate().for_each(|(i, m)| {
                 m.new_name.clear(); // because of the force option.
-                write!(m.new_name, "{base}-{}.{}", i + 1, m.ext).unwrap();
+                write!(m.new_name, "{base}-{}", i + 1).unwrap();
+                if !m.ext.is_empty() {
+                    write!(m.new_name, ".{}", m.ext).unwrap();
+                }
             });
         });
 }
