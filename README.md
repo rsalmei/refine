@@ -18,29 +18,35 @@ It is blazingly fast and tiny, made 100% in Rust 🦀!
 
 In the future, this tool could make much more, like for instance moving duplicated files, renaming files without rebuilding everything, perhaps supporting aliases for names, including a GUI to enable easily acting upon files, etc., hence the open `refine` (your filesystem) name...
 
-## What's new in 0.11
+## New in 0.12
+
+- global: new --dir-in and --dir-out options.
+
+<details><summary>New in 0.11</summary>
 
 - new `rename` command
 - rebuild, rename: improve strip exact, not removing more spaces than needed
 
-<details><summary>Previous changes</summary>
-
-## New in 0.10
+</details>
+<details><summary>New in 0.10</summary>
 
 - global: new --exclude option to exclude files
 
-## New in 0.9
+</details>
+<details><summary>New in 0.9</summary>
 
 - new support for Ctrl-C, to abort all operations and gracefully exit the program at any time.
     - all commands will stop collecting files when Ctrl-C is pressed
     - both `dupes` and `list` command will show partial results
     - the `rebuild` command will just exit, as it needs all the files to run
 
-## New in 0.8
+</details>
+<details><summary>New in 0.8</summary>
 
 - new "list" command
 
-## New in 0.7
+</details>
+<details><summary>New in 0.7</summary>
 
 - global: new --include option to filter input files
 - rebuild: new --force option to easily rename new files
@@ -247,7 +253,8 @@ Example:
 
 ## Changelog highlights
 
-- 0.11.0 Jul 08, 2024: new `rename` command, improve strip exact.
+- 0.12.0 Jul 09, 2024: global: new --dir-in and --dir-out options.
+- 0.11.0 Jul 08, 2024: new `rename` command, rebuild, rename: improve strip exact.
 - 0.10.0 Jul 02, 2024: global: new --exclude.
 - 0.9.0 Jul 01, 2024: global: support for CTRL-C.
 - 0.8.0 Jun 30, 2024: new `list` command.
