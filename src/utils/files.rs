@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use regex::Regex;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -45,7 +45,7 @@ pub fn strip_names(medias: &mut [impl WorkingName], pos: StripPos, rules: &[Stri
             StripPos::After => &format!("(?i){BOUND}{rule}.*$"),
             StripPos::Exact => &format!(r"(?i)\s+{rule}\b|\b{rule}\s+|{rule}"),
         };
-        let re = Regex::new(regex)?;
+        let re = Regex::new(regex).with_context(|| format!("compiling regex: {rule:?}"))?;
         medias.iter_mut().for_each(|m| {
             *m.name() = re
                 .split(m.name())
@@ -66,12 +66,12 @@ pub trait Rename: WorkingName {
 
 pub fn rename_consuming(files: &mut Vec<impl Rename>) {
     files.retain(|m| {
-        let dest = m.path().with_file_name(&m.new_name());
+        let dest = m.path().with_file_name(m.new_name());
         if dest.exists() {
             eprintln!("error: file already exists: {dest:?}");
             return true;
         }
-        match fs::rename(&m.path(), &dest) {
+        match fs::rename(m.path(), &dest) {
             Ok(()) => false,
             Err(err) => {
                 eprintln!("error: {err:?}: {:?} --> {:?}", m.path(), m.new_name());

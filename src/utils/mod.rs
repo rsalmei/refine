@@ -1,6 +1,6 @@
 mod files;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 pub use files::*;
 use regex::Regex;
 use std::collections::HashSet;
@@ -43,13 +43,13 @@ pub fn intern(text: &str) -> &'static str {
     }
 }
 
-/// Set an optional regex, or exit with an error.
-pub fn set_re(value: &Option<String>, flags: &str, var: &'static OnceLock<Regex>, param: &str) {
+/// Set an optional regex (case-insensitive).
+pub fn set_re(value: &Option<String>, var: &OnceLock<Regex>, param: &str) {
     if let Some(s) = value {
-        match Regex::new(&format!("{flags}{s}")) {
+        match Regex::new(&format!("(?i){s}")).with_context(|| format!("compiling regex: {s:?}")) {
             Ok(re) => var.set(re).unwrap(),
             Err(err) => {
-                eprintln!("error: invalid --{param}: {err}");
+                eprintln!("error: invalid --{param}: {err:?}");
                 std::process::exit(1);
             }
         }
