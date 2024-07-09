@@ -73,7 +73,8 @@ All commands will:
 
 1. recursively scan all the given paths (excluding hidden .folders)
     - can optionally perform only a shallow scan
-    - can optionally filter files based on two regexes (include and exclude)
+    - can optionally filter files based on two regexes (--include and --exclude)
+    - can optionally filter directories based on two regexes (--dir-in and --dir-ex)
 2. load the metadata the command requires to run (e.g. file size, creation date, etc.) for each file
 3. execute the command and print the results
 
@@ -96,8 +97,10 @@ Options:
   -V, --version  Print version
 
 Global:
-  -i, --include <REGEX>  Include these files; tested against filename+extension, case-insensitive
+  -i, --include <REGEX>  Include only these files; tested against filename+extension, case-insensitive
   -x, --exclude <REGEX>  Exclude these files; tested against filename+extension, case-insensitive
+      --dir-in <REGEX>   Include only these subdirectories; case-insensitive
+      --dir-ex <REGEX>   Exclude these subdirectories; case-insensitive
       --shallow          Do not recurse into subdirectories
   [PATHS]...         Paths to scan
 
@@ -128,8 +131,10 @@ Options:
   -h, --help            Print help
 
 Global:
-  -i, --include <REGEX>  Include these files; tested against filename+extension, case-insensitive
+  -i, --include <REGEX>  Include only these files; tested against filename+extension, case-insensitive
   -x, --exclude <REGEX>  Exclude these files; tested against filename+extension, case-insensitive
+      --dir-in <REGEX>   Include only these subdirectories; case-insensitive
+      --dir-ex <REGEX>   Exclude these subdirectories; case-insensitive
       --shallow          Do not recurse into subdirectories
   [PATHS]...         Paths to scan
 ```
@@ -170,8 +175,10 @@ Options:
   -h, --help                      Print help
 
 Global:
-  -i, --include <REGEX>  Include these files; tested against filename+extension, case-insensitive
+  -i, --include <REGEX>  Include only these files; tested against filename+extension, case-insensitive
   -x, --exclude <REGEX>  Exclude these files; tested against filename+extension, case-insensitive
+      --dir-in <REGEX>   Include only these subdirectories; case-insensitive
+      --dir-ex <REGEX>   Exclude these subdirectories; case-insensitive
       --shallow          Do not recurse into subdirectories
   [PATHS]...         Paths to scan
 ```
@@ -203,7 +210,10 @@ Options:
   -h, --help     Print help
 
 Global:
-  -i, --include <REGEX>  Include only some files; tested against filename+extension, case-insensitive
+  -i, --include <REGEX>  Include only these files; tested against filename+extension, case-insensitive
+  -x, --exclude <REGEX>  Exclude these files; tested against filename+extension, case-insensitive
+      --dir-in <REGEX>   Include only these subdirectories; case-insensitive
+      --dir-ex <REGEX>   Exclude these subdirectories; case-insensitive
       --shallow          Do not recurse into subdirectories
   [PATHS]...         Paths to scan
 ```
@@ -237,8 +247,10 @@ Options:
   -h, --help                      Print help
 
 Global:
-  -i, --include <REGEX>  Include these files; tested against filename+extension, case-insensitive
+  -i, --include <REGEX>  Include only these files; tested against filename+extension, case-insensitive
   -x, --exclude <REGEX>  Exclude these files; tested against filename+extension, case-insensitive
+      --dir-in <REGEX>   Include only these subdirectories; case-insensitive
+      --dir-ex <REGEX>   Exclude these subdirectories; case-insensitive
       --shallow          Do not recurse into subdirectories
   [PATHS]...         Paths to scan
 ```
