@@ -19,12 +19,18 @@ struct Args {
     /// Paths to scan.
     #[arg(global = true, help_heading = Some("Global"))]
     paths: Vec<PathBuf>,
-    /// Include these files; tested against filename+extension, case-insensitive.
+    /// Include only these files; tested against filename+extension, case-insensitive.
     #[arg(short, long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     include: Option<String>,
     /// Exclude these files; tested against filename+extension, case-insensitive.
     #[arg(short = 'x', long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     exclude: Option<String>,
+    /// Include only these subdirectories; case-insensitive.
+    #[arg(long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
+    dir_in: Option<String>,
+    /// Exclude these subdirectories; case-insensitive.
+    #[arg(long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
+    dir_ex: Option<String>,
     /// Do not recurse into subdirectories.
     #[arg(long, global = true, help_heading = Some("Global"))]
     shallow: bool,
@@ -44,6 +50,8 @@ enum Command {
 
 static RE_IN: OnceLock<Regex> = OnceLock::new();
 static RE_EX: OnceLock<Regex> = OnceLock::new();
+static RE_DIR_IN: OnceLock<Regex> = OnceLock::new();
+static RE_DIR_EX: OnceLock<Regex> = OnceLock::new();
 
 static ARGS: OnceLock<Args> = OnceLock::new();
 fn args() -> &'static Args {
@@ -53,17 +61,10 @@ fn args() -> &'static Args {
 fn main() {
     ARGS.set(Args::parse()).unwrap();
     println!("Refine: v{}", env!("CARGO_PKG_VERSION"));
-    utils::set_re(&args().include, "(?i)", &RE_IN, "include");
-    utils::set_re(&args().exclude, "(?i)", &RE_EX, "exclude");
-
-    let s = if args().shallow { "not " } else { "" };
-    println!("  - paths ({s}recursive): {:?}", args().paths);
-    match (args().include.as_ref(), args().exclude.as_ref()) {
-        (Some(si), None) => println!("  - include: {si:?}"),
-        (None, Some(se)) => println!("  - exclude: {se:?}"),
-        (Some(si), Some(se)) => println!("  - include: {si:?}, exclude: {se:?}"),
-        (None, None) => {}
-    }
+    utils::set_re(&args().include, &RE_IN, "include");
+    utils::set_re(&args().exclude, &RE_EX, "exclude");
+    utils::set_re(&args().dir_in, &RE_DIR_IN, "dir_in");
+    utils::set_re(&args().dir_ex, &RE_DIR_EX, "dir_ex");
 
     if let Err(err) = ctrlc::set_handler({
         let running = Arc::clone(utils::running_flag());
@@ -72,7 +73,7 @@ fn main() {
             running.store(false, atomic::Ordering::Relaxed);
         }
     }) {
-        eprintln!("error: setting Ctrl-C handler: {err:?}");
+        eprintln!("error: set Ctrl-C handler: {err:?}");
     }
 
     // lists files from the given paths, or the current directory if no paths were given.
@@ -92,17 +93,18 @@ fn main() {
 
 fn entries(dir: PathBuf) -> Box<dyn Iterator<Item = PathBuf>> {
     fn is_included(path: &Path) -> Option<bool> {
+        fn is_match(s: &str, re_in: Option<&Regex>, re_ex: Option<&Regex>) -> bool {
+            re_ex.map_or(true, |re_ex| !re_ex.is_match(s))
+                && re_in.map_or(true, |re_in| re_in.is_match(s))
+        }
+
         let name = path.file_name()?.to_str()?;
         (!name.starts_with('.')).then_some(())?; // exclude hidden files and folders.
-        match (path.is_dir(), &args().include, &args().exclude) {
-            (true, _, _) => Some(!args().shallow),
-            (false, None, None) => Some(true),
-            (false, Some(_), None) => Some(RE_IN.get().unwrap().is_match(name)),
-            (false, None, Some(_)) => Some(!RE_EX.get().unwrap().is_match(name)),
-            (false, Some(_), Some(_)) => {
-                Some(!RE_EX.get().unwrap().is_match(name) && RE_IN.get().unwrap().is_match(name))
-            }
-        }
+
+        Some(match path.is_dir() {
+            false => is_match(name, RE_IN.get(), RE_EX.get()),
+            true => is_match(path.to_str()?, RE_DIR_IN.get(), RE_DIR_EX.get()),
+        })
     }
 
     // now this allows hidden directories, if the user directly asks for them.
@@ -117,7 +119,7 @@ fn entries(dir: PathBuf) -> Box<dyn Iterator<Item = PathBuf>> {
             .flat_map(move |de| {
                 let path = de.path();
                 match (is_included(&path).unwrap_or_default(), path.is_dir()) {
-                    (true, false) => Box::new(iter::once(path)),
+                    (true, false) if !args().shallow => Box::new(iter::once(path)),
                     (true, true) if utils::is_running() => entries(path),
                     _ => Box::new(iter::empty()),
                 }
