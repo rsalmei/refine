@@ -86,9 +86,12 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
     }
     println!("total files: {total}");
     println!("  changes: {}", changes.len());
+    if changes.is_empty() {
+        return Ok(());
+    }
 
     // step: apply changes, if the user agrees.
-    if !changes.is_empty() && !opt().yes {
+    if !opt().yes {
         utils::prompt_yes_no("apply changes?")?;
     }
     utils::rename_consuming(&mut changes);
