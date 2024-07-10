@@ -52,7 +52,15 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
     utils::strip_names(&mut medias, StripPos::Exact, &opt().strip_exact)?;
 
     // step: apply replace rules.
-    replace_names(&mut medias)?;
+    for (k, v) in &opt().replace {
+        let re =
+            Regex::new(&format!("(?i){k}")).with_context(|| format!("compiling regex: {k:?}"))?;
+        medias.iter_mut().for_each(|m| {
+            if let Cow::Owned(s) = re.replace_all(&m.wname, v) {
+                m.wname = s;
+            }
+        })
+    }
 
     utils::user_aborted()?;
 
@@ -100,19 +108,6 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
         return Ok(());
     }
     println!("found {} errors", changes.len());
-    Ok(())
-}
-
-fn replace_names(medias: &mut [Media]) -> Result<()> {
-    for (k, v) in &opt().replace {
-        let re =
-            Regex::new(&format!("(?i){k}")).with_context(|| format!("compiling regex: {k:?}"))?;
-        medias.iter_mut().for_each(|m| {
-            if let Cow::Owned(s) = re.replace_all(&m.wname, v) {
-                m.wname = s;
-            }
-        })
-    }
     Ok(())
 }
 

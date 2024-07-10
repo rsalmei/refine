@@ -96,7 +96,14 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
 
     // step: smart detect.
     if !opt().no_smart_detect {
-        apply_smart_groups(&mut medias);
+        static RE: OnceLock<Regex> = OnceLock::new();
+        let re = RE.get_or_init(|| Regex::new(r"[\s_]+").unwrap());
+
+        medias.iter_mut().for_each(|m| {
+            if let Cow::Owned(x) = re.replace_all(&m.wname, "") {
+                m.smart_group = Some(x);
+            }
+        });
     }
 
     // step: generate new names to compute the changes.
@@ -162,17 +169,6 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
     }
 
     Ok(())
-}
-
-fn apply_smart_groups(medias: &mut [Media]) {
-    static RE: OnceLock<Regex> = OnceLock::new();
-    let re = RE.get_or_init(|| Regex::new(r"[\s_]+").unwrap());
-
-    medias.iter_mut().for_each(|m| {
-        if let Cow::Owned(x) = re.replace_all(&m.wname, "") {
-            m.smart_group = Some(x);
-        }
-    });
 }
 
 fn apply_new_names(medias: &mut [Media]) {
