@@ -19,10 +19,10 @@ struct Args {
     /// Paths to scan.
     #[arg(global = true, help_heading = Some("Global"))]
     paths: Vec<PathBuf>,
-    /// Include only these files; tested against filename+extension, case-insensitive.
+    /// Include only these files; checked against filename without extension, case-insensitive.
     #[arg(short, long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     include: Option<String>,
-    /// Exclude these files; tested against filename+extension, case-insensitive.
+    /// Exclude these files; checked against filename without extension, case-insensitive.
     #[arg(short = 'x', long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     exclude: Option<String>,
     /// Include only these subdirectories; case-insensitive.
@@ -98,7 +98,7 @@ fn entries(dir: PathBuf) -> Box<dyn Iterator<Item = PathBuf>> {
                 && re_in.map_or(true, |re_in| re_in.is_match(s))
         }
 
-        let name = path.file_name()?.to_str()?;
+        let name = path.file_stem()?.to_str()?;
         (!name.starts_with('.')).then_some(())?; // exclude hidden files and folders.
 
         Some(match path.is_dir() {
