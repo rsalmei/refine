@@ -4,8 +4,10 @@ use anyhow::{anyhow, Context, Result};
 pub use files::*;
 use regex::Regex;
 use std::collections::HashSet;
+use std::error::Error;
 use std::io;
 use std::io::Write;
+use std::str::FromStr;
 use std::sync::atomic::AtomicBool;
 use std::sync::{atomic, Arc, Mutex, OnceLock};
 
@@ -54,6 +56,18 @@ pub fn set_re(value: &Option<String>, var: &OnceLock<Regex>, param: &str) {
             }
         }
     }
+}
+
+/// Parse a key-value pair from a string, for use in clap.
+pub fn parse_key_value<K, V>(s: &str) -> Result<(K, V)>
+where
+    K: FromStr<Err: Error + Send + Sync + 'static>,
+    V: FromStr<Err: Error + Send + Sync + 'static>,
+{
+    let pos = s
+        .find('=')
+        .ok_or_else(|| anyhow!("invalid key=value: {s:?}"))?;
+    Ok((s[..pos].parse()?, s[pos + 1..].parse()?))
 }
 
 /// The running flag, used to check if the user aborted.
