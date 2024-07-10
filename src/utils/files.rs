@@ -34,7 +34,7 @@ pub enum StripPos {
 }
 
 pub trait WorkingName {
-    fn name(&mut self) -> &mut String;
+    fn wname(&mut self) -> &mut String;
 }
 
 pub fn strip_names(medias: &mut [impl WorkingName], pos: StripPos, rules: &[String]) -> Result<()> {
@@ -47,8 +47,8 @@ pub fn strip_names(medias: &mut [impl WorkingName], pos: StripPos, rules: &[Stri
         };
         let re = Regex::new(regex).with_context(|| format!("compiling regex: {rule:?}"))?;
         medias.iter_mut().for_each(|m| {
-            *m.name() = re
-                .split(m.name())
+            *m.wname() = re
+                .split(m.wname())
                 .filter(|s| !s.is_empty())
                 .collect::<Vec<_>>()
                 .join(""); // only actually used on Pos::Exact, the other two always return a single element.
@@ -57,14 +57,31 @@ pub fn strip_names(medias: &mut [impl WorkingName], pos: StripPos, rules: &[Stri
     Ok(())
 }
 
-pub trait Rename: WorkingName {
+pub trait PathWorkingName: WorkingName {
     /// The original path to the file.
     fn path(&self) -> &Path;
+}
+
+pub fn remove_cleared(medias: &mut Vec<impl PathWorkingName>) -> bool {
+    medias.sort_unstable_by(|m, n| m.path().cmp(n.path()));
+    let mut warnings = false;
+    medias.retain_mut(|m| match m.wname().is_empty() {
+        true => {
+            warnings = true;
+            eprintln!("warning: rules cleared name: {}", m.path().display());
+            false
+        }
+        false => true,
+    });
+    warnings
+}
+
+pub trait NewNamePathWorkingName: PathWorkingName {
     /// The new name of the file, including the extension.
     fn new_name(&self) -> &str;
 }
 
-pub fn rename_consuming(files: &mut Vec<impl Rename>) {
+pub fn rename_consuming(files: &mut Vec<impl NewNamePathWorkingName>) {
     files.retain(|m| {
         let dest = m.path().with_file_name(m.new_name());
         if dest.exists() {

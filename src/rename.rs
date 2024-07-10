@@ -66,13 +66,7 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
 
     // step: remove medias where the rules cleared the name.
     let total = medias.len();
-    let (mut medias, mut cleared) = medias
-        .into_iter()
-        .partition::<Vec<_>, _>(|m| !m.wname.is_empty());
-    cleared.sort_unstable_by(|a, b| a.path.cmp(&b.path));
-    cleared.iter().for_each(|m| {
-        eprintln!("warning: rules cleared name: {}", m.path.display());
-    });
+    let warnings = utils::remove_cleared(&mut medias);
 
     // step: settle changes, and display the results.
     medias
@@ -89,7 +83,7 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
         .collect::<Vec<_>>();
 
     // step: display receipt summary.
-    if !changes.is_empty() || !cleared.is_empty() {
+    if !changes.is_empty() || warnings {
         println!();
     }
     println!("total files: {total}");
@@ -112,15 +106,18 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
 }
 
 impl utils::WorkingName for Media {
-    fn name(&mut self) -> &mut String {
+    fn wname(&mut self) -> &mut String {
         &mut self.wname
     }
 }
 
-impl utils::Rename for Media {
+impl utils::PathWorkingName for Media{
     fn path(&self) -> &Path {
         &self.path
     }
+}
+
+impl utils::NewNamePathWorkingName for Media {
     fn new_name(&self) -> &str {
         &self.wname
     }

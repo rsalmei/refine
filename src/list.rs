@@ -41,12 +41,12 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
     println!("=> Listing files...\n");
 
     let compare = match opt().by {
-        By::Name => |a: &Media, b: &Media| a.name.cmp(&b.name),
-        By::Size => |a: &Media, b: &Media| a.size.cmp(&b.size),
-        By::Path => |a: &Media, b: &Media| a.path.cmp(&b.path),
+        By::Name => |m: &Media, n: &Media| m.name.cmp(&n.name),
+        By::Size => |m: &Media, n: &Media| m.size.cmp(&n.size),
+        By::Path => |m: &Media, n: &Media| m.path.cmp(&n.path),
     };
     let compare: &dyn Fn(&Media, &Media) -> Ordering = match opt().desc {
-        true => &|a, b| compare(a, b).reverse(),
+        true => &|m, n| compare(m, n).reverse(),
         false => &compare,
     };
     medias.sort_unstable_by(compare);
