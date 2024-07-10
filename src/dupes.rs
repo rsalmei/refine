@@ -32,9 +32,7 @@ pub struct Media {
 }
 
 pub fn run(mut medias: Vec<Media>) -> Result<()> {
-    println!("Detecting duplicate files...");
-    println!("  - sample bytes: {}", opt().sample.human_count_bytes());
-    println!();
+    println!("=> Detecting duplicate files...\n");
 
     // first by size.
     println!("-- by size");

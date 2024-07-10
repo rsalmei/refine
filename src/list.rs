@@ -38,10 +38,7 @@ pub struct Media {
 }
 
 pub fn run(mut medias: Vec<Media>) -> Result<()> {
-    println!("Listing files...");
-    let desc = if opt().desc { " (desc)" } else { "" };
-    println!("  - by: {:?}{}", opt().by, desc);
-    println!();
+    println!("=> Listing files...\n");
 
     let compare = match opt().by {
         By::Name => |a: &Media, b: &Media| a.name.cmp(&b.name),

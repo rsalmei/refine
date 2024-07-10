@@ -44,12 +44,7 @@ pub struct Media {
 }
 
 pub fn run(mut medias: Vec<Media>) -> Result<()> {
-    println!("Renaming files...");
-    println!("  - strip before: {:?}", opt().strip_before);
-    println!("  - strip after: {:?}", opt().strip_after);
-    println!("  - strip exact: {:?}", opt().strip_exact);
-    println!("  - interactive: {}", !opt().yes);
-    println!();
+    println!("=> Renaming files...\n");
 
     // step: apply strip rules.
     utils::strip_names(&mut medias, StripPos::Before, &opt().strip_before)?;

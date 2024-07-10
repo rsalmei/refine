@@ -57,14 +57,7 @@ pub struct Media {
 }
 
 pub fn run(mut medias: Vec<Media>) -> Result<()> {
-    println!("Rebuilding file names...");
-    println!("  - strip before: {:?}", opt().strip_before);
-    println!("  - strip after: {:?}", opt().strip_after);
-    println!("  - strip exact: {:?}", opt().strip_exact);
-    println!("  - smart detect: {}", !opt().no_smart_detect);
-    println!("  - force: {:?}", opt().force);
-    println!("  - interactive: {}", !opt().yes);
-    println!();
+    println!("=> Rebuilding files...\n");
 
     // step: strip sequence numbers.
     medias.iter_mut().for_each(|m| {
