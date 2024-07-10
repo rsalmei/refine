@@ -4,15 +4,7 @@
 
 ## What it does
 
-This is the tool that will help you manage your file collection! It will scan some given paths and analyze all files, performing some advanced operations on them, such as finding possibly duplicated files, or even automatically grouping and rebuilding their filenames (according to your rules)!
-
-The `dupes` command will analyze and report the possibly duplicated files, either by size or name. It will even load a sample from each file, in order to guarantee they are indeed duplicated. It is a small sample by default but can help reduce false positives a lot, and you can increase it if you want.
-
-The `rebuild` command is a great achievement, if I say so myself. It will smartly rebuild the filenames of an entire collection when it is composed by user ids or streamer names, for instance. It will do so by removing sequence numbers, stripping parts of filenames you don't want, smartly detecting misspelled names by comparing with adjacent files, sorting the detected groups deterministically by creation date, regenerating the sequence numbers, and finally renaming all the files accordingly. It's awesome to quickly find your video or music library neatly sorted automatically... And the next time you run it, it will detect new files added since the last time, and include them in the correct group! Pretty cool, huh? And don't worry, you can review all the changes before applying them.
-
-The `list` command will gather all the files in the given paths, sort them by name, size, or path, and display them in a friendly format.
-
-The `rename` command will let you batch rename files like no other tool. You can quickly strip common prefixes, suffixes, and exact parts of the filenames.
+This is the tool that will help you manage your file collection! It will scan some given paths and analyze all files, performing some advanced operations on them, such as finding possibly duplicated files, batch renaming them, or even automatically grouping and rebuilding their filenames according to your rules!
 
 It is blazingly fast and tiny, made 100% in Rust 🦀!
 
@@ -86,7 +78,7 @@ All commands will:
 2. load the metadata the command requires to run (e.g. file size, creation date, etc.) for each file
 3. execute the command and print the results
 
-<details><summary>Command help</summary>
+<details><summary>refine --help</summary>
 
 ```
 Refine your file collection using Rust!
@@ -119,6 +111,8 @@ For more information, see https://github.com/rsalmei/refine
 
 ### The `dupes` command
 
+The `dupes` command will analyze and report the possibly duplicated files, either by size or name. It will even load a sample from each file, in order to guarantee they are indeed duplicated. It is a small sample by default but can help reduce false positives a lot, and you can increase it if you want.
+
 1. group all the files by size
 2. for each group with the exact same value, load a sample of its files
 3. compare the samples with each other and find possible duplicates
@@ -126,7 +120,7 @@ For more information, see https://github.com/rsalmei/refine
     - the word extractor ignores sequence numbers like file-1, file copy, file-3 copy 2, etc.
 5. run 2. and 3. again, and print the results
 
-<details><summary>Command help</summary>
+<details><summary>refine dupes --help</summary>
 
 ```
 Find possibly duplicated files by both size and filename
@@ -156,6 +150,8 @@ Example:
 
 ### The `rebuild` command
 
+The `rebuild` command is a great achievement, if I say so myself. It will smartly rebuild the filenames of an entire collection when it is composed by user ids or streamer names, for instance. It will do so by removing sequence numbers, stripping parts of filenames you don't want, smartly detecting misspelled names by comparing with adjacent files, sorting the detected groups deterministically by creation date, regenerating the sequence numbers, and finally renaming all the files accordingly. It's awesome to quickly find your video or music library neatly sorted automatically... And the next time you run it, it will detect new files added since the last time, and include them in the correct group! Pretty cool, huh? And don't worry, you can review all the changes before applying them.
+
 1. remove any sequence numbers like file-1, file copy, file-3 copy 2, etc.
 2. strip parts of the filenames, either before, after, or exactly a certain string
 3. smartly remove spaces and underscores, in order to detect misspelled names
@@ -165,7 +161,7 @@ Example:
 7. print the resulting changes to the filenames, and ask for confirmation
 8. if the user confirms, apply the changes to the filenames
 
-<details><summary>Command options</summary>
+<details><summary>refine rebuild --help</summary>
 
 ```
 Rebuild the filenames of media collections intelligently
@@ -200,11 +196,13 @@ Example:
 
 ## The `list` command
 
+The `list` command will gather all the files in the given paths, sort them by name, size, or path, and display them in a friendly format.
+
 1. sort all files by either name, size, or path
     - ascending by default, or optionally descending
 2. print the results
 
-<details><summary>Command options</summary>
+<details><summary>refine list --help</summary>
 
 ```
 List files from the given paths
@@ -235,11 +233,13 @@ Example:
 
 ## The `rename` command
 
+The `rename` command will let you batch rename files like no other tool. You can quickly strip common prefixes, suffixes, and exact parts of the filenames.
+
 1. strip parts of the filenames, either before, after, or exactly a certain string
 2. print the resulting changes to the filenames, and ask for confirmation
 3. if the user confirms, apply the changes to the filenames
 
-<details><summary>Command options</summary>
+<details><summary>refine rename --help</summary>
 
 ```
 Rename files in batch, according to the given rules
@@ -247,12 +247,12 @@ Rename files in batch, according to the given rules
 Usage: refine rename [OPTIONS] [PATHS]...
 
 Options:
-  -b, --strip-before <STR|REGEX>  Remove from the start of the filename to this str; blanks are automatically removed
-  -a, --strip-after <STR|REGEX>   Remove from this str to the end of the filename; blanks are automatically removed
-  -e, --strip-exact <STR|REGEX>   Remove all occurrences of this str in the filename; blanks are automatically removed
-  -r, --replace <STR|REGEX=STR>   Replace all occurrences of one str by another; applied in order and after the strip rules
-  -y, --yes                       Skip the confirmation prompt, useful for automation
-  -h, --help                      Print help
+  -b, --strip-before <STR|REGEX>   Remove from the start of the filename to this str; blanks are automatically removed
+  -a, --strip-after <STR|REGEX>    Remove from this str to the end of the filename; blanks are automatically removed
+  -e, --strip-exact <STR|REGEX>    Remove all occurrences of this str in the filename; blanks are automatically removed
+  -r, --replace <{STR|REGEX}=STR>  Replace all occurrences of one str by another; applied in order and after the strip rules
+  -y, --yes                        Skip the confirmation prompt, useful for automation
+  -h, --help                       Print help
 
 Global:
   -i, --include <REGEX>  Include only these files; checked against filename without extension, case-insensitive
@@ -268,7 +268,7 @@ Global:
 Example:
 
 ```
-❯ refine rename ~/media /Volumes/External -a 720p -a Bluray -b xpto -e old
+❯ refine rename ~/media /Volumes/External -b "^\d+_" -r '([^\.]*?)\.=$1 '
 ```
 
 ## Changelog highlights
