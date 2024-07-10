@@ -18,10 +18,18 @@ It is blazingly fast and tiny, made 100% in Rust 🦀!
 
 In the future, this tool could make much more, like for instance moving duplicated files, renaming files without rebuilding everything, perhaps supporting aliases for names, including a GUI to enable easily acting upon files, etc., hence the open `refine` (your filesystem) name...
 
-## New in 0.12
+## New in 0.13
+
+- rebuild: new replace feature, finally!
+- rebuild, rename: make strip options also remove `.` and `_`, in addition to `-` and spaces
+- global: include and exclude options do not check extensions
+- dupes: remove case option, so everything is case-insensitive now
+
+<details><summary>New in 0.12</summary>
 
 - global: new --dir-in and --dir-out options.
 
+</details>
 <details><summary>New in 0.11</summary>
 
 - new `rename` command
@@ -97,8 +105,8 @@ Options:
   -V, --version  Print version
 
 Global:
-  -i, --include <REGEX>  Include only these files; tested against filename+extension, case-insensitive
-  -x, --exclude <REGEX>  Exclude these files; tested against filename+extension, case-insensitive
+  -i, --include <REGEX>  Include only these files; checked against filename without extension, case-insensitive
+  -x, --exclude <REGEX>  Exclude these files; checked against filename without extension, case-insensitive
       --dir-in <REGEX>   Include only these subdirectories; case-insensitive
       --dir-ex <REGEX>   Exclude these subdirectories; case-insensitive
       --shallow          Do not recurse into subdirectories
@@ -127,12 +135,11 @@ Usage: refine dupes [OPTIONS] [PATHS]...
 
 Options:
   -s, --sample <BYTES>  Sample size in bytes (0 to disable) [default: 2048]
-  -c, --case            Case-sensitive file name comparison
   -h, --help            Print help
 
 Global:
-  -i, --include <REGEX>  Include only these files; tested against filename+extension, case-insensitive
-  -x, --exclude <REGEX>  Exclude these files; tested against filename+extension, case-insensitive
+  -i, --include <REGEX>  Include only these files; checked against filename without extension, case-insensitive
+  -x, --exclude <REGEX>  Exclude these files; checked against filename without extension, case-insensitive
       --dir-in <REGEX>   Include only these subdirectories; case-insensitive
       --dir-ex <REGEX>   Exclude these subdirectories; case-insensitive
       --shallow          Do not recurse into subdirectories
@@ -175,8 +182,8 @@ Options:
   -h, --help                      Print help
 
 Global:
-  -i, --include <REGEX>  Include only these files; tested against filename+extension, case-insensitive
-  -x, --exclude <REGEX>  Exclude these files; tested against filename+extension, case-insensitive
+  -i, --include <REGEX>  Include only these files; checked against filename without extension, case-insensitive
+  -x, --exclude <REGEX>  Exclude these files; checked against filename without extension, case-insensitive
       --dir-in <REGEX>   Include only these subdirectories; case-insensitive
       --dir-ex <REGEX>   Exclude these subdirectories; case-insensitive
       --shallow          Do not recurse into subdirectories
@@ -205,13 +212,13 @@ List files from the given paths
 Usage: refine list [OPTIONS] [PATHS]...
 
 Options:
-  -b, --by <BY>  [default: name] [possible values: name, size, path]
-  -d, --desc
+  -b, --by <BY>  Sort by [default: name] [possible values: name, size, path]
+  -d, --desc     Use descending order
   -h, --help     Print help
 
 Global:
-  -i, --include <REGEX>  Include only these files; tested against filename+extension, case-insensitive
-  -x, --exclude <REGEX>  Exclude these files; tested against filename+extension, case-insensitive
+  -i, --include <REGEX>  Include only these files; checked against filename without extension, case-insensitive
+  -x, --exclude <REGEX>  Exclude these files; checked against filename without extension, case-insensitive
       --dir-in <REGEX>   Include only these subdirectories; case-insensitive
       --dir-ex <REGEX>   Exclude these subdirectories; case-insensitive
       --shallow          Do not recurse into subdirectories
@@ -243,12 +250,13 @@ Options:
   -b, --strip-before <STR|REGEX>  Remove from the start of the filename to this str; blanks are automatically removed
   -a, --strip-after <STR|REGEX>   Remove from this str to the end of the filename; blanks are automatically removed
   -e, --strip-exact <STR|REGEX>   Remove all occurrences of this str in the filename; blanks are automatically removed
+  -r, --replace <STR|REGEX=STR>   Replace all occurrences of one str by another; applied in order and after the strip rules
   -y, --yes                       Skip the confirmation prompt, useful for automation
   -h, --help                      Print help
 
 Global:
-  -i, --include <REGEX>  Include only these files; tested against filename+extension, case-insensitive
-  -x, --exclude <REGEX>  Exclude these files; tested against filename+extension, case-insensitive
+  -i, --include <REGEX>  Include only these files; checked against filename without extension, case-insensitive
+  -x, --exclude <REGEX>  Exclude these files; checked against filename without extension, case-insensitive
       --dir-in <REGEX>   Include only these subdirectories; case-insensitive
       --dir-ex <REGEX>   Exclude these subdirectories; case-insensitive
       --shallow          Do not recurse into subdirectories
@@ -265,6 +273,7 @@ Example:
 
 ## Changelog highlights
 
+- 0.13.0 Jul 10, 2024: rebuild: new replace feature, rebuild, rename: make strip options remove `.` and `_`, global: include and exclude options do not check extensions, dupes: remove case option.
 - 0.12.0 Jul 09, 2024: global: new --dir-in and --dir-out options.
 - 0.11.0 Jul 08, 2024: new `rename` command, rebuild, rename: improve strip exact.
 - 0.10.0 Jul 02, 2024: global: new --exclude.
