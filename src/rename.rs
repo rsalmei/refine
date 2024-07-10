@@ -1,7 +1,9 @@
 use crate::utils::{self, StripPos};
-use anyhow::Result;
+use anyhow::{Context, Result};
 use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
+use regex::Regex;
+use std::borrow::Cow;
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
@@ -16,6 +18,9 @@ pub struct Rename {
     /// Remove all occurrences of this str in the filename; blanks are automatically removed.
     #[arg(short = 'e', long, value_name = "STR|REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     pub strip_exact: Vec<String>,
+    ///  Replace all occurrences of one str by another; applied in order and after the strip rules.
+    #[arg(short, long, value_name = "STR|REGEX=STR", allow_hyphen_values = true, value_parser = utils::parse_key_value::<String, String>)]
+    pub replace: Vec<(String, String)>,
     /// Skip the confirmation prompt, useful for automation.
     #[arg(short, long)]
     pub yes: bool,
@@ -50,6 +55,9 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
     utils::strip_names(&mut medias, StripPos::Before, &opt().strip_before)?;
     utils::strip_names(&mut medias, StripPos::After, &opt().strip_after)?;
     utils::strip_names(&mut medias, StripPos::Exact, &opt().strip_exact)?;
+
+    // step: apply replace rules.
+    replace_names(&mut medias)?;
 
     utils::user_aborted()?;
 
@@ -94,6 +102,19 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
         return Ok(());
     }
     println!("found {} errors", changes.len());
+    Ok(())
+}
+
+fn replace_names(medias: &mut [Media]) -> Result<()> {
+    for (k, v) in &opt().replace {
+        let re =
+            Regex::new(&format!("(?i){k}")).with_context(|| format!("compiling regex: {k:?}"))?;
+        medias.iter_mut().for_each(|m| {
+            if let Cow::Owned(s) = re.replace_all(&m.wname, v) {
+                m.wname = s;
+            }
+        })
+    }
     Ok(())
 }
 
