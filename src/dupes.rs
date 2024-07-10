@@ -14,9 +14,6 @@ pub struct Dupes {
     /// Sample size in bytes (0 to disable).
     #[arg(short, long, default_value_t = 2 * 1024, value_name = "BYTES")]
     pub sample: usize,
-    /// Case-sensitive file name comparison.
-    #[arg(short, long)]
-    pub case: bool,
 }
 
 fn opt() -> &'static Dupes {
@@ -37,7 +34,6 @@ pub struct Media {
 pub fn run(mut medias: Vec<Media>) -> Result<()> {
     println!("Detecting duplicate files...");
     println!("  - sample bytes: {}", opt().sample.human_count_bytes());
-    println!("  - match case: {}", opt().case);
     println!();
 
     // first by size.
@@ -122,10 +118,7 @@ fn words(path: &Path) -> Result<Box<[String]>> {
         .split(&[' ', '.', '-', '_'])
         .filter(|s| !s.is_empty())
         .filter(|s| !(s.len() == 1 && s.is_ascii())) // remove vowels.
-        .map(|s| match opt().case {
-            true => s.to_owned(),
-            false => s.to_lowercase(),
-        })
+        .map(|s| s.to_lowercase())
         .collect::<Vec<_>>();
     words.sort_unstable();
     words.dedup();
