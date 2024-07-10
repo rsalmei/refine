@@ -19,7 +19,7 @@ pub struct Rename {
     #[arg(short = 'e', long, value_name = "STR|REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     pub strip_exact: Vec<String>,
     ///  Replace all occurrences of one str by another; applied in order and after the strip rules.
-    #[arg(short, long, value_name = "STR|REGEX=STR", allow_hyphen_values = true, value_parser = utils::parse_key_value::<String, String>)]
+    #[arg(short, long, value_name = "{STR|REGEX}=STR", allow_hyphen_values = true, value_parser = utils::parse_key_value::<String, String>)]
     pub replace: Vec<(String, String)>,
     /// Skip the confirmation prompt, useful for automation.
     #[arg(short, long)]

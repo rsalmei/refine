@@ -50,9 +50,13 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
         false => &compare,
     };
     medias.sort_unstable_by(compare);
-    medias
-        .iter()
-        .for_each(|m| println!("{} - {}", m.size.human_count_bytes(), m.path.display()));
+    medias.iter().for_each(|m| {
+        println!(
+            "{:>7} {}",
+            format!("{}", m.size.human_count_bytes()),
+            m.path.display()
+        )
+    });
 
     if !medias.is_empty() {
         println!();

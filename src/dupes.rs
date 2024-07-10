@@ -35,7 +35,7 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
     println!("=> Detecting duplicate files...\n");
 
     // first by size.
-    println!("-- by size");
+    println!("by size:");
     let by_size = detect_duplicates(
         &mut medias,
         |m| &m.size,
@@ -47,7 +47,7 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
     );
 
     // then by name.
-    println!("\n-- by name");
+    println!("\nby name:");
     let by_name = detect_duplicates(
         &mut medias,
         |m| &m.words,
