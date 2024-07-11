@@ -4,49 +4,55 @@
 
 ## What it does
 
-This is the tool that will help you manage your file collection! It will scan some given paths and analyze all files, performing some advanced operations on them, such as finding possibly duplicated files, batch renaming them, or even automatically grouping and rebuilding their filenames according to your rules!
+This tool will help you organize any collections of files that are standardized in some way, allowing you to batch clean filenames up or even completely rebuild them, making everything refined and easier to find.
+
+Yes, the name comes from "_refine your [photos | images | videos | movies | porn | music | etc.] collection_"!
+
+It will help you manage your file collections like no other tool! It can scan several given paths at the same time and analyze all files, performing some advanced operations on them such as finding possibly duplicated files, batch renaming them, stripping prefixes or suffixes, or even automatically grouping and rebuilding their filenames according to your rules!
 
 It is blazingly fast and tiny, made 100% in Rust 🦀!
 
-In the future, this tool could make much more, like for instance moving duplicated files, renaming files without rebuilding everything, perhaps supporting aliases for names, including a GUI to enable easily acting upon files, etc., hence the open `refine` (your filesystem) name...
+## What's new
 
-## New in 0.13
+<details><summary>(click to expand)</summary>
+
+### New in 0.14
+
+- rename: disallow by default changes in directories where clashes are detected
+    - new --clashes option to allow them
+
+### New in 0.13
 
 - rebuild: new replace feature, finally!
 - rebuild, rename: make strip options also remove `.` and `_`, in addition to `-` and spaces
 - global: include and exclude options do not check extensions
 - dupes: remove case option, so everything is case-insensitive now
 
-<details><summary>New in 0.12</summary>
+### New in 0.12
 
 - global: new --dir-in and --dir-out options.
 
-</details>
-<details><summary>New in 0.11</summary>
+### New in 0.11
 
 - new `rename` command
 - rebuild, rename: improve strip exact, not removing more spaces than needed
 
-</details>
-<details><summary>New in 0.10</summary>
+### New in 0.10
 
 - global: new --exclude option to exclude files
 
-</details>
-<details><summary>New in 0.9</summary>
+### New in 0.9
 
 - new support for Ctrl-C, to abort all operations and gracefully exit the program at any time.
     - all commands will stop collecting files when Ctrl-C is pressed
     - both `dupes` and `list` command will show partial results
     - the `rebuild` command will just exit, as it needs all the files to run
 
-</details>
-<details><summary>New in 0.8</summary>
+### New in 0.8
 
 - new "list" command
 
-</details>
-<details><summary>New in 0.7</summary>
+### New in 0.7
 
 - global: new --include option to filter input files
 - rebuild: new --force option to easily rename new files
@@ -154,7 +160,7 @@ The `rebuild` command is a great achievement, if I say so myself. It will smartl
 
 1. remove any sequence numbers like file-1, file copy, file-3 copy 2, etc.
 2. strip parts of the filenames, either before, after, or exactly a certain string
-3. smartly remove spaces and underscores, in order to detect misspelled names
+3. remove spaces and underscores, and smartly detect misspelled names
 4. group the resulting names, and smartly choose the most likely correct name among the group
 5. sort the group according to the file created date
 6. regenerate the sequence numbers for the group <-- Note this occurs on the whole group, regardless of the directory the file currently resides in
@@ -233,11 +239,14 @@ Example:
 
 ## The `rename` command
 
-The `rename` command will let you batch rename files like no other tool. You can quickly strip common prefixes, suffixes, and exact parts of the filenames.
+The `rename` command will let you batch rename files like no other tool, seriously! You can quickly strip common prefixes, suffixes, and exact parts of the filenames, as well as apply any regex replacements you want. By default, in case a filename ends up clashing with other files in the same directory, that whole directory will be disallowed to make any changes. The list of clashes will be nicely formatted and printed, so you can manually check them. And you can optionally allow changes to other files in the same directory, removing only the clashes, if you find it safe.
 
 1. strip parts of the filenames, either before, after, or exactly a certain string
-2. print the resulting changes to the filenames, and ask for confirmation
-3. if the user confirms, apply the changes to the filenames
+2. apply the regex replacement rules
+3. remove all changes from the whole directory where clashes are detected
+    - optionally removes only the clashes, allowing other changes
+4. print the resulting changes to the filenames, and ask for confirmation
+5. if the user confirms, apply the changes to the filenames
 
 <details><summary>refine rename --help</summary>
 
@@ -251,6 +260,7 @@ Options:
   -a, --strip-after <STR|REGEX>    Remove from this str to the end of the filename; blanks are automatically removed
   -e, --strip-exact <STR|REGEX>    Remove all occurrences of this str in the filename; blanks are automatically removed
   -r, --replace <{STR|REGEX}=STR>  Replace all occurrences of one str by another; applied in order and after the strip rules
+  -c, --clashes                    Allow changes in directories where clashes are detected
   -y, --yes                        Skip the confirmation prompt, useful for automation
   -h, --help                       Print help
 
@@ -271,8 +281,11 @@ Example:
 ❯ refine rename ~/media /Volumes/External -b "^\d+_" -r '([^\.]*?)\.=$1 '
 ```
 
-## Changelog highlights
+## Changelog
 
+<details><summary>(click to expand)</summary>
+
+- 0.14.0 Jul 11, 2024: rename: disallow by default changes in directories where clashes are detected, including new --clashes option to allow them
 - 0.13.0 Jul 10, 2024: rebuild: new replace feature, rebuild, rename: make strip options remove `.` and `_`, global: include and exclude options do not check extensions, dupes: remove case option.
 - 0.12.0 Jul 09, 2024: global: new --dir-in and --dir-out options.
 - 0.11.0 Jul 08, 2024: new `rename` command, rebuild, rename: improve strip exact.
@@ -291,6 +304,8 @@ Example:
 - 0.1.1 May 27, 2022: samples the center of the files, which seems to fix false positives.
 - 0.1.0 May 25, 2022: first release, detects duplicated files, simple sampling strategy (1KB from
   the start of the files).
+
+</details>
 
 ## License
 
