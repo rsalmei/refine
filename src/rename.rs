@@ -4,6 +4,7 @@ use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
 use regex::Regex;
 use std::borrow::Cow;
+use std::collections::HashMap;
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
@@ -21,6 +22,9 @@ pub struct Rename {
     ///  Replace all occurrences of one str by another; applied in order and after the strip rules.
     #[arg(short, long, value_name = "{STR|REGEX}=STR", allow_hyphen_values = true, value_parser = utils::parse_key_value::<String, String>)]
     pub replace: Vec<(String, String)>,
+    /// Allow changes in directories where clashes are detected.
+    #[arg(short, long)]
+    pub clashes: bool,
     /// Skip the confirmation prompt, useful for automation.
     #[arg(short, long)]
     pub yes: bool,
@@ -51,7 +55,7 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
     utils::strip_names(&mut medias, StripPos::After, &opt().strip_after)?;
     utils::strip_names(&mut medias, StripPos::Exact, &opt().strip_exact)?;
 
-    // step: apply replace rules.
+    // step: apply replacement rules.
     for (k, v) in &opt().replace {
         let re =
             Regex::new(&format!("(?i){k}")).with_context(|| format!("compiling regex: {k:?}"))?;
@@ -68,14 +72,59 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
     let total = medias.len();
     let mut warnings = utils::remove_cleared(&mut medias);
 
-    // step: settle changes, and display the results.
+    // step: re-include extension in the names.
     medias
         .iter_mut()
         .filter(|m| !m.ext.is_empty())
         .try_for_each(|m| write!(m.wname, ".{}", m.ext))?;
-    medias.sort_unstable_by(|a, b| a.path.cmp(&b.path));
+
+    // step: disallow changes in directories where clashes are detected.
+    medias.sort_unstable_by(|m, n| {
+        (m.path.parent(), &m.path.file_name()).cmp(&(n.path.parent(), &n.path.file_name()))
+    });
+    medias
+        .chunk_by_mut(|m, n| m.path.parent() == n.path.parent())
+        .filter(|_| utils::is_running())
+        .for_each(|g| {
+            let path = g[0].path.parent().unwrap_or(Path::new("/")).to_owned();
+            let mut clashes = HashMap::with_capacity(g.len());
+            g.iter().for_each(|m| {
+                clashes
+                    .entry(&m.wname)
+                    .or_insert_with(Vec::new)
+                    .push(&m.path)
+            });
+            clashes.retain(|_, v| v.len() > 1);
+            if !clashes.is_empty() {
+                eprintln!("warning: names clash in: {}", path.display());
+                let mut clashes = clashes.into_iter().collect::<Vec<_>>();
+                clashes.sort_by(|(k1, _), (k2, _)| k1.cmp(k2));
+                clashes.iter().for_each(|(k, v)| {
+                    let list = v
+                        .iter()
+                        .map(|p| p.file_name().unwrap().to_str().unwrap())
+                        .filter(|f| k != f)
+                        .collect::<Vec<_>>();
+                    warnings += list.len();
+                    let exists = if v.len() != list.len() { " exists" } else { "" };
+                    eprintln!("  > {} --> {k}{exists}", list.join(", "));
+                });
+                match opt().clashes {
+                    false => g.iter_mut().for_each(|m| m.wname.clear()),
+                    true => {
+                        let keys = clashes.iter().map(|&(k, _)| k.clone()).collect::<Vec<_>>();
+                        g.iter_mut()
+                            .filter(|m| keys.contains(&m.wname))
+                            .for_each(|m| m.wname.clear());
+                    }
+                }
+            }
+        });
+
+    // step: settle changes, and display the results.
     let mut changes = medias
         .into_iter()
+        .filter(|m| !m.wname.is_empty()) // new clash detection.
         .filter(|m| m.wname != m.path.file_name().unwrap().to_str().unwrap())
         .inspect(|m| {
             println!("{} --> {}", m.path.display(), m.wname);
@@ -112,7 +161,7 @@ impl utils::WorkingName for Media {
     }
 }
 
-impl utils::PathWorkingName for Media{
+impl utils::PathWorkingName for Media {
     fn path(&self) -> &Path {
         &self.path
     }
