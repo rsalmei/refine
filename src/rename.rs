@@ -66,7 +66,7 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
 
     // step: remove medias where the rules cleared the name.
     let total = medias.len();
-    let warnings = utils::remove_cleared(&mut medias);
+    let mut warnings = utils::remove_cleared(&mut medias);
 
     // step: settle changes, and display the results.
     medias
@@ -83,11 +83,12 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
         .collect::<Vec<_>>();
 
     // step: display receipt summary.
-    if !changes.is_empty() || warnings {
+    if !changes.is_empty() || warnings > 0 {
         println!();
     }
     println!("total files: {total}");
     println!("  changes: {}", changes.len());
+    println!("  warnings: {warnings}");
     if changes.is_empty() {
         return Ok(());
     }

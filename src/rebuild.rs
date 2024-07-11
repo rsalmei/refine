@@ -127,11 +127,12 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
         .collect::<Vec<_>>();
 
     // step: display receipt summary.
-    if !changes.is_empty() || warnings {
+    if !changes.is_empty() || warnings > 0 {
         println!();
     }
     println!("total files: {total}");
     println!("  changes: {}", changes.len());
+    println!("  warnings: {warnings}");
     if changes.is_empty() {
         return Ok(());
     }

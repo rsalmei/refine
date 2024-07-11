@@ -62,12 +62,12 @@ pub trait PathWorkingName: WorkingName {
     fn path(&self) -> &Path;
 }
 
-pub fn remove_cleared(medias: &mut Vec<impl PathWorkingName>) -> bool {
+pub fn remove_cleared(medias: &mut Vec<impl PathWorkingName>) -> usize {
     medias.sort_unstable_by(|m, n| m.path().cmp(n.path()));
-    let mut warnings = false;
+    let mut warnings = 0;
     medias.retain_mut(|m| match m.wname().is_empty() {
         true => {
-            warnings = true;
+            warnings += 1;
             eprintln!("warning: rules cleared name: {}", m.path().display());
             false
         }
