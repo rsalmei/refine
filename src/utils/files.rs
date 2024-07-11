@@ -38,7 +38,7 @@ pub trait WorkingName {
 }
 
 pub fn strip_names(medias: &mut [impl WorkingName], pos: StripPos, rules: &[String]) -> Result<()> {
-    const BOUND: &str = r"[-_\.\s()]";
+    const BOUND: &str = r"[-_\.\s]";
     for rule in rules {
         let regex = match pos {
             StripPos::Before => &format!("(?i)^.*{rule}{BOUND}*"),
