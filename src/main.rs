@@ -119,8 +119,8 @@ fn entries(dir: PathBuf) -> Box<dyn Iterator<Item = PathBuf>> {
             .flat_map(move |de| {
                 let path = de.path();
                 match (is_included(&path).unwrap_or_default(), path.is_dir()) {
-                    (true, false) if !args().shallow => Box::new(iter::once(path)),
-                    (true, true) if utils::is_running() => entries(path),
+                    (true, false) => Box::new(iter::once(path)),
+                    (true, true) if !args().shallow && utils::is_running() => entries(path),
                     _ => Box::new(iter::empty()),
                 }
             }),
