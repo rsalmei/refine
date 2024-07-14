@@ -121,6 +121,8 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
             }
         });
 
+    utils::user_aborted()?;
+
     // step: settle changes, and display the results.
     let mut changes = medias
         .into_iter()
