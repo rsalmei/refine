@@ -5,26 +5,42 @@ pub use files::*;
 use regex::Regex;
 use std::collections::HashSet;
 use std::error::Error;
-use std::io;
 use std::io::Write;
 use std::str::FromStr;
 use std::sync::atomic::AtomicBool;
-use std::sync::{atomic, Arc, Mutex, OnceLock};
+use std::sync::{atomic, mpsc, Arc, Mutex, OnceLock};
+use std::time::Duration;
+use std::{io, thread};
 
 /// Prompt the user for confirmation.
-pub fn prompt_yes_no(msg: &str) -> Result<()> {
-    let mut input = String::new();
-    loop {
+pub fn prompt_yes_no(msg: impl Into<Box<str>>) -> Result<()> {
+    let (tx, rx) = mpsc::channel();
+    let msg = msg.into(); // I need ownership of an immutable message here.
+    let fun = move |input: &mut String| {
         user_aborted()?;
         print!("{msg} [y|n]: ");
         io::stdout().flush()?;
         input.clear();
-        io::stdin().read_line(&mut input)?;
-        match input.trim() {
-            _ if !is_running() => continue, // never return Ok or cancelled if the user has aborted.
-            "y" => break Ok(()),
-            "n" => break Err(anyhow!("cancelled")),
-            _ => {}
+        io::stdin().read_line(input)?;
+        Ok(())
+    };
+    thread::spawn(move || {
+        let mut input = String::new();
+        let res = loop {
+            match (fun(&mut input), input.trim()) {
+                (Err(err), _) => break Err(err),
+                (Ok(()), "y") => break Ok(()),
+                (Ok(()), "n") => break Err(anyhow!("cancelled")),
+                _ => {}
+            }
+        };
+        let _ = tx.send(res);
+    });
+
+    loop {
+        match rx.recv_timeout(Duration::from_millis(1000 / 2)) {
+            Ok(res) => break res,
+            Err(_) => user_aborted()?,
         }
     }
 }
