@@ -1,10 +1,10 @@
 use anyhow::{anyhow, Context, Result};
 use regex::Regex;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::OnceLock;
 
-pub fn file_stem_ext(path: &PathBuf) -> Result<(&str, &str)> {
+pub fn file_stem_ext(path: &Path) -> Result<(&str, &str)> {
     let stem = path
         .file_stem()
         .ok_or_else(|| anyhow!("no file name: {path:?}"))?
