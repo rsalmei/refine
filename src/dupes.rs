@@ -1,5 +1,5 @@
 use crate::utils;
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use clap::Args;
 use human_repr::HumanCount;
 use std::cmp::Ordering;
@@ -106,12 +106,8 @@ impl TryFrom<PathBuf> for Media {
 }
 
 fn words(path: &Path) -> Result<Box<[String]>> {
-    let name = utils::strip_sequence(
-        path.file_stem()
-            .ok_or_else(|| anyhow!("no file name: {path:?}"))?
-            .to_str()
-            .ok_or_else(|| anyhow!("file name str: {path:?}"))?,
-    );
+    let (name, _) = utils::file_stem_ext(path)?;
+    let name = utils::strip_sequence(name);
     let mut words = name
         .split(&[' ', '.', '-', '_'])
         .filter(|s| !s.is_empty())
