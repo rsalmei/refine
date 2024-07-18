@@ -12,9 +12,24 @@ It will help you manage your file collections like no other tool! It can scan se
 
 It is blazingly fast and tiny, made 100% in Rust 🦀!
 
+## How to use it
+
+Install `refine` with:
+
+```
+cargo install refine
+```
+
+That's it, and you can then just call it anywhere!
+
 ## What's new
 
 <details><summary>(click to expand)</summary>
+
+### New in 0.15
+
+- nicer rename command output by parent directory
+- new threaded yes/no prompt that can be aborted with CTRL-C
 
 ### New in 0.14
 
@@ -62,16 +77,6 @@ It is blazingly fast and tiny, made 100% in Rust 🦀!
 - rebuild: smaller memory consumption by caching file extensions
 
 </details>
-
-## How to use it
-
-Install `refine` with:
-
-```
-cargo install refine
-```
-
-That's it, and you can then just call it anywhere!
 
 ## Commands
 
@@ -285,25 +290,25 @@ Example:
 
 <details><summary>(click to expand)</summary>
 
+- 0.15.0 Jul 18, 2024: nicer rename command output by parent directory, new threaded yes/no prompt that can be aborted with CTRL-C
 - 0.14.0 Jul 11, 2024: rename: disallow by default changes in directories where clashes are detected, including new --clashes option to allow them
-- 0.13.0 Jul 10, 2024: rebuild: new replace feature, rebuild, rename: make strip options remove `.` and `_`, global: include and exclude options do not check extensions, dupes: remove case option.
-- 0.12.0 Jul 09, 2024: global: new --dir-in and --dir-out options.
-- 0.11.0 Jul 08, 2024: new `rename` command, rebuild, rename: improve strip exact.
-- 0.10.0 Jul 02, 2024: global: new --exclude.
-- 0.9.0 Jul 01, 2024: global: support for CTRL-C.
-- 0.8.0 Jun 30, 2024: new `list` command.
-- 0.7.1 Jun 28, 2024: global: --include is now case-insensitive, rebuild: fix smart detect bug not grouping some files, rebuild: strip rules remove hyphens too.
-- 0.7.0 Jun 27, 2024: global: new --include, rebuild: new --force, rebuild: new interactive mode, rebuild: new --yes, rebuild: auto fix rename errors, rebuild: smaller memory consumption, dupes: improved performance.
-- 0.6.0 Jun 24, 2024: new `rebuild` command, general polishing overall.
-- 0.5.0 Jun 20, 2024: support for shallow scan, verbose mode, dupes cmd ignores repetition systems.
-- 0.4.0 Jun 17, 2024: include `dupes` command, support match case and changing sample size.
-- 0.3.0 Nov 07, 2023: include dedup by both size and name.
-- 0.2.2 Jun 04, 2022: use 2KB sample size.
-- 0.2.1 Jun 04, 2022: improve error handling.
-- 0.2.0 Jun 01, 2022: publish, use split crate `human-repr`.
-- 0.1.1 May 27, 2022: samples the center of the files, which seems to fix false positives.
-- 0.1.0 May 25, 2022: first release, detects duplicated files, simple sampling strategy (1KB from
-  the start of the files).
+- 0.13.0 Jul 10, 2024: rebuild: new replace feature, rebuild, rename: make strip options remove `.` and `_`, global: include and exclude options do not check extensions, dupes: remove case option
+- 0.12.0 Jul 09, 2024: global: new --dir-in and --dir-out options
+- 0.11.0 Jul 08, 2024: new `rename` command, rebuild, rename: improve strip exact
+- 0.10.0 Jul 02, 2024: global: new --exclude
+- 0.9.0 Jul 01, 2024: global: support for CTRL-C
+- 0.8.0 Jun 30, 2024: new `list` command
+- 0.7.1 Jun 28, 2024: global: --include is now case-insensitive, rebuild: fix smart detect bug not grouping some files, rebuild: strip rules remove hyphens too
+- 0.7.0 Jun 27, 2024: global: new --include, rebuild: new --force, rebuild: new interactive mode, rebuild: new --yes, rebuild: auto fix rename errors, rebuild: smaller memory consumption, dupes: improved performance
+- 0.6.0 Jun 24, 2024: new `rebuild` command, general polishing overall
+- 0.5.0 Jun 20, 2024: support for shallow scan, verbose mode, dupes cmd ignores repetition systems
+- 0.4.0 Jun 17, 2024: include `dupes` command, support match case and changing sample size
+- 0.3.0 Nov 07, 2023: include dedup by both size and name
+- 0.2.2 Jun 04, 2022: use 2KB sample size
+- 0.2.1 Jun 04, 2022: improve error handling
+- 0.2.0 Jun 01, 2022: publish, use split crate `human-repr`
+- 0.1.1 May 27, 2022: samples the center of the files, which seems to fix false positives
+- 0.1.0 May 25, 2022: first release, detects duplicated files, simple sampling strategy (1KB from the start of the files)
 
 </details>
 
