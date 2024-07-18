@@ -123,15 +123,26 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
 
     utils::user_aborted()?;
 
-    // step: settle changes, and display the results.
+    // step: settle changes.
     let mut changes = medias
         .into_iter()
         .filter(|m| !m.wname.is_empty()) // new clash detection.
         .filter(|m| m.wname != m.path.file_name().unwrap().to_str().unwrap())
-        .inspect(|m| {
-            println!("{} --> {}", m.path.display(), m.wname);
-        })
         .collect::<Vec<_>>();
+
+    // step: display the results by parent directory.
+    changes
+        .chunk_by(|m, n| m.path.parent() == n.path.parent())
+        .for_each(|g| {
+            println!("{}:", g[0].path.parent().unwrap().display());
+            g.iter().for_each(|m| {
+                println!(
+                    "  {} --> {}",
+                    m.path.file_name().unwrap().to_str().unwrap(),
+                    m.wname
+                )
+            });
+        });
 
     // step: display receipt summary.
     if !changes.is_empty() || warnings > 0 {
