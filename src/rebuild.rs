@@ -194,15 +194,15 @@ impl utils::WorkingName for Media {
     }
 }
 
-impl utils::PathWorkingName for Media {
+impl utils::OriginalPath for Media {
     fn path(&self) -> &Path {
         &self.path
     }
 }
 
-impl utils::NewNamePathWorkingName for Media {
-    fn new_name(&self) -> &str {
-        &self.new_name
+impl utils::NewPath for Media {
+    fn new_path(&self) -> PathBuf {
+        self.path.with_file_name(&self.new_name)
     }
 }
 
