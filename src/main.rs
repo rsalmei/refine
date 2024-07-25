@@ -112,7 +112,7 @@ fn entries(dir: PathBuf) -> Box<dyn Iterator<Item = PathBuf>> {
         Ok(rd) => Box::new(
             rd.inspect(move |r| {
                 if let Err(err) = r {
-                    eprintln!("error: read entry {}: {err:?}", dir.display());
+                    eprintln!("error: read entry {}: {err}", dir.display());
                 }
             })
             .flatten()
@@ -126,7 +126,7 @@ fn entries(dir: PathBuf) -> Box<dyn Iterator<Item = PathBuf>> {
             }),
         ),
         Err(err) => {
-            eprintln!("error: read dir {}: {err:?}", dir.display());
+            eprintln!("error: read dir {}: {err}", dir.display());
             Box::new(iter::empty())
         }
     }
@@ -134,13 +134,13 @@ fn entries(dir: PathBuf) -> Box<dyn Iterator<Item = PathBuf>> {
 
 fn gen_medias<T>(files: impl Iterator<Item = PathBuf>) -> Vec<T>
 where
-    T: TryFrom<PathBuf, Error: fmt::Debug>,
+    T: TryFrom<PathBuf, Error: fmt::Display>,
 {
     files
         .map(|p| T::try_from(p))
         .inspect(|m| {
             if let Err(err) = m {
-                eprintln!("error: load media: {err:?}");
+                eprintln!("error: load media: {err}");
             }
         })
         .flatten()
