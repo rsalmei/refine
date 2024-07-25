@@ -111,3 +111,15 @@ pub fn aborted(cond: bool) -> &'static str {
         .then_some(" (partial, aborted)")
         .unwrap_or_default()
 }
+
+#[macro_export]
+macro_rules! opt {
+    ($opt:ident) => {
+        fn opt() -> &'static $opt {
+            match &$crate::args().cmd {
+                $crate::Command::$opt(opt) => opt,
+                _ => unreachable!(),
+            }
+        }
+    };
+}
