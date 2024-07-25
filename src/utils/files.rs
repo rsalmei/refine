@@ -4,13 +4,18 @@ use std::fs;
 use std::path::Path;
 use std::sync::LazyLock;
 
+/// Get the file stem and extension from a path.
 pub fn file_stem_ext(path: &Path) -> Result<(&str, &str)> {
     let stem = path
         .file_stem()
         .ok_or_else(|| anyhow!("no file name: {path:?}"))?
         .to_str()
-        .ok_or_else(|| anyhow!("file name str: {path:?}"))?;
-    let ext = path.extension().unwrap_or_default().to_str().unwrap_or("");
+        .ok_or_else(|| anyhow!("no UTF-8 file name: {path:?}"))?;
+    let ext = path
+        .extension()
+        .unwrap_or_default()
+        .to_str()
+        .ok_or_else(|| anyhow!("no UTF-8 extension: {path:?}"))?;
     Ok((stem, ext))
 }
 
