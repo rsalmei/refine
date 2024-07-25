@@ -8,7 +8,7 @@ use std::collections::HashSet;
 use std::fmt::Write;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::OnceLock;
+use std::sync::LazyLock;
 use std::time::SystemTime;
 
 #[derive(Debug, Args)]
@@ -90,11 +90,10 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
 
     // step: smart detect.
     if !opt().no_smart_detect {
-        static RE: OnceLock<Regex> = OnceLock::new();
-        let re = RE.get_or_init(|| Regex::new(r"[\s_]+").unwrap());
+        static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[\s_]+").unwrap());
 
         medias.iter_mut().for_each(|m| {
-            if let Cow::Owned(x) = re.replace_all(&m.wname, "") {
+            if let Cow::Owned(x) = RE.replace_all(&m.wname, "") {
                 m.smart_group = Some(x);
             }
         });

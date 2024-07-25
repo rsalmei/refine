@@ -2,7 +2,7 @@ use anyhow::{anyhow, Context, Result};
 use regex::Regex;
 use std::fs;
 use std::path::Path;
-use std::sync::OnceLock;
+use std::sync::LazyLock;
 
 pub fn file_stem_ext(path: &Path) -> Result<(&str, &str)> {
     let stem = path
@@ -16,14 +16,12 @@ pub fn file_stem_ext(path: &Path) -> Result<(&str, &str)> {
 
 /// Strip sequence numbers from a filename.
 pub fn strip_sequence(name: &str) -> &str {
-    static RE_MULTI_MACOS: OnceLock<Regex> = OnceLock::new();
-    static RE_MULTI_LOCAL: OnceLock<Regex> = OnceLock::new();
-    let rem = RE_MULTI_MACOS.get_or_init(|| Regex::new(r" copy( \d+)?$").unwrap());
-    let rel = RE_MULTI_LOCAL.get_or_init(|| Regex::new(r"-\d+$").unwrap());
+    static REM: LazyLock<Regex> = LazyLock::new(|| Regex::new(r" copy( \d+)?$").unwrap());
+    static REL: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"-\d+$").unwrap());
 
     // replace_all() would allocate a new string, which would be a waste.
-    let name = rem.split(name).next().unwrap(); // even if the name is " copy", this returns an empty str.
-    rel.split(name).next().unwrap() // same as above, even if the name is "-1", this returns an empty str.
+    let name = REM.split(name).next().unwrap(); // even if the name is " copy", this returns an empty str.
+    REL.split(name).next().unwrap() // same as above, even if the name is "-1", this returns an empty str.
 }
 
 #[derive(Debug)]

@@ -8,7 +8,7 @@ use std::error::Error;
 use std::io::Write;
 use std::str::FromStr;
 use std::sync::atomic::AtomicBool;
-use std::sync::{atomic, mpsc, Arc, Mutex, OnceLock};
+use std::sync::{atomic, mpsc, Arc, LazyLock, Mutex, OnceLock};
 use std::time::Duration;
 use std::{io, thread};
 
@@ -47,10 +47,9 @@ pub fn prompt_yes_no(msg: impl Into<Box<str>>) -> Result<()> {
 
 /// Intern a string, to prevent duplicates and redundant allocations.
 pub fn intern(text: &str) -> &'static str {
-    static CACHE: OnceLock<Mutex<HashSet<&'static str>>> = OnceLock::new();
-    let m = CACHE.get_or_init(Default::default);
+    static CACHE: LazyLock<Mutex<HashSet<&'static str>>> = LazyLock::new(Default::default);
 
-    let mut cache = m.lock().unwrap();
+    let mut cache = CACHE.lock().unwrap();
     match cache.get(text) {
         Some(x) => x,
         None => {
