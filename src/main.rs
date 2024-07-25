@@ -20,7 +20,7 @@ struct Args {
     #[arg(global = true, help_heading = Some("Global"))]
     paths: Vec<PathBuf>,
     /// Include only these files; checked against filename without extension, case-insensitive.
-    #[arg(short, long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
+    #[arg(short = 'i', long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     include: Option<String>,
     /// Exclude these files; checked against filename without extension, case-insensitive.
     #[arg(short = 'x', long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
@@ -32,7 +32,7 @@ struct Args {
     #[arg(long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     dir_ex: Option<String>,
     /// Do not recurse into subdirectories.
-    #[arg(long, global = true, help_heading = Some("Global"))]
+    #[arg(short = 'w', long, global = true, help_heading = Some("Global"))]
     shallow: bool,
 }
 

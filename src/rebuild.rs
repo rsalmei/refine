@@ -27,10 +27,10 @@ pub struct Rebuild {
     #[arg(short = 's', long)]
     pub no_smart_detect: bool,
     /// Easily set filenames for new files. BEWARE: use only on already organized collections.
-    #[arg(short, long, value_name = "STR", value_parser = NonEmptyStringValueParser::new())]
+    #[arg(short = 'f', long, value_name = "STR", value_parser = NonEmptyStringValueParser::new())]
     pub force: Option<String>,
     /// Skip the confirmation prompt, useful for automation.
-    #[arg(short, long)]
+    #[arg(short = 'y', long)]
     pub yes: bool,
 }
 
