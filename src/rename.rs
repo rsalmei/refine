@@ -1,3 +1,4 @@
+use crate::opt;
 use crate::utils::{self, StripPos};
 use anyhow::{Context, Result};
 use clap::builder::NonEmptyStringValueParser;
@@ -30,13 +31,6 @@ pub struct Rename {
     pub yes: bool,
 }
 
-fn opt() -> &'static Rename {
-    match &super::args().cmd {
-        super::Command::Rename(opt) => opt,
-        _ => unreachable!(),
-    }
-}
-
 #[derive(Debug)]
 pub struct Media {
     /// The original path to the file.
@@ -46,6 +40,8 @@ pub struct Media {
     /// A cached version of the file extension.
     ext: &'static str,
 }
+
+opt!(Rename);
 
 pub fn run(mut medias: Vec<Media>) -> Result<()> {
     println!("=> Renaming files...\n");

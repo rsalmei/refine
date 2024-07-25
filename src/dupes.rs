@@ -1,4 +1,4 @@
-use crate::utils;
+use crate::{opt, utils};
 use anyhow::Result;
 use clap::Args;
 use human_repr::HumanCount;
@@ -16,13 +16,6 @@ pub struct Dupes {
     pub sample: usize,
 }
 
-fn opt() -> &'static Dupes {
-    match &super::args().cmd {
-        super::Command::Dupes(opt) => opt,
-        _ => unreachable!(),
-    }
-}
-
 #[derive(Debug)]
 pub struct Media {
     path: PathBuf,
@@ -30,6 +23,8 @@ pub struct Media {
     words: Box<[String]>,
     sample: Option<Option<Box<[u8]>>>, // only populated if needed, and double to remember when already tried.
 }
+
+opt!(Dupes);
 
 pub fn run(mut medias: Vec<Media>) -> Result<()> {
     println!("=> Detecting duplicate files...\n");

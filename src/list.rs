@@ -1,4 +1,4 @@
-use crate::utils;
+use crate::opt;
 use anyhow::Result;
 use clap::{Args, ValueEnum};
 use human_repr::HumanCount;
@@ -23,19 +23,14 @@ pub enum By {
     Path,
 }
 
-fn opt() -> &'static List {
-    match &super::args().cmd {
-        super::Command::List(opt) => opt,
-        _ => unreachable!(),
-    }
-}
-
 #[derive(Debug)]
 pub struct Media {
     path: PathBuf,
     name: String,
     size: u64,
 }
+
+opt!(List);
 
 pub fn run(mut medias: Vec<Media>) -> Result<()> {
     println!("=> Listing files...\n");

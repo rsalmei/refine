@@ -1,3 +1,4 @@
+use crate::opt;
 use crate::utils::{self, StripPos};
 use anyhow::Result;
 use clap::builder::NonEmptyStringValueParser;
@@ -33,13 +34,6 @@ pub struct Rebuild {
     pub yes: bool,
 }
 
-fn opt() -> &'static Rebuild {
-    match &super::args().cmd {
-        super::Command::Rebuild(opt) => opt,
-        _ => unreachable!(),
-    }
-}
-
 #[derive(Debug)]
 pub struct Media {
     /// The original path to the file.
@@ -55,6 +49,8 @@ pub struct Media {
     /// The creation time of the file.
     ts: SystemTime,
 }
+
+opt!(Rebuild);
 
 pub fn run(mut medias: Vec<Media>) -> Result<()> {
     println!("=> Rebuilding files...\n");
