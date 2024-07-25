@@ -98,7 +98,7 @@ fn entries(dir: PathBuf) -> Box<dyn Iterator<Item = PathBuf>> {
                 && re_in.map_or(true, |re_in| re_in.is_match(s))
         }
 
-        let name = path.file_stem()?.to_str()?;
+        let (name, ext) = utils::file_stem_ext(path).ok()?; // discards invalid UTF-8 names.
         (!name.starts_with('.')).then_some(())?; // exclude hidden files and folders.
 
         Some(match path.is_dir() {
