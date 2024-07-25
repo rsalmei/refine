@@ -1,4 +1,5 @@
 mod dupes;
+mod join;
 mod list;
 mod rebuild;
 mod rename;
@@ -19,12 +20,18 @@ struct Args {
     /// Paths to scan.
     #[arg(global = true, help_heading = Some("Global"))]
     paths: Vec<PathBuf>,
-    /// Include only these files; checked against filename without extension, case-insensitive.
+    /// Include only these filenames; without extension, case-insensitive.
     #[arg(short = 'i', long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     include: Option<String>,
-    /// Exclude these files; checked against filename without extension, case-insensitive.
+    /// Exclude these filenames; without extension, case-insensitive.
     #[arg(short = 'x', long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     exclude: Option<String>,
+    /// Include only these extensions; case-insensitive.
+    #[arg(short = 'I', long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
+    ext_in: Option<String>,
+    /// Exclude these extensions; case-insensitive.
+    #[arg(short = 'X', long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
+    ext_ex: Option<String>,
     /// Include only these subdirectories; case-insensitive.
     #[arg(long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     dir_in: Option<String>,
@@ -46,10 +53,14 @@ enum Command {
     List(list::List),
     /// Rename files in batch, according to the given rules.
     Rename(rename::Rename),
+    /// Join all files into the same directory.
+    Join(join::Join),
 }
 
 static RE_IN: OnceLock<Regex> = OnceLock::new();
 static RE_EX: OnceLock<Regex> = OnceLock::new();
+static RE_EXT_IN: OnceLock<Regex> = OnceLock::new();
+static RE_EXT_EX: OnceLock<Regex> = OnceLock::new();
 static RE_DIR_IN: OnceLock<Regex> = OnceLock::new();
 static RE_DIR_EX: OnceLock<Regex> = OnceLock::new();
 
@@ -60,9 +71,11 @@ fn args() -> &'static Args {
 
 fn main() {
     ARGS.set(Args::parse()).unwrap();
-    println!("Refine: v{}", env!("CARGO_PKG_VERSION"));
+    println!("Refine v{}", env!("CARGO_PKG_VERSION"));
     utils::set_re(&args().include, &RE_IN, "include");
     utils::set_re(&args().exclude, &RE_EX, "exclude");
+    utils::set_re(&args().ext_in, &RE_EXT_IN, "ext_in");
+    utils::set_re(&args().ext_ex, &RE_EXT_EX, "ext_ex");
     utils::set_re(&args().dir_in, &RE_DIR_IN, "dir_in");
     utils::set_re(&args().dir_ex, &RE_DIR_EX, "dir_ex");
 
@@ -85,6 +98,7 @@ fn main() {
         Command::Rebuild(_) => rebuild::run(gen_medias(files)),
         Command::List(_) => list::run(gen_medias(files)),
         Command::Rename(_) => rename::run(gen_medias(files)),
+        Command::Join(_) => join::run(gen_medias(files)),
     } {
         eprintln!("error: {err:?}");
         std::process::exit(1);
@@ -102,8 +116,13 @@ fn entries(dir: PathBuf) -> Box<dyn Iterator<Item = PathBuf>> {
         (!name.starts_with('.')).then_some(())?; // exclude hidden files and folders.
 
         Some(match path.is_dir() {
-            false => is_match(name, RE_IN.get(), RE_EX.get()),
-            true => is_match(path.to_str()?, RE_DIR_IN.get(), RE_DIR_EX.get()),
+            false => {
+                // files are checked for name, extension, and parent directory.
+                is_match(name, RE_IN.get(), RE_EX.get())
+                    && is_match(ext, RE_EXT_IN.get(), RE_EXT_EX.get())
+                    && is_match(path.parent()?.to_str()?, RE_DIR_IN.get(), RE_DIR_EX.get())
+            }
+            true => true, // include all directories that are not hidden, so I can find included subdirectories.
         })
     }
 
