@@ -26,7 +26,6 @@ pub enum By {
 #[derive(Debug)]
 pub struct Media {
     path: PathBuf,
-    name: String,
     size: u64,
 }
 
@@ -36,7 +35,7 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
     println!("=> Listing files...\n");
 
     let compare = match opt().by {
-        By::Name => |m: &Media, n: &Media| m.name.cmp(&n.name),
+        By::Name => |m: &Media, n: &Media| m.path.file_name().cmp(&n.path.file_name()),
         By::Size => |m: &Media, n: &Media| m.size.cmp(&n.size),
         By::Path => |m: &Media, n: &Media| m.path.cmp(&n.path),
     };
@@ -65,9 +64,7 @@ impl TryFrom<PathBuf> for Media {
     type Error = anyhow::Error;
 
     fn try_from(path: PathBuf) -> Result<Self> {
-        let (name, _) = utils::file_stem_ext(&path)?;
         Ok(Self {
-            name: name.to_lowercase(),
             size: fs::metadata(&path)?.len(),
             path,
         })
