@@ -33,9 +33,8 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
     let by_size = detect_duplicates(
         &mut medias,
         |m| &m.size,
-        |&size, mut acc| {
+        |&size, acc| {
             println!("\n{} x{}", size.human_count_bytes(), acc.len());
-            acc.sort_unstable_by(|m, n| m.path.cmp(&n.path));
             acc.iter().for_each(|&m| println!("{}", m.path.display()));
         },
     );
@@ -45,9 +44,8 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
     let by_name = detect_duplicates(
         &mut medias,
         |m| &m.words,
-        |words, mut acc| {
+        |words, acc| {
             println!("\n{:?} x{}", words, acc.len());
-            acc.sort_unstable_by(|m, n| m.path.cmp(&n.path));
             acc.iter()
                 .for_each(|m| println!("{}: {}", m.size.human_count_bytes(), m.path.display()));
         },
@@ -82,7 +80,10 @@ where
                 .for_each(|(m, sample)| split.entry(sample).or_insert_with(Vec::new).push(m));
             split.into_values().filter(|v| v.len() > 1)
         })
-        .map(|g| show(grouping(g[0]), g))
+        .map(|mut g| {
+            g.sort_unstable_by(|m, n| m.path.cmp(&n.path));
+            show(grouping(g[0]), g)
+        })
         .count()
 }
 
