@@ -2,7 +2,6 @@ use crate::{opt, utils};
 use anyhow::Result;
 use clap::Args;
 use human_repr::HumanCount;
-use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
@@ -36,7 +35,7 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
         |m| &m.size,
         |&size, mut acc| {
             println!("\n{} x{}", size.human_count_bytes(), acc.len());
-            acc.sort_unstable();
+            acc.sort_unstable_by(|m, n| m.path.cmp(&n.path));
             acc.iter().for_each(|&m| println!("{}", m.path.display()));
         },
     );
@@ -48,7 +47,7 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
         |m| &m.words,
         |words, mut acc| {
             println!("\n{:?} x{}", words, acc.len());
-            acc.sort_unstable();
+            acc.sort_unstable_by(|m, n| m.path.cmp(&n.path));
             acc.iter()
                 .for_each(|m| println!("{}: {}", m.size.human_count_bytes(), m.path.display()));
         },
@@ -140,25 +139,5 @@ impl Media {
                 }
             };
         }
-    }
-}
-
-impl PartialEq for Media {
-    fn eq(&self, other: &Self) -> bool {
-        self.path.eq(&other.path)
-    }
-}
-
-impl Eq for Media {}
-
-impl PartialOrd for Media {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for Media {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.path.cmp(&other.path)
     }
 }
