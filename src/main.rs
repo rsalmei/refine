@@ -145,7 +145,7 @@ fn entries(dir: PathBuf) -> Box<dyn Iterator<Item = PathBuf>> {
             }),
         ),
         Err(err) => {
-            eprintln!("error: read dir {}: {err}", dir.display());
+            eprintln!("error: read dir {dir:?}: {err}");
             Box::new(iter::empty())
         }
     }
