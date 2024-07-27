@@ -156,11 +156,11 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
         utils::prompt_yes_no("apply changes?")?;
     }
     utils::rename_consuming(&mut changes);
-    if changes.is_empty() {
-        println!("done");
-        return Ok(());
+
+    match changes.is_empty() {
+        true => println!("done"),
+        false => println!("found {} errors", changes.len()),
     }
-    println!("found {} errors", changes.len());
     Ok(())
 }
 

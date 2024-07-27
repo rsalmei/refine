@@ -34,6 +34,7 @@ opt!(List);
 pub fn run(mut medias: Vec<Media>) -> Result<()> {
     println!("=> Listing files...\n");
 
+    // step: sort the files by name, size, or path.
     let compare = match opt().by {
         By::Name => |m: &Media, n: &Media| m.path.file_name().cmp(&n.path.file_name()),
         By::Size => |m: &Media, n: &Media| m.size.cmp(&n.size),
@@ -44,6 +45,8 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
         false => &compare,
     };
     medias.sort_unstable_by(compare);
+
+    // step: display the results.
     medias.iter().for_each(|m| {
         println!(
             "{:>7} {}",
@@ -52,11 +55,13 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
         )
     });
 
+    // step: display receipt summary.
     if !medias.is_empty() {
         println!();
     }
     let size = medias.iter().map(|m| m.size).sum::<u64>();
     println!("total files: {} ({})", medias.len(), size.human_count("B"));
+
     Ok(())
 }
 
