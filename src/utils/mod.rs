@@ -18,7 +18,7 @@ pub fn prompt_yes_no(msg: impl Into<Box<str>>) -> Result<()> {
     let msg = msg.into(); // I need ownership of an immutable message here.
     let fun = move |input: &mut String| {
         user_aborted()?;
-        print!("{msg} [y|n]: ");
+        print!("{msg} [y|n|q]: ");
         io::stdout().flush()?;
         input.clear();
         io::stdin().read_line(input)?;
@@ -30,7 +30,7 @@ pub fn prompt_yes_no(msg: impl Into<Box<str>>) -> Result<()> {
             match (fun(&mut input), input.trim()) {
                 (Err(err), _) => break Err(err),
                 (Ok(()), "y") => break Ok(()),
-                (Ok(()), "n") => break Err(anyhow!("cancelled")),
+                (Ok(()), "n" | "q") => break Err(anyhow!("cancelled")),
                 _ => {}
             }
         };
