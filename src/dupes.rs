@@ -88,19 +88,6 @@ where
         .count()
 }
 
-impl TryFrom<PathBuf> for Media {
-    type Error = anyhow::Error;
-
-    fn try_from(path: PathBuf) -> Result<Self> {
-        Ok(Media {
-            size: fs::metadata(&path)?.len(),
-            words: words(&path)?,
-            path, // I can use path above before moving it here!
-            sample: None,
-        })
-    }
-}
-
 fn words(path: &Path) -> Result<Box<[String]>> {
     let (name, _) = utils::file_stem_ext(path).unwrap(); // files were already checked.
     let name = utils::strip_sequence(name);
@@ -141,5 +128,18 @@ impl Media {
                 }
             };
         }
+    }
+}
+
+impl TryFrom<PathBuf> for Media {
+    type Error = anyhow::Error;
+
+    fn try_from(path: PathBuf) -> Result<Self> {
+        Ok(Media {
+            size: fs::metadata(&path)?.len(),
+            words: words(&path)?,
+            path, // I can use path above before moving it here!
+            sample: None,
+        })
     }
 }
