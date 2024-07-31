@@ -4,19 +4,31 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
 
-/// Get the file stem and extension from a path.
-pub fn file_stem_ext(path: &Path) -> Result<(&str, &str)> {
-    let stem = path
-        .file_stem()
-        .ok_or_else(|| anyhow!("no file name: {path:?}"))?
-        .to_str()
-        .ok_or_else(|| anyhow!("no UTF-8 file name: {path:?}"))?;
-    let ext = path
-        .extension()
-        .unwrap_or_default()
-        .to_str()
-        .ok_or_else(|| anyhow!("no UTF-8 extension: {path:?}"))?;
-    Ok((stem, ext))
+/// Get the file stem and extension from files, or name from directories.
+pub fn filename_parts(path: &Path) -> Result<(&str, &str)> {
+    match path.is_dir() {
+        true => {
+            let name = path
+                .file_name()
+                .ok_or_else(|| anyhow!("no file name: {path:?}"))?
+                .to_str()
+                .ok_or_else(|| anyhow!("no UTF-8 file name: {path:?}"))?;
+            Ok((name, ""))
+        }
+        false => {
+            let stem = path
+                .file_stem()
+                .ok_or_else(|| anyhow!("no file stem: {path:?}"))?
+                .to_str()
+                .ok_or_else(|| anyhow!("no UTF-8 file stem: {path:?}"))?;
+            let ext = path
+                .extension()
+                .unwrap_or_default()
+                .to_str()
+                .ok_or_else(|| anyhow!("no UTF-8 extension: {path:?}"))?;
+            Ok((stem, ext))
+        }
+    }
 }
 
 /// Strip sequence numbers from a filename.
