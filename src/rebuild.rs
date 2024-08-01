@@ -136,7 +136,7 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
     if !opt().yes {
         utils::prompt_yes_no("apply changes?")?;
     }
-    utils::rename_consuming(&mut changes);
+    utils::rename_move_consuming(&mut changes);
     if changes.is_empty() {
         println!("done");
         return Ok(());
@@ -152,7 +152,7 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
             Err(err) => eprintln!("error: {err:?}: {:?} --> {temp:?}", m.path),
         }
     });
-    utils::rename_consuming(&mut changes);
+    utils::rename_move_consuming(&mut changes);
 
     match changes.is_empty() {
         true => println!("done"),
