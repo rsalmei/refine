@@ -20,10 +20,10 @@ struct Args {
     /// Paths to scan.
     #[arg(global = true, help_heading = Some("Global"))]
     paths: Vec<PathBuf>,
-    /// Include only these filenames; without extension, case-insensitive.
+    /// Include only these files and directories; checked without extension.
     #[arg(short = 'i', long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     include: Option<String>,
-    /// Exclude these filenames; without extension, case-insensitive.
+    /// Exclude these files and directories; checked without extension.
     #[arg(short = 'x', long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     exclude: Option<String>,
     /// Include only these extensions; case-insensitive.
@@ -115,15 +115,10 @@ fn entries(dir: PathBuf) -> Box<dyn Iterator<Item = PathBuf>> {
         let (name, ext) = utils::file_stem_ext(path).ok()?; // discards invalid UTF-8 names.
         (!name.starts_with('.')).then_some(())?; // exclude hidden files and folders.
 
-        Some(match path.is_dir() {
-            false => {
-                // files are checked for name, extension, and parent directory.
-                is_match(name, RE_IN.get(), RE_EX.get())
-                    && is_match(ext, RE_EXT_IN.get(), RE_EXT_EX.get())
-                    && is_match(path.parent()?.to_str()?, RE_DIR_IN.get(), RE_DIR_EX.get())
-            }
-            true => true, // include all directories that are not hidden, so I can find included subdirectories.
-        })
+        (is_match(name, RE_IN.get(), RE_EX.get()) // applied to both files and directories.
+            && is_match(path.to_str().unwrap(), RE_DIN.get(), RE_DEX.get())
+            && is_match(ext, RE_EIN.get(), RE_EEX.get()))
+        .into()
     }
 
     // now this allows hidden directories, if the user directly asks for them.
