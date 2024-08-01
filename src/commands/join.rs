@@ -13,8 +13,8 @@ pub struct Join {
     #[arg(short = 't', long, value_name = "PATH", default_value = ".")]
     to: PathBuf,
     /// The strategy to use when joining files.
-    #[arg(short = 's', long, value_enum, default_value_t = JoinStrategy::Move)]
-    strategy: JoinStrategy,
+    #[arg(short = 's', long, value_enum, default_value_t = Strategy::Move)]
+    strategy: Strategy,
     /// Force joining even files already in place, i.e., in subdirectories of the target.
     #[arg(short = 'f', long, value_enum)]
     force: bool,
@@ -27,7 +27,7 @@ pub struct Join {
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
-pub enum JoinStrategy {
+pub enum Strategy {
     Move,
     Copy,
 }
@@ -39,7 +39,8 @@ pub struct Media {
 }
 
 static TARGET: OnceLock<Result<PathBuf, PathBuf>> = OnceLock::new();
-options!(Join => EntryKind::DirOrFile);
+
+options!(Join => EntryKind::Either);
 
 pub fn run(mut medias: Vec<Media>) -> Result<()> {
     println!("=> Joining files...\n");
@@ -110,13 +111,13 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
     // step: apply changes, if the user agrees.
     fs::create_dir_all(target).with_context(|| format!("creating {target:?}"))?;
     match opt().strategy {
-        JoinStrategy::Move => utils::rename_move_consuming(&mut medias),
-        JoinStrategy::Copy => utils::copy_consuming(&mut medias),
+        Strategy::Move => utils::rename_move_consuming(&mut medias),
+        Strategy::Copy => utils::copy_consuming(&mut medias),
     };
 
     // step: recover from CrossDevice errors.
     if !medias.is_empty() {
-        if let JoinStrategy::Move = opt().strategy {
+        if let Strategy::Move = opt().strategy {
             println!("attempting to fix {} errors", medias.len());
             utils::cross_move_consuming(&mut medias);
         }
@@ -145,8 +146,8 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
 
     match (medias.is_empty(), opt().strategy) {
         (true, _) => println!("done"),
-        (false, JoinStrategy::Move) => println!("still {} errors, giving up", medias.len()),
-        (false, JoinStrategy::Copy) => println!("found {} errors", medias.len()),
+        (false, Strategy::Move) => println!("still {} errors, giving up", medias.len()),
+        (false, Strategy::Copy) => println!("found {} errors", medias.len()),
     }
     Ok(())
 }
