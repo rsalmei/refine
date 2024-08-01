@@ -88,6 +88,9 @@ fn entries(dir: PathBuf, rm: RecurseMode) -> Box<dyn Iterator<Item = PathBuf>> {
                     (true, Some(false), _) => entries(path, rm),
                     (true, Some(true), Recurse(File)) => entries(path, rm),
                     (true, Some(true), Recurse(Either)) => Box::new(iter::once(path)),
+                    (true, Some(true), Recurse(Both)) => {
+                        Box::new(iter::once(path.to_owned()).chain(entries(path, rm)))
+                    }
                     _ => Box::new(iter::empty()),
                 }
             }),

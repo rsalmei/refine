@@ -6,6 +6,7 @@ use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
 use regex::Regex;
 use std::borrow::Cow;
+use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
@@ -42,10 +43,11 @@ pub struct Media {
     ext: &'static str,
 }
 
-options!(Rename => EntryKind::File);
+options!(Rename => EntryKind::Both);
 
 pub fn run(mut medias: Vec<Media>) -> Result<()> {
     println!("=> Renaming files...\n");
+    let kind = |p: &Path| if p.is_dir() { "/" } else { "" };
 
     // step: apply strip rules.
     utils::strip_names(&mut medias, StripPos::Before, &opt().strip_before)?;
@@ -76,9 +78,7 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
         .try_for_each(|m| write!(m.wname, ".{}", m.ext))?;
 
     // step: disallow changes in directories where clashes are detected.
-    medias.sort_unstable_by(|m, n| {
-        (m.path.parent(), &m.path.file_name()).cmp(&(n.path.parent(), &n.path.file_name()))
-    });
+    medias.sort_unstable_by(|m, n| m.path.cmp(&n.path));
     medias
         .chunk_by_mut(|m, n| m.path.parent() == n.path.parent())
         .filter(|_| utils::is_running())
@@ -93,7 +93,7 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
             });
             clashes.retain(|_, v| v.len() > 1);
             if !clashes.is_empty() {
-                eprintln!("warning: names clash in: {}", path.display());
+                eprintln!("warning: names clash in: {}/", path.display());
                 let mut clashes = clashes.into_iter().collect::<Vec<_>>();
                 clashes.sort_by(|(k1, _), (k2, _)| k1.cmp(k2));
                 clashes.iter().for_each(|(k, v)| {
@@ -128,15 +128,21 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
         .collect::<Vec<_>>();
 
     // step: display the results by parent directory.
+    changes.sort_unstable_by(|m, n| {
+        (Reverse(m.path.components().count()), &m.path)
+            .cmp(&(Reverse(n.path.components().count()), &n.path))
+    });
     changes
         .chunk_by(|m, n| m.path.parent() == n.path.parent())
         .for_each(|g| {
-            println!("{}:", g[0].path.parent().unwrap().display());
+            println!("{}/:", g[0].path.parent().unwrap().display());
             g.iter().for_each(|m| {
                 println!(
-                    "  {} --> {}",
+                    "  {}{} --> {}{}",
                     m.path.file_name().unwrap().to_str().unwrap(),
-                    m.wname
+                    kind(&m.path),
+                    m.wname,
+                    kind(&m.path),
                 )
             });
         });
