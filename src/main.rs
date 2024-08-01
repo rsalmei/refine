@@ -5,6 +5,7 @@ mod utils;
 use clap::builder::NonEmptyStringValueParser;
 use clap::Parser;
 use commands::{dupes, join, list, rebuild, rename, Command};
+use entries::gen_medias;
 use std::path::PathBuf;
 use std::sync::{atomic, Arc, OnceLock};
 
@@ -61,14 +62,14 @@ fn main() {
 
     // lists files from the given paths, or the current directory if no paths were given.
     let cd = args().paths.is_empty().then(|| ".".into());
-    let files = args().paths.iter().cloned().chain(cd).flat_map(entries);
+    let paths = args().paths.iter().cloned().chain(cd);
 
     if let Err(err) = match args().cmd {
-        Command::Dupes(_) => dupes::run(gen_medias(files)),
-        Command::Rebuild(_) => rebuild::run(gen_medias(files)),
-        Command::List(_) => list::run(gen_medias(files)),
-        Command::Rename(_) => rename::run(gen_medias(files)),
-        Command::Join(_) => join::run(gen_medias(files)),
+        Command::Dupes(_) => dupes::run(gen_medias(paths, dupes::KIND)),
+        Command::Rebuild(_) => rebuild::run(gen_medias(paths, rebuild::KIND)),
+        Command::List(_) => list::run(gen_medias(paths, list::KIND)),
+        Command::Rename(_) => rename::run(gen_medias(paths, rename::KIND)),
+        Command::Join(_) => join::run(gen_medias(paths, join::KIND)),
     } {
         eprintln!("error: {err:?}");
         std::process::exit(1);
