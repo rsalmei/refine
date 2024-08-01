@@ -1,13 +1,12 @@
 mod commands;
+mod entries;
 mod utils;
 
 use clap::builder::NonEmptyStringValueParser;
 use clap::Parser;
 use commands::{dupes, join, list, rebuild, rename, Command};
-use regex::Regex;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::{atomic, Arc, OnceLock};
-use std::{fmt, iter};
 
 #[derive(Debug, Parser)]
 #[command(version, about, long_about = None, after_help = "For more information, see https://github.com/rsalmei/refine")]
@@ -40,13 +39,6 @@ struct Args {
     shallow: bool,
 }
 
-re_input!(
-    RE_IN, include; RE_EX, exclude; // general include and exclude (both files and directories).
-    RE_DIN, dir_in; RE_DEX, dir_ex; // directory include and exclude.
-    // RE_FIN, file_in; RE_FEX, file_ex; // file include and exclude.
-    RE_EIN, ext_in; RE_EEX, ext_ex; // extension include and exclude.
-);
-
 static ARGS: OnceLock<Args> = OnceLock::new();
 fn args() -> &'static Args {
     ARGS.get().unwrap()
@@ -55,7 +47,7 @@ fn args() -> &'static Args {
 fn main() {
     ARGS.set(Args::parse()).unwrap();
     println!("Refine v{}", env!("CARGO_PKG_VERSION"));
-    parse_input_regexes();
+    entries::parse_input_regexes();
 
     if let Err(err) = ctrlc::set_handler({
         let running = Arc::clone(utils::running_flag());
@@ -82,69 +74,3 @@ fn main() {
         std::process::exit(1);
     }
 }
-
-fn entries(dir: PathBuf) -> Box<dyn Iterator<Item = PathBuf>> {
-    fn is_included(path: &Path) -> Option<bool> {
-        fn is_match(s: &str, re_in: Option<&Regex>, re_ex: Option<&Regex>) -> bool {
-            re_ex.map_or(true, |re_ex| !re_ex.is_match(s))
-                && re_in.map_or(true, |re_in| re_in.is_match(s))
-        }
-
-        let (name, ext) = utils::file_stem_ext(path).ok()?; // discards invalid UTF-8 names.
-        (!name.starts_with('.')).then_some(())?; // exclude hidden files and folders.
-
-        (is_match(name, RE_IN.get(), RE_EX.get()) // applied to both files and directories.
-            && is_match(path.to_str().unwrap(), RE_DIN.get(), RE_DEX.get())
-            && is_match(ext, RE_EIN.get(), RE_EEX.get()))
-        .into()
-    }
-
-    // now this allows hidden directories, if the user directly asks for them.
-    match std::fs::read_dir(&dir) {
-        Ok(rd) => Box::new(
-            rd.inspect(move |r| {
-                if let Err(err) = r {
-                    eprintln!("error: read entry {}: {err}", dir.display());
-                }
-            })
-            .flatten()
-            .flat_map(move |de| {
-                let path = de.path();
-                match (is_included(&path).unwrap_or_default(), path.is_dir()) {
-                    (true, false) => Box::new(iter::once(path)),
-                    (true, true) if !args().shallow && utils::is_running() => entries(path),
-                    _ => Box::new(iter::empty()),
-                }
-            }),
-        ),
-        Err(err) => {
-            eprintln!("error: read dir {dir:?}: {err}");
-            Box::new(iter::empty())
-        }
-    }
-}
-
-fn gen_medias<T>(files: impl Iterator<Item = PathBuf>) -> Vec<T>
-where
-    T: TryFrom<PathBuf, Error: fmt::Display>,
-{
-    files
-        .map(|p| T::try_from(p))
-        .inspect(|m| {
-            if let Err(err) = m {
-                eprintln!("error: load media: {err}");
-            }
-        })
-        .flatten()
-        .collect()
-}
-
-macro_rules! _re_input {
-    ($($re:ident, $name:ident);+ $(;)?) => {
-        $( static $re: OnceLock<Regex> = OnceLock::new(); )+
-        fn parse_input_regexes() {
-            $( utils::set_re(&args().$name, &$re, stringify!($name)); )+
-        }
-    };
-}
-use _re_input as re_input;
