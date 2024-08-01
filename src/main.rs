@@ -46,8 +46,8 @@ fn args() -> &'static Args {
 }
 
 fn main() {
-    ARGS.set(Args::parse()).unwrap();
     println!("Refine v{}", env!("CARGO_PKG_VERSION"));
+    ARGS.set(Args::parse()).unwrap();
     entries::parse_input_regexes();
 
     if let Err(err) = ctrlc::set_handler({
