@@ -1,8 +1,9 @@
 use anyhow::{anyhow, Context, Result};
 use regex::Regex;
-use std::fs;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
+use std::{fs, io};
 
 /// Get the file stem and extension from files, or name from directories.
 pub fn filename_parts(path: &Path) -> Result<(&str, &str)> {
@@ -96,21 +97,81 @@ pub trait NewPath {
     fn new_path(&self) -> PathBuf;
 }
 
-pub fn rename_consuming(files: &mut Vec<impl OriginalPath + NewPath>) {
+/// Rename files and directories. Works only within the same file system.
+/// Can also be used to move files and directories, when the target path is not the same.
+pub fn rename_move_consuming(medias: &mut Vec<impl OriginalPath + NewPath>) {
+    files_op(medias, silent, |p, q| fs::rename(p, q))
 }
 
-    files.retain(|m| {
-        let dest = m.path().with_file_name(m.new_name());
-        if dest.exists() {
-            eprintln!("error: file already exists: {dest:?}");
+/// Copy files to a new location. Works between file systems.
+pub fn copy_consuming(medias: &mut Vec<impl OriginalPath + NewPath>) {
+    files_op(medias, verbose, |p, q| copy_path(p, q, false, 0))
+}
+
+/// Move files to a new location by copying and removing the original. Works between file systems.
+pub fn cross_move_consuming(medias: &mut Vec<impl OriginalPath + NewPath>) {
+    files_op(medias, verbose, |p, q| copy_path(p, q, true, 0))
+}
+
+fn copy_path(p: &Path, q: &Path, remove_dir: bool, n: usize) -> io::Result<()> {
+    match p.is_dir() {
+        true => fs::create_dir(q).and_then(|()| {
+            verbose(b"d[");
+            let files = fs::read_dir(p)?
+                .flatten()
+                .try_fold(Vec::new(), |mut acc, de| {
+                    let is_dir = de.path().is_dir(); // need to cache is_dir because it goes to the fs again, and copy_path below may delete it.
+                    copy_path(&de.path(), &q.join(de.file_name()), remove_dir, n + 1).map(|()| {
+                        if !is_dir {
+                            verbose(b".");
+                            if remove_dir {
+                                acc.push(de.path())
+                            }
+                        }
+                        acc
+                    })
+                });
+            verbose(b"]");
+            match remove_dir {
+                true => files
+                    .and_then(|files| files.iter().try_for_each(fs::remove_file))
+                    .and_then(|_| fs::remove_dir(p)),
+                false => files.map(|_| ()),
+            }
+        }),
+        false if n == 0 => fs::copy(p, q).and_then(|_| {
+            verbose(b".");
+            fs::remove_file(p)
+        }),
+        false => fs::copy(p, q).map(|_| ()), // this is called recursively by the is_dir case above.
+    }
+}
+
+fn silent(_: &[u8]) {}
+fn verbose(c: &[u8]) {
+    io::stdout().write_all(c).unwrap();
+    io::stdout().flush().unwrap();
+}
+
+type FileOp = fn(&Path, &Path) -> io::Result<()>;
+fn files_op(paths: &mut Vec<impl OriginalPath + NewPath>, notify: fn(&[u8]), op: FileOp) {
+    paths.retain(|m| {
+        let target = m.new_path();
+        if target.exists() {
+            notify(b"-\n");
+            eprintln!("file already exists: {:?} -> {target:?}", m.path());
+            notify(b"\n");
             return true;
         }
-        match fs::rename(m.path(), &dest) {
+        match op(m.path(), &target) {
             Ok(()) => false,
             Err(err) => {
-                eprintln!("error: {err:?}: {:?} --> {:?}", m.path(), m.new_name());
+                notify(b"x\n");
+                eprintln!("error: {err}: {:?} -> {target:?}", m.path());
+                notify(b"\n");
                 true
             }
         }
     });
+    notify(b"\n");
 }
