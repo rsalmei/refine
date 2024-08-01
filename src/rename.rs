@@ -186,7 +186,7 @@ impl TryFrom<PathBuf> for Media {
     type Error = anyhow::Error;
 
     fn try_from(path: PathBuf) -> Result<Self> {
-        let (name, ext) = utils::file_stem_ext(&path).unwrap(); // files were already checked.
+        let (name, ext) = utils::filename_parts(&path).unwrap(); // files were already checked.
         Ok(Media {
             wname: name.trim().to_owned(),
             ext: utils::intern(ext),

@@ -89,7 +89,7 @@ where
 }
 
 fn words(path: &Path) -> Result<Box<[String]>> {
-    let (name, _) = utils::file_stem_ext(path).unwrap(); // files were already checked.
+    let (name, _) = utils::filename_parts(path).unwrap(); // files were already checked.
     let name = utils::strip_sequence(name);
     let mut words = name
         .split(&[' ', '.', '-', '_'])
