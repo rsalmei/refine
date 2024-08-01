@@ -18,16 +18,7 @@ fn main() {
     println!("Refine v{}", env!("CARGO_PKG_VERSION"));
     ARGS.set(Args::parse()).unwrap();
     entries::parse_input_regexes();
-
-    if let Err(err) = ctrlc::set_handler({
-        let running = Arc::clone(utils::running_flag());
-        move || {
-            eprintln!("aborting...");
-            running.store(false, atomic::Ordering::Relaxed);
-        }
-    }) {
-        eprintln!("error: set Ctrl-C handler: {err:?}");
-    }
+    install_ctrlc_handler();
 
     // lists files from the given paths, or the current directory if no paths were given.
     let cd = args().paths.is_empty().then(|| ".".into());
@@ -42,5 +33,17 @@ fn main() {
     } {
         eprintln!("error: {err:?}");
         std::process::exit(1);
+    }
+}
+
+fn install_ctrlc_handler() {
+    if let Err(err) = ctrlc::set_handler({
+        let running = Arc::clone(utils::running_flag());
+        move || {
+            eprintln!("aborting...");
+            running.store(false, atomic::Ordering::Relaxed);
+        }
+    }) {
+        eprintln!("error: set Ctrl-C handler: {err:?}");
     }
 }
