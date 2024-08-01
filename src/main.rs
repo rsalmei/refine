@@ -1,12 +1,9 @@
-mod dupes;
-mod join;
-mod list;
-mod rebuild;
-mod rename;
+mod commands;
 mod utils;
 
 use clap::builder::NonEmptyStringValueParser;
 use clap::{Parser, Subcommand};
+use commands::{dupes, join, list, rebuild, rename};
 use regex::Regex;
 use std::path::{Path, PathBuf};
 use std::sync::{atomic, Arc, OnceLock};
