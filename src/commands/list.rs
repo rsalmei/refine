@@ -1,4 +1,5 @@
-use crate::{options, EntryKind};
+use super::EntryKind;
+use crate::options;
 use anyhow::Result;
 use clap::{Args, ValueEnum};
 use human_repr::HumanCount;

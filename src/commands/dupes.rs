@@ -1,4 +1,5 @@
-use crate::{options, utils, EntryKind};
+use super::EntryKind;
+use crate::{options, utils};
 use anyhow::Result;
 use clap::Args;
 use human_repr::HumanCount;

@@ -1,5 +1,6 @@
+use super::EntryKind;
+use crate::options;
 use crate::utils::{self, StripPos};
-use crate::{options, EntryKind};
 use anyhow::Result;
 use clap::builder::NonEmptyStringValueParser;
 use clap::Args;

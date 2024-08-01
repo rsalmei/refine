@@ -2,8 +2,8 @@ mod commands;
 mod utils;
 
 use clap::builder::NonEmptyStringValueParser;
-use clap::{Parser, Subcommand};
-use commands::{dupes, join, list, rebuild, rename};
+use clap::Parser;
+use commands::{dupes, join, list, rebuild, rename, Command};
 use regex::Regex;
 use std::path::{Path, PathBuf};
 use std::sync::{atomic, Arc, OnceLock};
@@ -38,20 +38,6 @@ struct Args {
     /// Do not recurse into subdirectories.
     #[arg(short = 'w', long, global = true, help_heading = Some("Global"))]
     shallow: bool,
-}
-
-#[derive(Debug, Subcommand)]
-enum Command {
-    /// Find possibly duplicated files by both size and filename.
-    Dupes(dupes::Dupes),
-    /// Rebuild the filenames of media collections intelligently.
-    Rebuild(rebuild::Rebuild),
-    /// List files from the given paths.
-    List(list::List),
-    /// Rename files in batch, according to the given rules.
-    Rename(rename::Rename),
-    /// Join all files into the same directory.
-    Join(join::Join),
 }
 
 re_input!(

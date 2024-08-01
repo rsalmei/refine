@@ -111,18 +111,3 @@ pub fn aborted(cond: bool) -> &'static str {
         .then_some(" (partial, aborted)")
         .unwrap_or_default()
 }
-
-#[macro_export]
-macro_rules! options {
-    ($opt:ident => $conf:expr) => {
-        /// The kind of entry this command expects.
-        pub const KIND: $crate::EntryKind = $conf;
-        /// Retrieves the options given to this command.
-        fn opt() -> &'static $opt {
-            match &$crate::args().cmd {
-                $crate::Command::$opt(opt) => opt,
-                _ => unreachable!(),
-            }
-        }
-    };
-}
