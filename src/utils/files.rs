@@ -59,7 +59,9 @@ pub fn strip_names(medias: &mut [impl WorkingName], pos: StripPos, rules: &[Stri
         let regex = match pos {
             StripPos::Before => &format!("(?i)^.*{rule}{BOUND}*"),
             StripPos::After => &format!("(?i){BOUND}*{rule}.*$"),
-            StripPos::Exact => &format!(r"(?i){BOUND}+{rule}|^{rule}{BOUND}+|{rule}"),
+            StripPos::Exact => {
+                &format!(r"(?i){BOUND}+{rule}$|^{rule}{BOUND}+|{BOUND}+{rule}|{rule}")
+            }
         };
         let re = Regex::new(regex).with_context(|| format!("compiling regex: {rule:?}"))?;
         medias.iter_mut().for_each(|m| {
