@@ -1,5 +1,5 @@
-use crate::opt;
 use crate::utils::{self, StripPos};
+use crate::{options, EntryKind};
 use anyhow::{Context, Result};
 use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
@@ -41,7 +41,7 @@ pub struct Media {
     ext: &'static str,
 }
 
-opt!(Rename);
+options!(Rename => EntryKind::File);
 
 pub fn run(mut medias: Vec<Media>) -> Result<()> {
     println!("=> Renaming files...\n");

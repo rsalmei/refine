@@ -1,4 +1,4 @@
-use crate::{opt, utils};
+use crate::{options, utils, EntryKind};
 use anyhow::Result;
 use clap::Args;
 use human_repr::HumanCount;
@@ -23,7 +23,7 @@ pub struct Media {
     sample: Option<Option<Box<[u8]>>>, // only populated if needed, and double to remember when already tried.
 }
 
-opt!(Dupes);
+options!(Dupes => EntryKind::File);
 
 pub fn run(mut medias: Vec<Media>) -> Result<()> {
     println!("=> Detecting duplicate files...\n");

@@ -1,4 +1,4 @@
-use crate::opt;
+use crate::{options, EntryKind};
 use anyhow::Result;
 use clap::{Args, ValueEnum};
 use human_repr::HumanCount;
@@ -29,7 +29,7 @@ pub struct Media {
     size: u64,
 }
 
-opt!(List);
+options!(List => EntryKind::File);
 
 pub fn run(mut medias: Vec<Media>) -> Result<()> {
     println!("=> Listing files...\n");

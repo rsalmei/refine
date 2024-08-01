@@ -1,5 +1,5 @@
-use crate::opt;
 use crate::utils::{self, StripPos};
+use crate::{options, EntryKind};
 use anyhow::Result;
 use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
@@ -50,7 +50,7 @@ pub struct Media {
     ts: SystemTime,
 }
 
-opt!(Rebuild);
+options!(Rebuild => EntryKind::File);
 
 pub fn run(mut medias: Vec<Media>) -> Result<()> {
     println!("=> Rebuilding files...\n");
