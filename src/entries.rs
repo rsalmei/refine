@@ -43,7 +43,7 @@ where
 re_input!(
     RE_IN, include; RE_EX, exclude; // general include and exclude (both files and directories).
     RE_DIN, dir_in; RE_DEX, dir_ex; // directory include and exclude.
-    // RE_FIN, file_in; RE_FEX, file_ex; // file include and exclude.
+    RE_FIN, file_in; RE_FEX, file_ex; // file include and exclude.
     RE_EIN, ext_in; RE_EEX, ext_ex; // extension include and exclude.
 );
 
@@ -61,6 +61,7 @@ fn entries(dir: PathBuf, rm: RecurseMode) -> Box<dyn Iterator<Item = PathBuf>> {
             && match path.is_dir() {
                 true => is_match(path.to_str().unwrap(), RE_DIN.get(), RE_DEX.get()),
                 false => is_match(path.parent()?.to_str().unwrap(), RE_DIN.get(), RE_DEX.get())
+                    && is_match(name, RE_FIN.get(), RE_FEX.get())
                     && is_match(ext, RE_EIN.get(), RE_EEX.get()),
             })
         .into()

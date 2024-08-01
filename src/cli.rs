@@ -23,6 +23,12 @@ pub struct Args {
     /// Exclude these directories.
     #[arg(short = 'X', long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     pub dir_ex: Option<String>,
+    /// Include only these files; checked without extension.
+    #[arg(long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
+    pub file_in: Option<String>,
+    /// Exclude these files; checked without extension.
+    #[arg(long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
+    pub file_ex: Option<String>,
     /// Include only these extensions.
     #[arg(long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     pub ext_in: Option<String>,
