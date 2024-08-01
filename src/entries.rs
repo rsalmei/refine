@@ -1,9 +1,19 @@
-use crate::commands::EntryKind;
 use crate::{args, utils};
 use regex::Regex;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use std::{fmt, iter};
+
+/// Denotes which kind of entries will be output.
+#[derive(Debug, Copy, Clone)]
+pub enum EntryKind {
+    /// Only files.
+    File,
+    /// Either directories or files, in this order.
+    Any,
+    /// Both files and directories.
+    All,
+}
 
 #[derive(Debug, Copy, Clone)]
 enum RecurseMode {

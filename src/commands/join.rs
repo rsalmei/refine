@@ -1,4 +1,4 @@
-use super::EntryKind;
+use crate::entries::EntryKind;
 use crate::{options, utils};
 use anyhow::{Context, Result};
 use clap::{Args, ValueEnum};

@@ -20,22 +20,11 @@ pub enum Command {
     Join(join::Join),
 }
 
-/// Denotes the kind of entry a command expects.
-#[derive(Debug, Copy, Clone)]
-pub enum EntryKind {
-    /// Only files.
-    File,
-    /// Either directories or files, in this order.
-    Any,
-    // Both files and directories.
-    // All,
-}
-
 #[macro_export]
 macro_rules! options {
     ($opt:ident => $conf:expr) => {
         /// The kind of entry this command expects.
-        pub const KIND: $crate::commands::EntryKind = $conf;
+        pub const KIND: $crate::entries::EntryKind = $conf;
         /// Retrieves the options given to this command.
         fn opt() -> &'static $opt {
             match &$crate::args().cmd {
