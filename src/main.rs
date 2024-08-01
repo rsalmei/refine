@@ -1,47 +1,16 @@
+mod cli;
 mod commands;
 mod entries;
 mod utils;
 
-use clap::builder::NonEmptyStringValueParser;
 use clap::Parser;
+use cli::Args;
 use commands::{dupes, join, list, rebuild, rename, Command};
 use entries::gen_medias;
-use std::path::PathBuf;
 use std::sync::{atomic, Arc, OnceLock};
 
-#[derive(Debug, Parser)]
-#[command(version, about, long_about = None, after_help = "For more information, see https://github.com/rsalmei/refine")]
-struct Args {
-    #[command(subcommand)]
-    cmd: Command,
-    /// Paths to scan.
-    #[arg(global = true, help_heading = Some("Global"))]
-    paths: Vec<PathBuf>,
-    /// Include only these files and directories; checked without extension.
-    #[arg(short = 'i', long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    include: Option<String>,
-    /// Exclude these files and directories; checked without extension.
-    #[arg(short = 'x', long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    exclude: Option<String>,
-    /// Include only these directories.
-    #[arg(short = 'I', long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    dir_in: Option<String>,
-    /// Exclude these directories.
-    #[arg(short = 'X', long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    dir_ex: Option<String>,
-    /// Include only these extensions.
-    #[arg(long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    ext_in: Option<String>,
-    /// Exclude these extensions.
-    #[arg(long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    ext_ex: Option<String>,
-    /// Do not recurse into subdirectories.
-    #[arg(short = 'w', long, global = true, help_heading = Some("Global"))]
-    shallow: bool,
-}
-
 static ARGS: OnceLock<Args> = OnceLock::new();
-fn args() -> &'static Args {
+pub fn args() -> &'static Args {
     ARGS.get().unwrap()
 }
 
