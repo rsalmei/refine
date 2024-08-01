@@ -57,12 +57,12 @@ enum Command {
     Join(join::Join),
 }
 
-static RE_IN: OnceLock<Regex> = OnceLock::new();
-static RE_EX: OnceLock<Regex> = OnceLock::new();
-static RE_EXT_IN: OnceLock<Regex> = OnceLock::new();
-static RE_EXT_EX: OnceLock<Regex> = OnceLock::new();
-static RE_DIR_IN: OnceLock<Regex> = OnceLock::new();
-static RE_DIR_EX: OnceLock<Regex> = OnceLock::new();
+re_input!(
+    RE_IN, include; RE_EX, exclude; // general include and exclude (both files and directories).
+    RE_DIN, dir_in; RE_DEX, dir_ex; // directory include and exclude.
+    // RE_FIN, file_in; RE_FEX, file_ex; // file include and exclude.
+    RE_EIN, ext_in; RE_EEX, ext_ex; // extension include and exclude.
+);
 
 static ARGS: OnceLock<Args> = OnceLock::new();
 fn args() -> &'static Args {
@@ -72,12 +72,7 @@ fn args() -> &'static Args {
 fn main() {
     ARGS.set(Args::parse()).unwrap();
     println!("Refine v{}", env!("CARGO_PKG_VERSION"));
-    utils::set_re(&args().include, &RE_IN, "include");
-    utils::set_re(&args().exclude, &RE_EX, "exclude");
-    utils::set_re(&args().ext_in, &RE_EXT_IN, "ext_in");
-    utils::set_re(&args().ext_ex, &RE_EXT_EX, "ext_ex");
-    utils::set_re(&args().dir_in, &RE_DIR_IN, "dir_in");
-    utils::set_re(&args().dir_ex, &RE_DIR_EX, "dir_ex");
+    parse_input_regexes();
 
     if let Err(err) = ctrlc::set_handler({
         let running = Arc::clone(utils::running_flag());
@@ -160,3 +155,13 @@ where
         .flatten()
         .collect()
 }
+
+macro_rules! _re_input {
+    ($($re:ident, $name:ident);+ $(;)?) => {
+        $( static $re: OnceLock<Regex> = OnceLock::new(); )+
+        fn parse_input_regexes() {
+            $( utils::set_re(&args().$name, &$re, stringify!($name)); )+
+        }
+    };
+}
+use _re_input as re_input;
