@@ -10,9 +10,9 @@ pub enum EntryKind {
     /// Only files.
     File,
     /// Either directories or files, in this order.
-    Any,
     /// Both files and directories.
     All,
+    DirOrFile,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -85,9 +85,9 @@ fn entries(dir: PathBuf, rm: RecurseMode) -> Box<dyn Iterator<Item = PathBuf>> {
                 use {EntryKind::*, RecurseMode::*};
                 match (path.is_dir(), is_included(&path), rm) {
                     (false, Some(true), _) => Box::new(iter::once(path)),
-                    (true, Some(true), Recurse(Any)) => Box::new(iter::once(path)),
+                    (true, Some(false), _) => entries(path, rm),
                     (true, Some(true), Recurse(File)) => entries(path, rm),
-                    (true, Some(false), Recurse(Any | File)) => entries(path, rm),
+                    (true, Some(true), Recurse(DirOrFile)) => Box::new(iter::once(path)),
                     _ => Box::new(iter::empty()),
                 }
             }),

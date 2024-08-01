@@ -39,7 +39,7 @@ pub struct Media {
 }
 
 static TARGET: OnceLock<Result<PathBuf, PathBuf>> = OnceLock::new();
-options!(Join => EntryKind::Any);
+options!(Join => EntryKind::DirOrFile);
 
 pub fn run(mut medias: Vec<Media>) -> Result<()> {
     println!("=> Joining files...\n");
