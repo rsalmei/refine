@@ -1,40 +1,36 @@
+use crate::entries::EntryKind;
+use crate::options;
 use crate::utils::{self, StripPos};
 use anyhow::{Context, Result};
 use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
 use regex::Regex;
 use std::borrow::Cow;
+use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Args)]
 pub struct Rename {
-    /// Remove from the start of the filename to this str; blanks are automatically removed.
+    /// Remove from the start of the name to this str; blanks are automatically removed.
     #[arg(short = 'b', long, value_name = "STR|REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    pub strip_before: Vec<String>,
-    /// Remove from this str to the end of the filename; blanks are automatically removed.
+    strip_before: Vec<String>,
+    /// Remove from this str to the end of the name; blanks are automatically removed.
     #[arg(short = 'a', long, value_name = "STR|REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    pub strip_after: Vec<String>,
-    /// Remove all occurrences of this str in the filename; blanks are automatically removed.
+    strip_after: Vec<String>,
+    /// Remove all occurrences of this str in the name; blanks are automatically removed.
     #[arg(short = 'e', long, value_name = "STR|REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    pub strip_exact: Vec<String>,
-    ///  Replace all occurrences of one str by another; applied in order and after the strip rules.
-    #[arg(short, long, value_name = "{STR|REGEX}=STR", allow_hyphen_values = true, value_parser = utils::parse_key_value::<String, String>)]
-    pub replace: Vec<(String, String)>,
+    strip_exact: Vec<String>,
+    ///  Replace all occurrences of one str with another; applied in order and after the strip rules.
+    #[arg(short = 'r', long, value_name = "{STR|REGEX}=STR", allow_hyphen_values = true, value_parser = utils::parse_key_value::<String, String>)]
+    replace: Vec<(String, String)>,
     /// Allow changes in directories where clashes are detected.
-    #[arg(short, long)]
-    pub clashes: bool,
+    #[arg(short = 'c', long)]
+    clashes: bool,
     /// Skip the confirmation prompt, useful for automation.
-    #[arg(short, long)]
-    pub yes: bool,
-}
-
-fn opt() -> &'static Rename {
-    match &super::args().cmd {
-        super::Command::Rename(opt) => opt,
-        _ => unreachable!(),
-    }
+    #[arg(short = 'y', long)]
+    yes: bool,
 }
 
 #[derive(Debug)]
@@ -47,8 +43,11 @@ pub struct Media {
     ext: &'static str,
 }
 
+options!(Rename => EntryKind::Both);
+
 pub fn run(mut medias: Vec<Media>) -> Result<()> {
     println!("=> Renaming files...\n");
+    let kind = |p: &Path| if p.is_dir() { "/" } else { "" };
 
     // step: apply strip rules.
     utils::strip_names(&mut medias, StripPos::Before, &opt().strip_before)?;
@@ -79,9 +78,7 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
         .try_for_each(|m| write!(m.wname, ".{}", m.ext))?;
 
     // step: disallow changes in directories where clashes are detected.
-    medias.sort_unstable_by(|m, n| {
-        (m.path.parent(), &m.path.file_name()).cmp(&(n.path.parent(), &n.path.file_name()))
-    });
+    medias.sort_unstable_by(|m, n| m.path.cmp(&n.path));
     medias
         .chunk_by_mut(|m, n| m.path.parent() == n.path.parent())
         .filter(|_| utils::is_running())
@@ -96,7 +93,7 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
             });
             clashes.retain(|_, v| v.len() > 1);
             if !clashes.is_empty() {
-                eprintln!("warning: names clash in: {}", path.display());
+                eprintln!("warning: names clash in: {}/", path.display());
                 let mut clashes = clashes.into_iter().collect::<Vec<_>>();
                 clashes.sort_by(|(k1, _), (k2, _)| k1.cmp(k2));
                 clashes.iter().for_each(|(k, v)| {
@@ -131,15 +128,21 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
         .collect::<Vec<_>>();
 
     // step: display the results by parent directory.
+    changes.sort_unstable_by(|m, n| {
+        (Reverse(m.path.components().count()), &m.path)
+            .cmp(&(Reverse(n.path.components().count()), &n.path))
+    });
     changes
         .chunk_by(|m, n| m.path.parent() == n.path.parent())
         .for_each(|g| {
-            println!("{}:", g[0].path.parent().unwrap().display());
+            println!("{}/:", g[0].path.parent().unwrap().display());
             g.iter().for_each(|m| {
                 println!(
-                    "  {} --> {}",
+                    "  {}{} --> {}{}",
                     m.path.file_name().unwrap().to_str().unwrap(),
-                    m.wname
+                    kind(&m.path),
+                    m.wname,
+                    kind(&m.path),
                 )
             });
         });
@@ -159,12 +162,12 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
     if !opt().yes {
         utils::prompt_yes_no("apply changes?")?;
     }
-    utils::rename_consuming(&mut changes);
-    if changes.is_empty() {
-        println!("done");
-        return Ok(());
+    utils::rename_move_consuming(&mut changes);
+
+    match changes.is_empty() {
+        true => println!("done"),
+        false => println!("found {} errors", changes.len()),
     }
-    println!("found {} errors", changes.len());
     Ok(())
 }
 
@@ -174,15 +177,15 @@ impl utils::WorkingName for Media {
     }
 }
 
-impl utils::PathWorkingName for Media {
+impl utils::OriginalPath for Media {
     fn path(&self) -> &Path {
         &self.path
     }
 }
 
-impl utils::NewNamePathWorkingName for Media {
-    fn new_name(&self) -> &str {
-        &self.wname
+impl utils::NewPath for Media {
+    fn new_path(&self) -> PathBuf {
+        self.path.with_file_name(&self.wname)
     }
 }
 
@@ -190,7 +193,7 @@ impl TryFrom<PathBuf> for Media {
     type Error = anyhow::Error;
 
     fn try_from(path: PathBuf) -> Result<Self> {
-        let (name, ext) = utils::file_stem_ext(&path)?;
+        let (name, ext) = utils::filename_parts(&path).unwrap(); // files were already checked.
         Ok(Media {
             wname: name.trim().to_owned(),
             ext: utils::intern(ext),

@@ -4,13 +4,13 @@
 
 ## What it does
 
-This tool will help you organize any collections of files that are standardized in some way, allowing you to batch clean filenames up or even completely rebuild them, making everything refined and easier to find.
+This tool will help you manage and organize your collections of files like no other! It will help you find duplicated files, rename filenames and directories with advanced regex rules, strip and replace parts of their names, join them together in a single directory, filter and extract copies of files and directories, apply sequence numbers to equivalent names, and even group and completely rebuild their names to organize them however you want, and make everything refined and easier to find.
 
-Yes, the name comes from "_refine your [photos | images | videos | movies | porn | music | etc.] collection_"!
+I've made this tool to be the fastest and easiest way to organize file collections. I use it a lot, and I hope it can help you too. It will scan several given paths at once and analyze all files and directories as a whole, performing some advanced operations on them. Enjoy!
 
-It will help you manage your file collections like no other tool! It can scan several given paths at the same time and analyze all files, performing some advanced operations on them such as finding possibly duplicated files, batch renaming them, stripping prefixes or suffixes, or even automatically grouping and rebuilding their filenames according to your rules!
+It is blazingly fast, of course, like all Rust 🦀 software!
 
-It is blazingly fast and tiny, made 100% in Rust 🦀!
+The name comes from "_refine your [photos | images | videos | movies | porn | music | etc.] collection_"!
 
 ## How to use it
 
@@ -23,6 +23,14 @@ cargo install refine
 That's it, and you can then just call it anywhere!
 
 ## What's new
+
+### New in 0.16
+
+- complete overhaul of the scan system, allowing directories to be extracted alongside files
+- new `join` command, already with directory support
+- new magic `-i` and `-x` options that filter both files and directories
+- new filter options for files, directories and extensions
+- rename: include directory support
 
 <details><summary>(click to expand)</summary>
 
@@ -101,6 +109,7 @@ Commands:
   rebuild  Rebuild the filenames of media collections intelligently
   list     List files from the given paths
   rename   Rename files in batch, according to the given rules
+  join     Join all files into the same directory
   help     Print this message or the help of the given subcommand(s)
 
 Options:
@@ -108,11 +117,15 @@ Options:
   -V, --version  Print version
 
 Global:
-  -i, --include <REGEX>  Include only these files; checked against filename without extension, case-insensitive
-  -x, --exclude <REGEX>  Exclude these files; checked against filename without extension, case-insensitive
-      --dir-in <REGEX>   Include only these subdirectories; case-insensitive
-      --dir-ex <REGEX>   Exclude these subdirectories; case-insensitive
-      --shallow          Do not recurse into subdirectories
+  -i, --include <REGEX>  Include only these files and directories; checked without extension
+  -x, --exclude <REGEX>  Exclude these files and directories; checked without extension
+  -I, --dir-in <REGEX>   Include only these directories
+  -X, --dir-ex <REGEX>   Exclude these directories
+      --file-in <REGEX>  Include only these files; checked without extension
+      --file-ex <REGEX>  Exclude these files; checked without extension
+      --ext-in <REGEX>   Include only these extensions
+      --ext-ex <REGEX>   Exclude these extensions
+  -w, --shallow          Do not recurse into subdirectories
   [PATHS]...         Paths to scan
 
 For more information, see https://github.com/rsalmei/refine
@@ -141,14 +154,6 @@ Usage: refine dupes [OPTIONS] [PATHS]...
 Options:
   -s, --sample <BYTES>  Sample size in bytes (0 to disable) [default: 2048]
   -h, --help            Print help
-
-Global:
-  -i, --include <REGEX>  Include only these files; checked against filename without extension, case-insensitive
-  -x, --exclude <REGEX>  Exclude these files; checked against filename without extension, case-insensitive
-      --dir-in <REGEX>   Include only these subdirectories; case-insensitive
-      --dir-ex <REGEX>   Exclude these subdirectories; case-insensitive
-      --shallow          Do not recurse into subdirectories
-  [PATHS]...         Paths to scan
 ```
 
 </details>
@@ -170,7 +175,7 @@ The `rebuild` command is a great achievement, if I say so myself. It will smartl
 5. sort the group according to the file created date
 6. regenerate the sequence numbers for the group <-- Note this occurs on the whole group, regardless of the directory the file currently resides in
 7. print the resulting changes to the filenames, and ask for confirmation
-8. if the user confirms, apply the changes to the filenames
+8. if the user confirms, apply the changes
 
 <details><summary>refine rebuild --help</summary>
 
@@ -187,14 +192,6 @@ Options:
   -f, --force <STR>               Easily set filenames for new files. BEWARE: use only on already organized collections
   -y, --yes                       Skip the confirmation prompt, useful for automation
   -h, --help                      Print help
-
-Global:
-  -i, --include <REGEX>  Include only these files; checked against filename without extension, case-insensitive
-  -x, --exclude <REGEX>  Exclude these files; checked against filename without extension, case-insensitive
-      --dir-in <REGEX>   Include only these subdirectories; case-insensitive
-      --dir-ex <REGEX>   Exclude these subdirectories; case-insensitive
-      --shallow          Do not recurse into subdirectories
-  [PATHS]...         Paths to scan
 ```
 
 </details>
@@ -224,14 +221,6 @@ Options:
   -b, --by <BY>  Sort by [default: name] [possible values: name, size, path]
   -d, --desc     Use descending order
   -h, --help     Print help
-
-Global:
-  -i, --include <REGEX>  Include only these files; checked against filename without extension, case-insensitive
-  -x, --exclude <REGEX>  Exclude these files; checked against filename without extension, case-insensitive
-      --dir-in <REGEX>   Include only these subdirectories; case-insensitive
-      --dir-ex <REGEX>   Exclude these subdirectories; case-insensitive
-      --shallow          Do not recurse into subdirectories
-  [PATHS]...         Paths to scan
 ```
 
 </details>
@@ -250,8 +239,8 @@ The `rename` command will let you batch rename files like no other tool, serious
 2. apply the regex replacement rules
 3. remove all changes from the whole directory where clashes are detected
     - optionally removes only the clashes, allowing other changes
-4. print the resulting changes to the filenames, and ask for confirmation
-5. if the user confirms, apply the changes to the filenames
+4. print the resulting changes to the filenames and directories, and ask for confirmation
+5. if the user confirms, apply the changes
 
 <details><summary>refine rename --help</summary>
 
@@ -261,21 +250,13 @@ Rename files in batch, according to the given rules
 Usage: refine rename [OPTIONS] [PATHS]...
 
 Options:
-  -b, --strip-before <STR|REGEX>   Remove from the start of the filename to this str; blanks are automatically removed
-  -a, --strip-after <STR|REGEX>    Remove from this str to the end of the filename; blanks are automatically removed
-  -e, --strip-exact <STR|REGEX>    Remove all occurrences of this str in the filename; blanks are automatically removed
-  -r, --replace <{STR|REGEX}=STR>  Replace all occurrences of one str by another; applied in order and after the strip rules
+  -b, --strip-before <STR|REGEX>   Remove from the start of the name to this str; blanks are automatically removed
+  -a, --strip-after <STR|REGEX>    Remove from this str to the end of the name; blanks are automatically removed
+  -e, --strip-exact <STR|REGEX>    Remove all occurrences of this str in the name; blanks are automatically removed
+  -r, --replace <{STR|REGEX}=STR>  Replace all occurrences of one str with another; applied in order and after the strip rules
   -c, --clashes                    Allow changes in directories where clashes are detected
   -y, --yes                        Skip the confirmation prompt, useful for automation
   -h, --help                       Print help
-
-Global:
-  -i, --include <REGEX>  Include only these files; checked against filename without extension, case-insensitive
-  -x, --exclude <REGEX>  Exclude these files; checked against filename without extension, case-insensitive
-      --dir-in <REGEX>   Include only these subdirectories; case-insensitive
-      --dir-ex <REGEX>   Exclude these subdirectories; case-insensitive
-      --shallow          Do not recurse into subdirectories
-  [PATHS]...         Paths to scan
 ```
 
 </details>
@@ -286,10 +267,47 @@ Example:
 ❯ refine rename ~/media /Volumes/External -b "^\d+_" -r '([^\.]*?)\.=$1 '
 ```
 
+## The `join` command
+
+The `join` command will let you join all the files and directories in the given paths into the same directory. You can filter files however you like, and choose how they will be joined, either moving or copying them. It will even remove the empty parent directories after joining!
+
+> Note: any deletions are only performed after files and directories have been successfully moved/copied. So, in case any errors occur, the files and directories partially moved/copied will be found in the target directory, so you should manually delete them before trying again.
+
+1. detect clashes, files with the same name in different directories, and apply a sequential number
+2. detect already in-place files
+3. print the resulting changes to the filenames and directories, and ask for confirmation
+4. if the user confirms, apply the changes
+5. remove any empty parent directories
+
+<details><summary>refine join --help</summary>
+
+```
+Join all files into the same directory
+
+Usage: refine join [OPTIONS] [PATHS]...
+
+Options:
+  -t, --to <PATH>            The target directory; will be created if it doesn't exist [default: .]
+  -s, --strategy <STRATEGY>  The strategy to use when joining files [default: move] [possible values: move, copy]
+  -f, --in-place             Force joining already in place files and directories, i.e., in subdirectories of the target
+  -n, --no-remove            Do not remove the empty parent directories after joining
+  -y, --yes                  Skip the confirmation prompt, useful for automation
+  -h, --help                 Print help
+```
+
+</details>
+
+Example:
+
+```
+❯ refine join ~/media/ /Volumes/External/ -i 'proj-01' -X 'ongoing' -t /Volumes/External/proj-01
+```
+
 ## Changelog
 
 <details><summary>(click to expand)</summary>
 
+- 0.16.0 Ago 01, 2024: scan with directory support, new `join` command, new magic filter options, new filter options, rename: include directory support
 - 0.15.0 Jul 18, 2024: nicer rename command output by parent directory, new threaded yes/no prompt that can be aborted with CTRL-C
 - 0.14.0 Jul 11, 2024: rename: disallow by default changes in directories where clashes are detected, including new --clashes option to allow them
 - 0.13.0 Jul 10, 2024: rebuild: new replace feature, rebuild, rename: make strip options remove `.` and `_`, global: include and exclude options do not check extensions, dupes: remove case option

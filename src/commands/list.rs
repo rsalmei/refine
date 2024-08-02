@@ -1,4 +1,5 @@
-use crate::utils;
+use crate::entries::EntryKind;
+use crate::options;
 use anyhow::Result;
 use clap::{Args, ValueEnum};
 use human_repr::HumanCount;
@@ -9,10 +10,10 @@ use std::path::PathBuf;
 #[derive(Debug, Args)]
 pub struct List {
     /// Sort by.
-    #[arg(short, long, value_enum, default_value_t = By::Name)]
+    #[arg(short = 'b', long, value_enum, default_value_t = By::Name)]
     by: By,
     /// Use descending order.
-    #[arg(short, long)]
+    #[arg(short = 'd', long)]
     desc: bool,
 }
 
@@ -23,25 +24,20 @@ pub enum By {
     Path,
 }
 
-fn opt() -> &'static List {
-    match &super::args().cmd {
-        super::Command::List(opt) => opt,
-        _ => unreachable!(),
-    }
-}
-
 #[derive(Debug)]
 pub struct Media {
     path: PathBuf,
-    name: String,
     size: u64,
 }
+
+options!(List => EntryKind::File);
 
 pub fn run(mut medias: Vec<Media>) -> Result<()> {
     println!("=> Listing files...\n");
 
+    // step: sort the files by name, size, or path.
     let compare = match opt().by {
-        By::Name => |m: &Media, n: &Media| m.name.cmp(&n.name),
+        By::Name => |m: &Media, n: &Media| m.path.file_name().cmp(&n.path.file_name()),
         By::Size => |m: &Media, n: &Media| m.size.cmp(&n.size),
         By::Path => |m: &Media, n: &Media| m.path.cmp(&n.path),
     };
@@ -50,6 +46,8 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
         false => &compare,
     };
     medias.sort_unstable_by(compare);
+
+    // step: display the results.
     medias.iter().for_each(|m| {
         println!(
             "{:>7} {}",
@@ -58,11 +56,13 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
         )
     });
 
+    // step: display receipt summary.
     if !medias.is_empty() {
         println!();
     }
     let size = medias.iter().map(|m| m.size).sum::<u64>();
     println!("total files: {} ({})", medias.len(), size.human_count("B"));
+
     Ok(())
 }
 
@@ -70,9 +70,7 @@ impl TryFrom<PathBuf> for Media {
     type Error = anyhow::Error;
 
     fn try_from(path: PathBuf) -> Result<Self> {
-        let (name, _) = utils::file_stem_ext(&path)?;
         Ok(Self {
-            name: name.to_lowercase(),
             size: fs::metadata(&path)?.len(),
             path,
         })

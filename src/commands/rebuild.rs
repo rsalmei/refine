@@ -1,3 +1,5 @@
+use crate::entries::EntryKind;
+use crate::options;
 use crate::utils::{self, StripPos};
 use anyhow::Result;
 use clap::builder::NonEmptyStringValueParser;
@@ -8,36 +10,29 @@ use std::collections::HashSet;
 use std::fmt::Write;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::OnceLock;
+use std::sync::LazyLock;
 use std::time::SystemTime;
 
 #[derive(Debug, Args)]
 pub struct Rebuild {
     /// Remove from the start of the filename to this str; blanks are automatically removed.
     #[arg(short = 'b', long, value_name = "STR|REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    pub strip_before: Vec<String>,
+    strip_before: Vec<String>,
     /// Remove from this str to the end of the filename; blanks are automatically removed.
     #[arg(short = 'a', long, value_name = "STR|REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    pub strip_after: Vec<String>,
+    strip_after: Vec<String>,
     /// Remove all occurrences of this str in the filename; blanks are automatically removed.
     #[arg(short = 'e', long, value_name = "STR|REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    pub strip_exact: Vec<String>,
+    strip_exact: Vec<String>,
     /// Detect and fix similar filenames (e.g. "foo bar.mp4" and "foo__bar.mp4").
     #[arg(short = 's', long)]
-    pub no_smart_detect: bool,
+    no_smart_detect: bool,
     /// Easily set filenames for new files. BEWARE: use only on already organized collections.
-    #[arg(short, long, value_name = "STR", value_parser = NonEmptyStringValueParser::new())]
-    pub force: Option<String>,
+    #[arg(short = 'f', long, value_name = "STR", value_parser = NonEmptyStringValueParser::new())]
+    force: Option<String>,
     /// Skip the confirmation prompt, useful for automation.
-    #[arg(short, long)]
-    pub yes: bool,
-}
-
-fn opt() -> &'static Rebuild {
-    match &super::args().cmd {
-        super::Command::Rebuild(opt) => opt,
-        _ => unreachable!(),
-    }
+    #[arg(short = 'y', long)]
+    yes: bool,
 }
 
 #[derive(Debug)]
@@ -55,6 +50,8 @@ pub struct Media {
     /// The creation time of the file.
     ts: SystemTime,
 }
+
+options!(Rebuild => EntryKind::File);
 
 pub fn run(mut medias: Vec<Media>) -> Result<()> {
     println!("=> Rebuilding files...\n");
@@ -90,11 +87,10 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
 
     // step: smart detect.
     if !opt().no_smart_detect {
-        static RE: OnceLock<Regex> = OnceLock::new();
-        let re = RE.get_or_init(|| Regex::new(r"[\s_]+").unwrap());
+        static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[\s_]+").unwrap());
 
         medias.iter_mut().for_each(|m| {
-            if let Cow::Owned(x) = re.replace_all(&m.wname, "") {
+            if let Cow::Owned(x) = RE.replace_all(&m.wname, "") {
                 m.smart_group = Some(x);
             }
         });
@@ -141,7 +137,7 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
     if !opt().yes {
         utils::prompt_yes_no("apply changes?")?;
     }
-    utils::rename_consuming(&mut changes);
+    utils::rename_move_consuming(&mut changes);
     if changes.is_empty() {
         println!("done");
         return Ok(());
@@ -157,12 +153,12 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
             Err(err) => eprintln!("error: {err:?}: {:?} --> {temp:?}", m.path),
         }
     });
-    utils::rename_consuming(&mut changes);
+    utils::rename_move_consuming(&mut changes);
+
     match changes.is_empty() {
         true => println!("done"),
         false => println!("still {} errors, giving up", changes.len()),
     }
-
     Ok(())
 }
 
@@ -199,15 +195,15 @@ impl utils::WorkingName for Media {
     }
 }
 
-impl utils::PathWorkingName for Media {
+impl utils::OriginalPath for Media {
     fn path(&self) -> &Path {
         &self.path
     }
 }
 
-impl utils::NewNamePathWorkingName for Media {
-    fn new_name(&self) -> &str {
-        &self.new_name
+impl utils::NewPath for Media {
+    fn new_path(&self) -> PathBuf {
+        self.path.with_file_name(&self.new_name)
     }
 }
 
@@ -221,7 +217,7 @@ impl TryFrom<PathBuf> for Media {
     type Error = anyhow::Error;
 
     fn try_from(path: PathBuf) -> Result<Self> {
-        let (name, ext) = utils::file_stem_ext(&path)?;
+        let (name, ext) = utils::filename_parts(&path).unwrap(); // files were already checked.
         Ok(Media {
             wname: name.trim().to_lowercase(),
             new_name: String::new(),

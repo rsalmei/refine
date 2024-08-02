@@ -1,8 +1,8 @@
-use crate::utils;
+use crate::entries::EntryKind;
+use crate::{options, utils};
 use anyhow::Result;
 use clap::Args;
 use human_repr::HumanCount;
-use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
@@ -12,15 +12,8 @@ use std::{fs, io};
 #[derive(Debug, Args)]
 pub struct Dupes {
     /// Sample size in bytes (0 to disable).
-    #[arg(short, long, default_value_t = 2 * 1024, value_name = "BYTES")]
-    pub sample: usize,
-}
-
-fn opt() -> &'static Dupes {
-    match &super::args().cmd {
-        super::Command::Dupes(opt) => opt,
-        _ => unreachable!(),
-    }
+    #[arg(short = 's', long, default_value_t = 2 * 1024, value_name = "BYTES")]
+    sample: usize,
 }
 
 #[derive(Debug)]
@@ -31,34 +24,35 @@ pub struct Media {
     sample: Option<Option<Box<[u8]>>>, // only populated if needed, and double to remember when already tried.
 }
 
+options!(Dupes => EntryKind::File);
+
 pub fn run(mut medias: Vec<Media>) -> Result<()> {
     println!("=> Detecting duplicate files...\n");
 
-    // first by size.
+    // step: detect duplicates by size.
     println!("by size:");
     let by_size = detect_duplicates(
         &mut medias,
         |m| &m.size,
-        |&size, mut acc| {
+        |&size, acc| {
             println!("\n{} x{}", size.human_count_bytes(), acc.len());
-            acc.sort_unstable();
             acc.iter().for_each(|&m| println!("{}", m.path.display()));
         },
     );
 
-    // then by name.
+    // step: detect duplicates by name.
     println!("\nby name:");
     let by_name = detect_duplicates(
         &mut medias,
         |m| &m.words,
-        |words, mut acc| {
+        |words, acc| {
             println!("\n{:?} x{}", words, acc.len());
-            acc.sort_unstable();
             acc.iter()
                 .for_each(|m| println!("{}: {}", m.size.human_count_bytes(), m.path.display()));
         },
     );
 
+    // step: display receipt summary.
     let total = medias.len();
     println!("\ntotal files: {total}{}", utils::aborted(by_size == 0));
     println!("  by size: {by_size} dupes{}", utils::aborted(by_name == 0));
@@ -88,25 +82,15 @@ where
                 .for_each(|(m, sample)| split.entry(sample).or_insert_with(Vec::new).push(m));
             split.into_values().filter(|v| v.len() > 1)
         })
-        .map(|g| show(grouping(g[0]), g))
+        .map(|mut g| {
+            g.sort_unstable_by(|m, n| m.path.cmp(&n.path));
+            show(grouping(g[0]), g)
+        })
         .count()
 }
 
-impl TryFrom<PathBuf> for Media {
-    type Error = anyhow::Error;
-
-    fn try_from(path: PathBuf) -> Result<Self> {
-        Ok(Media {
-            size: fs::metadata(&path)?.len(),
-            words: words(&path)?,
-            path, // I can use path above before moving it here!
-            sample: None,
-        })
-    }
-}
-
 fn words(path: &Path) -> Result<Box<[String]>> {
-    let (name, _) = utils::file_stem_ext(path)?;
+    let (name, _) = utils::filename_parts(path).unwrap(); // files were already checked.
     let name = utils::strip_sequence(name);
     let mut words = name
         .split(&[' ', '.', '-', '_'])
@@ -148,22 +132,15 @@ impl Media {
     }
 }
 
-impl PartialEq for Media {
-    fn eq(&self, other: &Self) -> bool {
-        self.path.eq(&other.path)
-    }
-}
+impl TryFrom<PathBuf> for Media {
+    type Error = anyhow::Error;
 
-impl Eq for Media {}
-
-impl PartialOrd for Media {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for Media {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.path.cmp(&other.path)
+    fn try_from(path: PathBuf) -> Result<Self> {
+        Ok(Media {
+            size: fs::metadata(&path)?.len(),
+            words: words(&path)?,
+            path, // I can use path above before moving it here!
+            sample: None,
+        })
     }
 }
