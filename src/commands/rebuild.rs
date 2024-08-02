@@ -17,22 +17,22 @@ use std::time::SystemTime;
 pub struct Rebuild {
     /// Remove from the start of the filename to this str; blanks are automatically removed.
     #[arg(short = 'b', long, value_name = "STR|REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    pub strip_before: Vec<String>,
+    strip_before: Vec<String>,
     /// Remove from this str to the end of the filename; blanks are automatically removed.
     #[arg(short = 'a', long, value_name = "STR|REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    pub strip_after: Vec<String>,
+    strip_after: Vec<String>,
     /// Remove all occurrences of this str in the filename; blanks are automatically removed.
     #[arg(short = 'e', long, value_name = "STR|REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    pub strip_exact: Vec<String>,
+    strip_exact: Vec<String>,
     /// Detect and fix similar filenames (e.g. "foo bar.mp4" and "foo__bar.mp4").
     #[arg(short = 's', long)]
-    pub no_smart_detect: bool,
+    no_smart_detect: bool,
     /// Easily set filenames for new files. BEWARE: use only on already organized collections.
     #[arg(short = 'f', long, value_name = "STR", value_parser = NonEmptyStringValueParser::new())]
-    pub force: Option<String>,
+    force: Option<String>,
     /// Skip the confirmation prompt, useful for automation.
     #[arg(short = 'y', long)]
-    pub yes: bool,
+    yes: bool,
 }
 
 #[derive(Debug)]

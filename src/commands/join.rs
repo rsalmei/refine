@@ -15,15 +15,15 @@ pub struct Join {
     /// The strategy to use when joining files.
     #[arg(short = 's', long, value_enum, default_value_t = Strategy::Move)]
     strategy: Strategy,
-    /// Force joining even files already in place, i.e., in subdirectories of the target.
-    #[arg(short = 'f', long, value_enum)]
+    /// Force joining already in place files and directories, i.e., in subdirectories of the target.
+    #[arg(short = 'f', long)]
     force: bool,
     /// Do not remove the empty parent directories after joining.
-    #[arg(short = 'n', long, value_enum)]
+    #[arg(short = 'n', long)]
     no_remove: bool,
     /// Skip the confirmation prompt, useful for automation.
     #[arg(short = 'y', long)]
-    pub yes: bool,
+    yes: bool,
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]

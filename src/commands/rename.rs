@@ -13,24 +13,24 @@ use std::path::{Path, PathBuf};
 
 #[derive(Debug, Args)]
 pub struct Rename {
-    /// Remove from the start of the filename to this str; blanks are automatically removed.
+    /// Remove from the start of the name to this str; blanks are automatically removed.
     #[arg(short = 'b', long, value_name = "STR|REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    pub strip_before: Vec<String>,
-    /// Remove from this str to the end of the filename; blanks are automatically removed.
+    strip_before: Vec<String>,
+    /// Remove from this str to the end of the name; blanks are automatically removed.
     #[arg(short = 'a', long, value_name = "STR|REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    pub strip_after: Vec<String>,
-    /// Remove all occurrences of this str in the filename; blanks are automatically removed.
+    strip_after: Vec<String>,
+    /// Remove all occurrences of this str in the name; blanks are automatically removed.
     #[arg(short = 'e', long, value_name = "STR|REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    pub strip_exact: Vec<String>,
-    ///  Replace all occurrences of one str by another; applied in order and after the strip rules.
+    strip_exact: Vec<String>,
+    ///  Replace all occurrences of one str with another; applied in order and after the strip rules.
     #[arg(short = 'r', long, value_name = "{STR|REGEX}=STR", allow_hyphen_values = true, value_parser = utils::parse_key_value::<String, String>)]
-    pub replace: Vec<(String, String)>,
+    replace: Vec<(String, String)>,
     /// Allow changes in directories where clashes are detected.
     #[arg(short = 'c', long)]
-    pub clashes: bool,
+    clashes: bool,
     /// Skip the confirmation prompt, useful for automation.
     #[arg(short = 'y', long)]
-    pub yes: bool,
+    yes: bool,
 }
 
 #[derive(Debug)]

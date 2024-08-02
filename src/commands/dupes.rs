@@ -13,7 +13,7 @@ use std::{fs, io};
 pub struct Dupes {
     /// Sample size in bytes (0 to disable).
     #[arg(short = 's', long, default_value_t = 2 * 1024, value_name = "BYTES")]
-    pub sample: usize,
+    sample: usize,
 }
 
 #[derive(Debug)]
