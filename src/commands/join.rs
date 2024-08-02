@@ -49,7 +49,7 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
         .unwrap();
     let kind = |p: &Path| if p.is_dir() { "/" } else { "" };
 
-    // step: detect clashes, since all the files will be moved to the same directory.
+    // step: detect clashes, files with the same name in different directories, and apply a sequential number.
     medias.sort_unstable_by(|m, n| {
         (m.path.file_name(), !m.is_in_place()).cmp(&(n.path.file_name(), !n.is_in_place()))
     });
@@ -67,7 +67,7 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
             })
         });
 
-    // step: settle changes, and display the results.
+    // step: detect already in-place files.
     medias.sort_unstable_by(|m, n| m.path.cmp(&n.path));
     let mut in_place = 0;
     medias.retain(|m| match m.is_in_place() {
@@ -78,19 +78,12 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
             false
         }
     });
+
+    // step: display the results.
     medias.iter().for_each(|m| match &m.new_name {
         Some(name) => println!("{}{} -> {name}", m.path.display(), kind(&m.path)),
         None => println!("{}{}", m.path.display(), kind(&m.path)),
     });
-
-    // step: grab the files' parent directories.
-    let dirs = match opt().no_remove {
-        true => HashSet::new(),
-        false => medias
-            .iter()
-            .map(|m| m.path.parent().unwrap().to_owned())
-            .collect::<HashSet<_>>(),
-    };
 
     // step: display receipt summary.
     if !medias.is_empty() || in_place > 0 {
@@ -107,6 +100,15 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
     if !opt().yes {
         utils::prompt_yes_no("apply changes?")?;
     }
+
+    // step: grab the files' parent directories before the consuming operations.
+    let dirs = match opt().no_remove {
+        true => HashSet::new(),
+        false => medias
+            .iter()
+            .map(|m| m.path.parent().unwrap().to_owned())
+            .collect::<HashSet<_>>(),
+    };
 
     // step: apply changes, if the user agrees.
     fs::create_dir_all(target).with_context(|| format!("creating {target:?}"))?;
