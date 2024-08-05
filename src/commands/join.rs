@@ -44,9 +44,8 @@ options!(Join => EntryKind::Either);
 
 pub fn run(mut medias: Vec<Media>) -> Result<()> {
     println!("=> Joining files...\n");
-    TARGET
-        .set(opt().to.canonicalize().map_err(|_| opt().to.to_owned()))
-        .unwrap();
+    let target = opt().to.canonicalize().map_err(|_| opt().to.to_owned());
+    TARGET.set(target).unwrap();
     let kind = |p: &Path| if p.is_dir() { "/" } else { "" };
 
     // step: detect clashes, files with the same name in different directories, and apply a sequential number.
