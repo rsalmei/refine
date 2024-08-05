@@ -28,8 +28,17 @@ fn main() {
     install_ctrlc_handler();
 
     // lists files from the given paths, or the current directory if no paths were given.
-    let cd = args().paths.is_empty().then(|| ".".into());
-    let paths = args().paths.iter().cloned().chain(cd);
+    let cd = args.paths.is_empty().then(|| ".".into());
+    let paths = {
+        let mut paths = args.paths;
+        let len = paths.len();
+        paths.sort_unstable();
+        paths.dedup();
+        if len != paths.len() {
+            eprintln!("warning: duplicated paths were ignored");
+        }
+        paths.into_iter().chain(cd)
+    };
 
     if let Err(err) = match commands::cmd_args() {
         Command::Dupes(_) => dupes::run(gen_medias(paths, dupes::KIND)),
