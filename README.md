@@ -24,6 +24,10 @@ That's it, and you can then just call it anywhere!
 
 ## What's new
 
+### New in 0.17
+
+- join: new clash resolve option
+
 ### New in 0.16
 
 - complete overhaul of the scan system, allowing directories to be extracted alongside files
@@ -288,8 +292,9 @@ Usage: refine join [OPTIONS] [PATHS]...
 
 Options:
   -t, --to <PATH>            The target directory; will be created if it doesn't exist [default: .]
-  -s, --strategy <STRATEGY>  The strategy to use when joining files [default: move] [possible values: move, copy]
-  -f, --in-place             Force joining already in place files and directories, i.e., in subdirectories of the target
+  -s, --strategy <STRATEGY>  The strategy to use to join [default: move] [possible values: move, copy]
+  -c, --clash <CLASH>        Specify how to resolve clashes [default: sequence] [possible values: sequence, parent, skip]
+  -f, --force                Force joining already in place files and directories, i.e., in subdirectories of the target
   -n, --no-remove            Do not remove the empty parent directories after joining
   -y, --yes                  Skip the confirmation prompt, useful for automation
   -h, --help                 Print help
@@ -307,6 +312,7 @@ Example:
 
 <details><summary>(click to expand)</summary>
 
+- 0.17.0 Aug 05, 2024: dedup input paths, enables to select only files by filtering extensions, join: new clash resolve option
 - 0.16.0 Ago 01, 2024: scan with directory support, new `join` command, new magic filter options, new filter options, rename: include directory support
 - 0.15.0 Jul 18, 2024: nicer rename command output by parent directory, new threaded yes/no prompt that can be aborted with CTRL-C
 - 0.14.0 Jul 11, 2024: rename: disallow by default changes in directories where clashes are detected, including new --clashes option to allow them
