@@ -61,6 +61,7 @@ where
     T: TryFrom<PathBuf, Error: fmt::Display>,
 {
     let filters = FILTERS.get().unwrap();
+    parse_input_regexes(filters);
     use RecurseMode::*;
     #[allow(clippy::obfuscated_if_else)]
     let rm = filters.shallow.then_some(Shallow).unwrap_or(Recurse(kind));
@@ -141,8 +142,8 @@ fn entries(dir: PathBuf, rm: RecurseMode) -> Box<dyn Iterator<Item = PathBuf>> {
 macro_rules! _re_input {
     ($($re:ident, $name:ident);+ $(;)?) => {
         $( static $re: OnceLock<Regex> = OnceLock::new(); )+
-        pub fn parse_input_regexes() {
-            $( utils::set_re(&args().$name, &$re, stringify!($name)); )+
+        fn parse_input_regexes(filters: &Filters) {
+            $( utils::set_re(&filters.$name, &$re, stringify!($name)); )+
         }
     };
 }

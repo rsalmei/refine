@@ -22,7 +22,6 @@ pub struct Args {
 
 fn main() {
     println!("Refine v{}", env!("CARGO_PKG_VERSION"));
-    entries::parse_input_regexes();
     let args = Args::parse();
     commands::CMD_ARGS.set(args.cmd).unwrap();
     entries::FILTERS.set(args.filters).unwrap();
