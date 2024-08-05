@@ -54,13 +54,16 @@ enum RecurseMode {
     Shallow,
 }
 
+pub static FILTERS: OnceLock<Filters> = OnceLock::new();
+
 pub fn gen_medias<T>(paths: impl Iterator<Item = PathBuf>, kind: EntryKind) -> Vec<T>
 where
     T: TryFrom<PathBuf, Error: fmt::Display>,
 {
+    let filters = FILTERS.get().unwrap();
     use RecurseMode::*;
     #[allow(clippy::obfuscated_if_else)]
-    let rm = args().shallow.then_some(Shallow).unwrap_or(Recurse(kind));
+    let rm = filters.shallow.then_some(Shallow).unwrap_or(Recurse(kind));
     paths
         .flat_map(|p| entries(p, rm))
         .map(|path| T::try_from(path))

@@ -1,10 +1,16 @@
 use clap::Subcommand;
+use std::sync::OnceLock;
 
 pub mod dupes;
 pub mod join;
 pub mod list;
 pub mod rebuild;
 pub mod rename;
+
+pub static CMD_ARGS: OnceLock<Command> = OnceLock::new();
+pub fn cmd_args() -> &'static Command {
+    CMD_ARGS.get().unwrap()
+}
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
@@ -27,7 +33,7 @@ macro_rules! options {
         pub const KIND: $crate::entries::EntryKind = $conf;
         /// Retrieves the options given to this command.
         fn opt() -> &'static $opt {
-            match &$crate::args().cmd {
+            match $crate::commands::cmd_args() {
                 $crate::Command::$opt(opt) => opt,
                 _ => unreachable!(),
             }

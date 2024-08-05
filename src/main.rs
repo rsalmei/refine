@@ -5,12 +5,9 @@ mod utils;
 use clap::Parser;
 use commands::{dupes, join, list, rebuild, rename, Command};
 use entries::gen_medias;
-use std::sync::{atomic, Arc, OnceLock};
 use std::path::PathBuf;
+use std::sync::{atomic, Arc};
 
-static ARGS: OnceLock<Args> = OnceLock::new();
-pub fn args() -> &'static Args {
-    ARGS.get().unwrap()
 #[derive(Debug, Parser)]
 #[command(version, about, long_about = None, after_help = "For more information, see https://github.com/rsalmei/refine")]
 pub struct Args {
@@ -25,15 +22,17 @@ pub struct Args {
 
 fn main() {
     println!("Refine v{}", env!("CARGO_PKG_VERSION"));
-    ARGS.set(Args::parse()).unwrap();
     entries::parse_input_regexes();
+    let args = Args::parse();
+    commands::CMD_ARGS.set(args.cmd).unwrap();
+    entries::FILTERS.set(args.filters).unwrap();
     install_ctrlc_handler();
 
     // lists files from the given paths, or the current directory if no paths were given.
     let cd = args().paths.is_empty().then(|| ".".into());
     let paths = args().paths.iter().cloned().chain(cd);
 
-    if let Err(err) = match args().cmd {
+    if let Err(err) = match commands::cmd_args() {
         Command::Dupes(_) => dupes::run(gen_medias(paths, dupes::KIND)),
         Command::Rebuild(_) => rebuild::run(gen_medias(paths, rebuild::KIND)),
         Command::List(_) => list::run(gen_medias(paths, list::KIND)),
