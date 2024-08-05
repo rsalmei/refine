@@ -1,17 +1,26 @@
-mod cli;
 mod commands;
 mod entries;
 mod utils;
 
 use clap::Parser;
-use cli::Args;
 use commands::{dupes, join, list, rebuild, rename, Command};
 use entries::gen_medias;
 use std::sync::{atomic, Arc, OnceLock};
+use std::path::PathBuf;
 
 static ARGS: OnceLock<Args> = OnceLock::new();
 pub fn args() -> &'static Args {
     ARGS.get().unwrap()
+#[derive(Debug, Parser)]
+#[command(version, about, long_about = None, after_help = "For more information, see https://github.com/rsalmei/refine")]
+pub struct Args {
+    /// Paths to scan.
+    #[arg(global = true, help_heading = Some("Global"))]
+    pub paths: Vec<PathBuf>,
+    #[command(subcommand)]
+    pub cmd: Command,
+    #[command(flatten)]
+    pub filters: entries::Filters,
 }
 
 fn main() {

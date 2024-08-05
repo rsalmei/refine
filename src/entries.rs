@@ -1,8 +1,41 @@
-use crate::{args, utils};
+use crate::utils;
+use clap::builder::NonEmptyStringValueParser;
+use clap::Args;
 use regex::Regex;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use std::{fmt, iter};
+
+#[derive(Debug, Args)]
+pub struct Filters {
+    /// Include only these files and directories; checked without extension.
+    #[arg(short = 'i', long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
+    pub include: Option<String>,
+    /// Exclude these files and directories; checked without extension.
+    #[arg(short = 'x', long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
+    pub exclude: Option<String>,
+    /// Include only these directories.
+    #[arg(short = 'I', long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
+    pub dir_in: Option<String>,
+    /// Exclude these directories.
+    #[arg(short = 'X', long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
+    pub dir_ex: Option<String>,
+    /// Include only these files; checked without extension.
+    #[arg(long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
+    pub file_in: Option<String>,
+    /// Exclude these files; checked without extension.
+    #[arg(long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
+    pub file_ex: Option<String>,
+    /// Include only these extensions.
+    #[arg(long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
+    pub ext_in: Option<String>,
+    /// Exclude these extensions.
+    #[arg(long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
+    pub ext_ex: Option<String>,
+    /// Do not recurse into subdirectories.
+    #[arg(short = 'w', long, global = true, help_heading = Some("Global"))]
+    pub shallow: bool,
+}
 
 /// Denotes which kind of entries will be output.
 #[derive(Debug, Copy, Clone)]
