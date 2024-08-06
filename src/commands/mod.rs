@@ -7,9 +7,9 @@ pub mod list;
 pub mod rebuild;
 pub mod rename;
 
-pub static CMD_ARGS: OnceLock<Command> = OnceLock::new();
+pub static COMMAND: OnceLock<Command> = OnceLock::new();
 pub fn cmd_args() -> &'static Command {
-    CMD_ARGS.get().unwrap()
+    COMMAND.get().unwrap()
 }
 
 #[derive(Debug, Subcommand)]

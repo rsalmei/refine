@@ -23,7 +23,7 @@ pub struct Args {
 fn main() {
     println!("Refine v{}", env!("CARGO_PKG_VERSION"));
     let args = Args::parse();
-    commands::CMD_ARGS.set(args.cmd).unwrap();
+    commands::COMMAND.set(args.cmd).unwrap();
     entries::FILTERS.set(args.filters).unwrap();
     install_ctrlc_handler();
 
