@@ -4,7 +4,7 @@ mod utils;
 
 use clap::Parser;
 use commands::{dupes, join, list, rebuild, rename, Command};
-use entries::gen_medias;
+use entries::{gen_medias, Filters};
 use std::path::PathBuf;
 use std::sync::{atomic, Arc};
 
@@ -17,7 +17,7 @@ pub struct Args {
     #[command(subcommand)]
     pub cmd: Command,
     #[command(flatten)]
-    pub filters: entries::Filters,
+    pub filters: Filters,
 }
 
 fn main() {
