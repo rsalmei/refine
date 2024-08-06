@@ -8,9 +8,6 @@ pub mod rebuild;
 pub mod rename;
 
 pub static COMMAND: OnceLock<Command> = OnceLock::new();
-pub fn cmd_args() -> &'static Command {
-    COMMAND.get().unwrap()
-}
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
@@ -33,8 +30,8 @@ macro_rules! options {
         pub const KIND: $crate::entries::EntryKind = $conf;
         /// Retrieves the options given to this command.
         fn opt() -> &'static $opt {
-            match $crate::commands::cmd_args() {
-                $crate::Command::$opt(opt) => opt,
+            match $crate::commands::COMMAND.get().unwrap() {
+                $crate::commands::Command::$opt(opt) => opt,
                 _ => unreachable!(),
             }
         }

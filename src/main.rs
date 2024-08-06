@@ -3,8 +3,8 @@ mod entries;
 mod utils;
 
 use clap::Parser;
-use commands::{dupes, join, list, rebuild, rename, Command};
-use entries::{gen_medias, Filters};
+use commands::{dupes, join, list, rebuild, rename, Command, COMMAND};
+use entries::{gen_medias, Filters, FILTERS};
 use std::path::PathBuf;
 use std::sync::{atomic, Arc};
 
@@ -23,8 +23,8 @@ pub struct Args {
 fn main() {
     println!("Refine v{}", env!("CARGO_PKG_VERSION"));
     let args = Args::parse();
-    commands::COMMAND.set(args.cmd).unwrap();
-    entries::FILTERS.set(args.filters).unwrap();
+    COMMAND.set(args.cmd).unwrap();
+    FILTERS.set(args.filters).unwrap();
     install_ctrlc_handler();
 
     // lists files from the given paths, or the current directory if no paths were given.
@@ -40,7 +40,7 @@ fn main() {
         paths.into_iter().chain(cd)
     };
 
-    if let Err(err) = match commands::cmd_args() {
+    if let Err(err) = match COMMAND.get().unwrap() {
         Command::Dupes(_) => dupes::run(gen_medias(paths, dupes::KIND)),
         Command::Rebuild(_) => rebuild::run(gen_medias(paths, rebuild::KIND)),
         Command::List(_) => list::run(gen_medias(paths, list::KIND)),
