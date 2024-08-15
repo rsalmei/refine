@@ -36,7 +36,7 @@ That's it, and you can then just call it anywhere!
 - new filter options for files, directories and extensions
 - rename: include directory support
 
-<details><summary>(click to expand)</summary>
+<details><summary>(previous)</summary>
 
 ### New in 0.15
 
@@ -312,6 +312,7 @@ Example:
 
 <details><summary>(click to expand)</summary>
 
+- 0.17.1 Aug 15, 2024: fix shallow option
 - 0.17.0 Aug 05, 2024: dedup input paths, enables to select only files by filtering extensions, join: new clash resolve option
 - 0.16.0 Ago 01, 2024: scan with directory support, new `join` command, new magic filter options, new filter options, rename: include directory support
 - 0.15.0 Jul 18, 2024: nicer rename command output by parent directory, new threaded yes/no prompt that can be aborted with CTRL-C
