@@ -122,7 +122,7 @@ fn entries(dir: PathBuf, rm: RecurseMode) -> Box<dyn Iterator<Item = PathBuf>> {
                 use {EntryKind::*, RecurseMode::*};
                 match (path.is_dir(), is_included(&path), rm) {
                     (false, Some(true), _) => Box::new(iter::once(path)),
-                    (true, Some(false), _) => entries(path, rm),
+                    (true, Some(false), Recurse(_)) => entries(path, rm),
                     (true, Some(true), Recurse(File)) => entries(path, rm),
                     (true, Some(true), Recurse(Either)) => Box::new(iter::once(path)),
                     (true, Some(true), Recurse(Both)) => {
