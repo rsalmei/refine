@@ -27,8 +27,8 @@ pub struct Rebuild {
     /// Detect and fix similar filenames (e.g. "foo bar.mp4" and "foo__bar.mp4").
     #[arg(short = 's', long)]
     no_smart_detect: bool,
-    /// Easily set filenames for new files. BEWARE: use only on already organized collections.
-    #[arg(short = 'f', long, value_name = "STR", value_parser = NonEmptyStringValueParser::new())]
+    /// Easily overwrite filenames (use the Global options to filter them).
+    #[arg(short = 'f', long, value_name = "STR", conflicts_with_all = ["strip_before", "strip_after", "strip_exact", "no_smart_detect"], value_parser = NonEmptyStringValueParser::new())]
     force: Option<String>,
     /// Skip the confirmation prompt, useful for automation.
     #[arg(short = 'y', long)]
@@ -39,16 +39,14 @@ pub struct Rebuild {
 pub struct Media {
     /// The original path to the file.
     path: PathBuf,
-    /// The working copy of the name, where the rules are applied.
-    wname: String,
+    /// The new generated filename.
+    new_name: String,
     /// The smart group (if enabled and wname has spaces or _).
     smart_group: Option<String>,
-    /// The final name, after the rules and the sequence have been applied.
-    new_name: String,
     /// A cached version of the file extension.
     ext: &'static str,
     /// The creation time of the file.
-    ts: SystemTime,
+    created: SystemTime,
 }
 
 options!(Rebuild => EntryKind::File);
@@ -56,60 +54,47 @@ options!(Rebuild => EntryKind::File);
 pub fn run(mut medias: Vec<Media>) -> Result<()> {
     println!("=> Rebuilding files...\n");
 
-    // step: strip sequence numbers.
-    medias.iter_mut().for_each(|m| {
-        let name = utils::strip_sequence(&m.wname);
-        if name != m.wname {
-            m.wname.truncate(name.len()); // sequence numbers are at the end of the filename.
-        }
-    });
-
-    // step: apply strip rules.
-    utils::strip_names(&mut medias, StripPos::Before, &opt().strip_before)?;
-    utils::strip_names(&mut medias, StripPos::After, &opt().strip_after)?;
-    utils::strip_names(&mut medias, StripPos::Exact, &opt().strip_exact)?;
-
-    // step: force names.
-    if let Some(force) = &opt().force {
-        medias
-            .iter_mut()
-            .filter(|m| m.wname.is_empty())
-            .for_each(|m| {
-                m.wname.clone_from(force);
-            })
-    }
-
-    utils::user_aborted()?;
-
-    // step: remove medias where the rules cleared the name.
-    let total = medias.len();
-    let warnings = utils::remove_cleared(&mut medias);
-
-    // step: smart detect.
-    if !opt().no_smart_detect {
-        static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[\s_]+").unwrap());
-
+    let (total, warnings) = if let Some(force) = &opt().force {
         medias.iter_mut().for_each(|m| {
-            if let Cow::Owned(x) = RE.replace_all(&m.wname, "") {
-                m.smart_group = Some(x);
+            m.new_name.clone_from(force);
+        });
+        (medias.len(), 0)
+    } else {
+        // step: strip sequence numbers.
+        medias.iter_mut().for_each(|m| {
+            let name = utils::strip_sequence(&m.new_name);
+            if name != m.new_name {
+                m.new_name.truncate(name.len()); // sequence numbers are at the end of the filename.
             }
         });
-    }
+
+        // step: apply strip rules.
+        utils::strip_names(&mut medias, StripPos::Before, &opt().strip_before)?;
+        utils::strip_names(&mut medias, StripPos::After, &opt().strip_after)?;
+        utils::strip_names(&mut medias, StripPos::Exact, &opt().strip_exact)?;
+
+        utils::user_aborted()?;
+
+        // step: remove medias where the rules cleared the name (and not forced).
+        let total = medias.len();
+        let warnings = utils::remove_cleared(&mut medias);
+
+        // step: smart detect.
+        if !opt().no_smart_detect {
+            static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[\s_]+").unwrap());
+
+            medias.iter_mut().for_each(|m| {
+                if let Cow::Owned(x) = RE.replace_all(&m.new_name, "") {
+                    m.smart_group = Some(x);
+                }
+            });
+        }
+
+        (total, warnings)
+    };
 
     // step: generate new names to compute the changes.
     apply_new_names(&mut medias);
-
-    // step: if forced, apply it only to the effective changes and regenerate new names.
-    if let Some(force) = &opt().force {
-        medias
-            .iter_mut()
-            .filter(|m| m.new_name != m.path.file_name().unwrap().to_str().unwrap())
-            .for_each(|m| {
-                m.wname.clone_from(force);
-                m.smart_group = None;
-            });
-        apply_new_names(&mut medias);
-    }
 
     utils::user_aborted()?;
 
@@ -167,18 +152,15 @@ fn apply_new_names(medias: &mut [Media]) {
     medias
         .chunk_by_mut(|m, n| m.group() == n.group())
         .for_each(|g| {
-            g.sort_by_key(|m| m.ts);
+            g.sort_by_key(|m| m.created);
             let base = match opt().no_smart_detect {
                 false => {
-                    let vars = g.iter().map(|m| &m.wname).collect::<HashSet<_>>();
+                    let vars = g.iter().map(|m| &m.new_name).collect::<HashSet<_>>();
                     vars.iter().map(|&x| (x.len(), x)).max().unwrap().1
                 }
-                true => &g[0].wname,
+                true => &g[0].new_name,
             };
-            let base = match base.contains(' ') {
-                true => base.replace(' ', "_"),
-                false => base.to_owned(), // needed because g is borrowed, and I need to mutate it below.
-            };
+            let base = base.replace(' ', "_");
             g.iter_mut().enumerate().for_each(|(i, m)| {
                 m.new_name.clear(); // because of the force option.
                 write!(m.new_name, "{base}-{}", i + 1).unwrap();
@@ -189,9 +171,9 @@ fn apply_new_names(medias: &mut [Media]) {
         });
 }
 
-impl utils::WorkingName for Media {
-    fn wname(&mut self) -> &mut String {
-        &mut self.wname
+impl utils::NewName for Media {
+    fn new_name(&mut self) -> &mut String {
+        &mut self.new_name
     }
 }
 
@@ -209,7 +191,7 @@ impl utils::NewPath for Media {
 
 impl Media {
     fn group(&self) -> &str {
-        self.smart_group.as_deref().unwrap_or(&self.wname)
+        self.smart_group.as_deref().unwrap_or(&self.new_name)
     }
 }
 
@@ -219,10 +201,9 @@ impl TryFrom<PathBuf> for Media {
     fn try_from(path: PathBuf) -> Result<Self> {
         let (name, ext) = utils::filename_parts(&path)?;
         Ok(Media {
-            wname: name.trim().to_lowercase(),
-            new_name: String::new(),
+            new_name: name.trim().to_lowercase(),
             ext: utils::intern(ext),
-            ts: fs::metadata(&path)?.created()?,
+            created: fs::metadata(&path)?.created()?,
             smart_group: None,
             path,
         })
