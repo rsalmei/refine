@@ -24,9 +24,20 @@ That's it, and you can then just call it anywhere!
 
 ## What's new
 
+### New in 0.18
+
+- rebuild: new force implementation that is easier to use
+    - it conflicts with any other options so must be used alone
+    - now it just overwrites filenames without exceptions -> best used with `-i` or on already organized collections
+    - improved memory usage
+
+<details><summary>(previous)</summary>
+
 ### New in 0.17
 
 - join: new clash resolve option
+    - by default, no changes are allowed in directories where clashes are detected
+    - all directories with clashes are listed, showing exactly which files are in them
 
 ### New in 0.16
 
@@ -35,8 +46,6 @@ That's it, and you can then just call it anywhere!
 - new magic `-i` and `-x` options that filter both files and directories
 - new filter options for files, directories and extensions
 - rename: include directory support
-
-<details><summary>(previous)</summary>
 
 ### New in 0.15
 
@@ -172,14 +181,17 @@ Example:
 
 The `rebuild` command is a great achievement, if I say so myself. It will smartly rebuild the filenames of an entire collection when it is composed by user ids or streamer names, for instance. It will do so by removing sequence numbers, stripping parts of filenames you don't want, smartly detecting misspelled names by comparing with adjacent files, sorting the detected groups deterministically by creation date, regenerating the sequence numbers, and finally renaming all the files accordingly. It's awesome to quickly find your video or music library neatly sorted automatically... And the next time you run it, it will detect new files added since the last time, and include them in the correct group! Pretty cool, huh? And don't worry, you can review all the changes before applying them.
 
-1. remove any sequence numbers like file-1, file copy, file-3 copy 2, etc.
-2. strip parts of the filenames, either before, after, or exactly a certain string
-3. remove spaces and underscores, and smartly detect misspelled names
-4. group the resulting names, and smartly choose the most likely correct name among the group
-5. sort the group according to the file created date
-6. regenerate the sequence numbers for the group <-- Note this occurs on the whole group, regardless of the directory the file currently resides in
-7. print the resulting changes to the filenames, and ask for confirmation
-8. if the user confirms, apply the changes
+1. if forced option is used:
+    1. overwrite all the files with the forced name
+2. otherwise:
+    1. remove any sequence numbers like file-1, file copy, file-3 copy 2, etc.
+    2. strip parts of the filenames, either before, after, or exactly a certain string
+    3. remove spaces and underscores, and smartly detect misspelled names
+    4. group the resulting names, and smartly choose the most likely correct name among the group
+    5. sort the group content according to the files' created dates
+3. regenerate the sequence numbers for each group <-- Note that groups can contain files from different directories, and it will just work
+4. print the resulting changes to the filenames, and ask for confirmation
+5. if the user confirms, apply the changes
 
 <details><summary>refine rebuild --help</summary>
 
@@ -193,7 +205,7 @@ Options:
   -a, --strip-after <STR|REGEX>   Remove from this str to the end of the filename; blanks are automatically removed
   -e, --strip-exact <STR|REGEX>   Remove all occurrences of this str in the filename; blanks are automatically removed
   -s, --no-smart-detect           Detect and fix similar filenames (e.g. "foo bar.mp4" and "foo__bar.mp4")
-  -f, --force <STR>               Easily set filenames for new files. BEWARE: use only on already organized collections
+  -f, --force <STR>               Easily overwrite filenames (use the Global options to filter them)
   -y, --yes                       Skip the confirmation prompt, useful for automation
   -h, --help                      Print help
 ```
@@ -312,6 +324,7 @@ Example:
 
 <details><summary>(click to expand)</summary>
 
+- 0.18.0 Aug 27, 2024: rebuild: new force implementation that is easier to use with improved memory usage
 - 0.17.1 Aug 15, 2024: fix shallow option
 - 0.17.0 Aug 05, 2024: dedup input paths, enables to select only files by filtering extensions, join: new clash resolve option
 - 0.16.0 Ago 01, 2024: scan with directory support, new `join` command, new magic filter options, new filter options, rename: include directory support
