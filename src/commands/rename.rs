@@ -37,8 +37,8 @@ pub struct Rename {
 pub struct Media {
     /// The original path to the file.
     path: PathBuf,
-    /// The working copy of the name, where the rules are applied.
-    wname: String,
+    /// The new generated filename.
+    new_name: String,
     /// A cached version of the file extension.
     ext: &'static str,
 }
@@ -59,8 +59,8 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
         let re =
             Regex::new(&format!("(?i){k}")).with_context(|| format!("compiling regex: {k:?}"))?;
         medias.iter_mut().for_each(|m| {
-            if let Cow::Owned(s) = re.replace_all(&m.wname, v) {
-                m.wname = s;
+            if let Cow::Owned(s) = re.replace_all(&m.new_name, v) {
+                m.new_name = s;
             }
         })
     }
@@ -75,7 +75,7 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
     medias
         .iter_mut()
         .filter(|m| !m.ext.is_empty())
-        .try_for_each(|m| write!(m.wname, ".{}", m.ext))?;
+        .try_for_each(|m| write!(m.new_name, ".{}", m.ext))?;
 
     // step: disallow changes in directories where clashes are detected.
     medias.sort_unstable_by(|m, n| m.path.cmp(&n.path));
@@ -87,7 +87,7 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
             let mut clashes = HashMap::with_capacity(g.len());
             g.iter().for_each(|m| {
                 clashes
-                    .entry(&m.wname)
+                    .entry(&m.new_name)
                     .or_insert_with(Vec::new)
                     .push(&m.path)
             });
@@ -107,12 +107,12 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
                     eprintln!("  > {} --> {k}{exists}", list.join(", "));
                 });
                 match opt().clashes {
-                    false => g.iter_mut().for_each(|m| m.wname.clear()),
+                    false => g.iter_mut().for_each(|m| m.new_name.clear()),
                     true => {
                         let keys = clashes.iter().map(|&(k, _)| k.clone()).collect::<Vec<_>>();
                         g.iter_mut()
-                            .filter(|m| keys.contains(&m.wname))
-                            .for_each(|m| m.wname.clear());
+                            .filter(|m| keys.contains(&m.new_name))
+                            .for_each(|m| m.new_name.clear());
                     }
                 }
             }
@@ -123,8 +123,8 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
     // step: settle changes.
     let mut changes = medias
         .into_iter()
-        .filter(|m| !m.wname.is_empty()) // new clash detection.
-        .filter(|m| m.wname != m.path.file_name().unwrap().to_str().unwrap())
+        .filter(|m| !m.new_name.is_empty()) // new clash detection.
+        .filter(|m| m.new_name != m.path.file_name().unwrap().to_str().unwrap())
         .collect::<Vec<_>>();
 
     // step: display the results by parent directory.
@@ -141,7 +141,7 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
                     "  {}{} --> {}{}",
                     m.path.file_name().unwrap().to_str().unwrap(),
                     kind(&m.path),
-                    m.wname,
+                    m.new_name,
                     kind(&m.path),
                 )
             });
@@ -171,9 +171,9 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
     Ok(())
 }
 
-impl utils::WorkingName for Media {
-    fn wname(&mut self) -> &mut String {
-        &mut self.wname
+impl utils::NewName for Media {
+    fn new_name(&mut self) -> &mut String {
+        &mut self.new_name
     }
 }
 
@@ -185,7 +185,7 @@ impl utils::OriginalPath for Media {
 
 impl utils::NewPath for Media {
     fn new_path(&self) -> PathBuf {
-        self.path.with_file_name(&self.wname)
+        self.path.with_file_name(&self.new_name)
     }
 }
 
@@ -195,7 +195,7 @@ impl TryFrom<PathBuf> for Media {
     fn try_from(path: PathBuf) -> Result<Self> {
         let (name, ext) = utils::filename_parts(&path)?;
         Ok(Media {
-            wname: name.trim().to_owned(),
+            new_name: name.trim().to_owned(),
             ext: utils::intern(ext),
             path,
         })

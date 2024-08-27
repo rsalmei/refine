@@ -49,11 +49,11 @@ pub enum StripPos {
     Exact,
 }
 
-pub trait WorkingName {
-    fn wname(&mut self) -> &mut String;
+pub trait NewName {
+    fn new_name(&mut self) -> &mut String;
 }
 
-pub fn strip_names(medias: &mut [impl WorkingName], pos: StripPos, rules: &[String]) -> Result<()> {
+pub fn strip_names(medias: &mut [impl NewName], pos: StripPos, rules: &[String]) -> Result<()> {
     const BOUND: &str = r"[-_\.\s]";
     for rule in rules {
         let regex = match pos {
@@ -65,8 +65,8 @@ pub fn strip_names(medias: &mut [impl WorkingName], pos: StripPos, rules: &[Stri
         };
         let re = Regex::new(regex).with_context(|| format!("compiling regex: {rule:?}"))?;
         medias.iter_mut().for_each(|m| {
-            *m.wname() = re
-                .split(m.wname())
+            *m.new_name() = re
+                .split(m.new_name())
                 .filter(|s| !s.is_empty())
                 .collect::<Vec<_>>()
                 .join(""); // only actually used on Pos::Exact, the other two always return a single element.
@@ -80,10 +80,10 @@ pub trait OriginalPath {
     fn path(&self) -> &Path;
 }
 
-pub fn remove_cleared(medias: &mut Vec<impl WorkingName + OriginalPath>) -> usize {
+pub fn remove_cleared(medias: &mut Vec<impl NewName + OriginalPath>) -> usize {
     medias.sort_unstable_by(|m, n| m.path().cmp(n.path()));
     let mut warnings = 0;
-    medias.retain_mut(|m| match m.wname().is_empty() {
+    medias.retain_mut(|m| match m.new_name().is_empty() {
         true => {
             warnings += 1;
             eprintln!("warning: rules cleared name: {}", m.path().display());
