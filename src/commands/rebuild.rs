@@ -217,7 +217,7 @@ impl TryFrom<PathBuf> for Media {
     type Error = anyhow::Error;
 
     fn try_from(path: PathBuf) -> Result<Self> {
-        let (name, ext) = utils::filename_parts(&path).unwrap(); // files were already checked.
+        let (name, ext) = utils::filename_parts(&path)?;
         Ok(Media {
             wname: name.trim().to_lowercase(),
             new_name: String::new(),

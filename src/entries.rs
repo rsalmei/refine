@@ -97,8 +97,8 @@ fn entries(dir: PathBuf, rm: RecurseMode) -> Box<dyn Iterator<Item = PathBuf>> {
         (is_match(name, RE_IN.get(), RE_EX.get()) // applied to both files and directories.
             && is_match(ext, RE_EIN.get(), RE_EEX.get())
             && match path.is_dir() {
-                true => is_match(path.to_str().unwrap(), RE_DIN.get(), RE_DEX.get()),
-                false => is_match(path.parent()?.to_str().unwrap(), RE_DIN.get(), RE_DEX.get())
+                true => is_match(path.to_str()?, RE_DIN.get(), RE_DEX.get()),
+                false => is_match(path.parent()?.to_str()?, RE_DIN.get(), RE_DEX.get())
                     && is_match(name, RE_FIN.get(), RE_FEX.get()),
             })
         .into()
