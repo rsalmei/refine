@@ -1,4 +1,5 @@
 use crate::entries::EntryKind;
+use crate::utils::Sequence;
 use crate::{options, utils};
 use anyhow::Result;
 use clap::Args;
@@ -90,8 +91,10 @@ where
 }
 
 fn words(path: &Path) -> Result<Box<[String]>> {
-    let (name, _) = utils::filename_parts(path)?;
-    let name = utils::strip_sequence(name);
+    let (mut name, _) = utils::filename_parts(path)?;
+    if let Some(Sequence { len, .. }) = utils::extract_sequence(name) {
+        name = &name[..name.len() - len];
+    }
     let mut words = name
         .split(&[' ', '.', '-', '_'])
         .filter(|s| !s.is_empty())

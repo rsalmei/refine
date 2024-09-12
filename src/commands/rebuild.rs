@@ -1,6 +1,6 @@
 use crate::entries::EntryKind;
 use crate::options;
-use crate::utils::{self, StripPos};
+use crate::utils::{self, Sequence, StripPos};
 use anyhow::Result;
 use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
@@ -62,9 +62,8 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
     } else {
         // step: strip sequence numbers.
         medias.iter_mut().for_each(|m| {
-            let name = utils::strip_sequence(&m.new_name);
-            if name != m.new_name {
-                m.new_name.truncate(name.len()); // sequence numbers are at the end of the filename.
+            if let Some(Sequence { len, .. }) = utils::extract_sequence(&m.new_name) {
+                m.new_name.truncate(m.new_name.len() - len); // sequence numbers are always at the end.
             }
         });
 
