@@ -184,3 +184,34 @@ fn files_op(paths: &mut Vec<impl OriginalPath + NewPath>, notify: fn(&[u8]), op:
     });
     notify(b"\n");
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn sequence() {
+        fn case(stem: &str, seq: impl Into<Option<Sequence>>) {
+            assert_eq!(extract_sequence(stem), seq.into());
+        }
+
+        case("foo", None);
+        case("foo123", None);
+        case("foo-bar", None);
+        case("foo-bar123", None);
+        case("foo-123 bar", None);
+        case("foo - bar", None);
+        case("foo(bar)", None);
+        case("foo (bar)", None);
+
+        case("foo-123", Sequence { len: 4, seq: 123 }); // the sequence style used here.
+        case("foo 123", Sequence { len: 4, seq: 123 }); // macOS "Keep both files" when copying.
+        case("foo copy", Sequence { len: 5, seq: 2 }); // macOS first "Keep both files" when moving.
+        case("foo copy 123", Sequence { len: 9, seq: 123 }); // macOS from second onward when moving.
+        case("foo (123)", Sequence { len: 6, seq: 123 }); // Windows.
+
+        case("foo 1", Sequence { len: 2, seq: 1 }); // macOS won't generate "1", but we'll accept it.
+        case("foo copy 1", Sequence { len: 7, seq: 1 }); // macOS won't generate "1", but we'll accept it.
+        case("foo (1)", Sequence { len: 4, seq: 1 }); // Windows won't generate "1", but we'll accept it.
+    }
+}
