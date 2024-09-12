@@ -76,11 +76,7 @@ pub fn strip_names(medias: &mut [impl NewName], pos: StripPos, rules: &[String])
         };
         let re = Regex::new(regex).with_context(|| format!("compiling regex: {rule:?}"))?;
         medias.iter_mut().for_each(|m| {
-            *m.new_name() = re
-                .split(m.new_name())
-                .filter(|s| !s.is_empty())
-                .collect::<Vec<_>>()
-                .join(""); // only actually used on Pos::Exact, the other two always return a single element.
+            *m.new_name() = re.split(m.new_name()).collect::<String>();
         })
     }
     Ok(())
