@@ -32,14 +32,25 @@ pub fn filename_parts(path: &Path) -> Result<(&str, &str)> {
     }
 }
 
-/// Strip sequence numbers from a filename.
-pub fn strip_sequence(name: &str) -> &str {
-    static REM: LazyLock<Regex> = LazyLock::new(|| Regex::new(r" copy( \d+)?$").unwrap());
-    static REL: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"-\d+$").unwrap());
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct Sequence {
+    pub len: usize,
+    pub seq: u32,
+}
 
-    // replace_all() would allocate a new string, which would be a waste.
-    let name = REM.split(name).next().unwrap(); // even if the name is " copy", this returns an empty str.
-    REL.split(name).next().unwrap() // same as above, even if the name is "-1", this returns an empty str.
+/// Extract the sequence number from a file stem.
+pub fn extract_sequence(stem: &str) -> Option<Sequence> {
+    static RE_SEQ: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"(?:[- ](\d+)| copy (\d+)| \((\d+)\))$").unwrap());
+
+    if stem.ends_with(" copy") {
+        return Some(Sequence { len: 5, seq: 2 }); // macOS first "Keep both files" when moving has no sequence.
+    }
+    let (full, [seq]) = RE_SEQ.captures(stem).map(|caps| caps.extract())?;
+    Some(Sequence {
+        len: full.len(),
+        seq: seq.parse().unwrap_or(1),
+    })
 }
 
 #[derive(Debug)]
