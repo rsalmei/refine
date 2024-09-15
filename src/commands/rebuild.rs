@@ -75,7 +75,7 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
 
         utils::user_aborted()?;
 
-        // step: remove medias where the rules cleared the name (and not forced).
+        // step: remove medias where the rules cleared the name.
         let total = medias.len();
         let warnings = utils::remove_cleared(&mut medias);
 
