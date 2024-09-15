@@ -77,6 +77,14 @@ where
         .collect()
 }
 
+macro_rules! re_input {
+    ($($re:ident, $name:ident);+ $(;)?) => {
+        $( static $re: OnceLock<Regex> = OnceLock::new(); )+
+        fn parse_input_regexes(filters: &Filters) {
+            $( utils::set_re(&filters.$name, &$re, stringify!($name)); )+
+        }
+    };
+}
 re_input!(
     RE_IN, include; RE_EX, exclude; // general include and exclude (both files and directories).
     RE_DIN, dir_in; RE_DEX, dir_ex; // directory include and exclude.
@@ -138,13 +146,3 @@ fn entries(dir: PathBuf, rm: RecurseMode) -> Box<dyn Iterator<Item = PathBuf>> {
         }
     }
 }
-
-macro_rules! _re_input {
-    ($($re:ident, $name:ident);+ $(;)?) => {
-        $( static $re: OnceLock<Regex> = OnceLock::new(); )+
-        fn parse_input_regexes(filters: &Filters) {
-            $( utils::set_re(&filters.$name, &$re, stringify!($name)); )+
-        }
-    };
-}
-use _re_input as re_input;
