@@ -198,6 +198,23 @@ mod test {
     use super::*;
 
     #[test]
+    fn filename() {
+        #[track_caller]
+        fn case(p: impl AsRef<Path>, (s, e): (&str, &str)) {
+            assert_eq!(filename_parts(p.as_ref()).unwrap(), (s, e));
+        }
+
+        case("foo", ("foo", ""));
+        case("foo.bar", ("foo", "bar"));
+        case("foo.bar.baz", ("foo.bar", "baz"));
+        case("foo/", ("foo", ""));
+
+        fs::create_dir("foo.bar").unwrap(); // not a great solution, but is_dir() actually tries the fs.
+        case("foo.bar/", ("foo.bar", ""));
+        fs::remove_dir("foo.bar").unwrap()
+    }
+
+    #[test]
     fn sequence() {
         fn case(stem: &str, seq: impl Into<Option<Sequence>>) {
             assert_eq!(extract_sequence(stem), seq.into());
