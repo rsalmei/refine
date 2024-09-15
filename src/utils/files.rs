@@ -216,6 +216,7 @@ mod test {
 
     #[test]
     fn sequence() {
+        #[track_caller]
         fn case(stem: &str, seq: impl Into<Option<Sequence>>) {
             assert_eq!(extract_sequence(stem), seq.into());
         }
