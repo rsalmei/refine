@@ -7,28 +7,25 @@ use std::{fs, io};
 
 /// Get the file stem and extension from files, or name from directories.
 pub fn filename_parts(path: &Path) -> Result<(&str, &str)> {
-    match path.is_dir() {
-        true => {
-            let name = path
-                .file_name()
-                .ok_or_else(|| anyhow!("no file name: {path:?}"))?
-                .to_str()
-                .ok_or_else(|| anyhow!("no UTF-8 file name: {path:?}"))?;
-            Ok((name, ""))
-        }
-        false => {
-            let stem = path
-                .file_stem()
-                .ok_or_else(|| anyhow!("no file stem: {path:?}"))?
-                .to_str()
-                .ok_or_else(|| anyhow!("no UTF-8 file stem: {path:?}"))?;
-            let ext = path
-                .extension()
-                .unwrap_or_default()
-                .to_str()
-                .ok_or_else(|| anyhow!("no UTF-8 extension: {path:?}"))?;
-            Ok((stem, ext))
-        }
+    if path.is_dir() {
+        let name = path
+            .file_name()
+            .ok_or_else(|| anyhow!("no file name: {path:?}"))?
+            .to_str()
+            .ok_or_else(|| anyhow!("no UTF-8 file name: {path:?}"))?;
+        Ok((name, ""))
+    } else {
+        let stem = path
+            .file_stem()
+            .ok_or_else(|| anyhow!("no file stem: {path:?}"))?
+            .to_str()
+            .ok_or_else(|| anyhow!("no UTF-8 file stem: {path:?}"))?;
+        let ext = path
+            .extension()
+            .unwrap_or_default()
+            .to_str()
+            .ok_or_else(|| anyhow!("no UTF-8 extension: {path:?}"))?;
+        Ok((stem, ext))
     }
 }
 
