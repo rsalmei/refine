@@ -1,6 +1,5 @@
 use crate::entries::EntryKind;
-use crate::options;
-use crate::utils::{self, StripPos};
+use crate::{options, utils};
 use anyhow::{Context, Result};
 use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
@@ -50,9 +49,10 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
     let kind = |p: &Path| if p.is_dir() { "/" } else { "" };
 
     // step: apply strip rules.
-    utils::strip_names(&mut medias, StripPos::Before, &opt().strip_before)?;
-    utils::strip_names(&mut medias, StripPos::After, &opt().strip_after)?;
-    utils::strip_names(&mut medias, StripPos::Exact, &opt().strip_exact)?;
+    utils::strip_filenames(
+        &mut medias,
+        [&opt().strip_before, &opt().strip_after, &opt().strip_exact],
+    )?;
 
     // step: apply replacement rules.
     for (k, v) in &opt().replace {

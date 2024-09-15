@@ -1,6 +1,6 @@
 use crate::entries::EntryKind;
 use crate::options;
-use crate::utils::{self, Sequence, StripPos};
+use crate::utils::{self, Sequence};
 use anyhow::Result;
 use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
@@ -68,9 +68,10 @@ pub fn run(mut medias: Vec<Media>) -> Result<()> {
         });
 
         // step: apply strip rules.
-        utils::strip_names(&mut medias, StripPos::Before, &opt().strip_before)?;
-        utils::strip_names(&mut medias, StripPos::After, &opt().strip_after)?;
-        utils::strip_names(&mut medias, StripPos::Exact, &opt().strip_exact)?;
+        utils::strip_filenames(
+            &mut medias,
+            [&opt().strip_before, &opt().strip_after, &opt().strip_exact],
+        )?;
 
         utils::user_aborted()?;
 
