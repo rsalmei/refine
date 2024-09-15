@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Context, Result};
 use regex::Regex;
+use std::borrow::Cow;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
@@ -61,21 +62,31 @@ pub trait NewName {
     fn new_name(&mut self) -> &mut String;
 }
 
-pub fn strip_names(medias: &mut [impl NewName], pos: StripPos, rules: &[String]) -> Result<()> {
+pub fn strip_filenames(medias: &mut [impl NewName], rules: [&[String]; 3]) -> Result<()> {
     const BOUND: &str = r"[-_\.\s]";
-    for rule in rules {
-        let regex = match pos {
-            StripPos::Before => &format!("(?i)^.*{rule}{BOUND}*"),
-            StripPos::After => &format!("(?i){BOUND}*{rule}.*$"),
-            StripPos::Exact => {
-                &format!(r"(?i){BOUND}+{rule}$|^{rule}{BOUND}+|{BOUND}+{rule}|{rule}")
-            }
-        };
-        let re = Regex::new(regex).with_context(|| format!("compiling regex: {rule:?}"))?;
-        medias.iter_mut().for_each(|m| {
-            *m.new_name() = re.split(m.new_name()).collect::<String>();
-        })
+    let before = |rule| format!("(?i)^.*{rule}{BOUND}*");
+    let after = |rule| format!("(?i){BOUND}*{rule}.*$");
+    let exact = |rule| format!(r"(?i){BOUND}+{rule}$|^{rule}{BOUND}+|{BOUND}+{rule}|{rule}");
+
+    // pre-compile all rules into regexes.
+    let mut regs = Vec::with_capacity(rules.iter().map(|r| r.len()).sum());
+    for (&rules, regex) in rules.iter().zip([before, after, exact]) {
+        for rule in rules {
+            let regex = &regex(rule);
+            let re = Regex::new(regex).with_context(|| format!("compiling regex: {rule:?}"))?;
+            regs.push(re);
+        }
     }
+    let regs = regs;
+
+    medias.iter_mut().for_each(|m| {
+        let mut name = std::mem::take(m.new_name());
+        regs.iter().for_each(|re| match re.replace_all(&name, "") {
+            Cow::Borrowed(_) => {}
+            Cow::Owned(x) => name = x,
+        });
+        *m.new_name() = name;
+    });
     Ok(())
 }
 
