@@ -62,7 +62,7 @@ pub trait NewName {
     fn new_name(&mut self) -> &mut String;
 }
 
-pub fn strip_filenames(medias: &mut [impl NewName], rules: [&[String]; 3]) -> Result<()> {
+pub fn strip_filenames(medias: &mut [impl NewName], rules: [&[impl AsRef<str>]; 3]) -> Result<()> {
     const BOUND: &str = r"[-_\.\s]";
     let before = |rule| format!("(?i)^.*{rule}{BOUND}*");
     let after = |rule| format!("(?i){BOUND}*{rule}.*$");
@@ -70,8 +70,8 @@ pub fn strip_filenames(medias: &mut [impl NewName], rules: [&[String]; 3]) -> Re
 
     // pre-compile all rules into regexes.
     let mut regs = Vec::with_capacity(rules.iter().map(|r| r.len()).sum());
-    for (&rules, regex) in rules.iter().zip([before, after, exact]) {
-        for rule in rules {
+    for (&group, regex) in rules.iter().zip([before, after, exact]) {
+        for rule in group.iter().map(|x| x.as_ref()) {
             let regex = &regex(rule);
             let re = Regex::new(regex).with_context(|| format!("compiling regex: {rule:?}"))?;
             regs.push(re);
