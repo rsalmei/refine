@@ -240,4 +240,61 @@ mod test {
         case("foo copy 1", Sequence { len: 7, seq: 1 }); // macOS won't generate "1", but we'll accept it.
         case("foo (1)", Sequence { len: 4, seq: 1 }); // Windows won't generate "1", but we'll accept it.
     }
+
+    #[test]
+    fn strip() {
+        struct Media(String);
+        impl NewName for Media {
+            fn new_name(&mut self) -> &mut String {
+                &mut self.0
+            }
+        }
+
+        #[track_caller]
+        fn case(rules: [&[&str]; 3], stem: &str, new_name: &str) {
+            let mut medias = vec![Media(stem.to_owned())];
+            strip_filenames(&mut medias, rules).unwrap();
+            assert_eq!(medias[0].0, new_name);
+        }
+
+        case([&["Before"], &[], &[]], "beforefoo", "foo");
+        case([&["Before"], &[], &[]], "before foo", "foo");
+        case([&["Before"], &[], &[]], "Before__foo", "foo");
+        case([&["before"], &[], &[]], "Before - foo", "foo");
+        case([&["before"], &[], &[]], "before.foo", "foo");
+        case([&["before"], &[], &[]], "Before\t.  foo", "foo");
+
+        case([&[], &["After"], &[]], "fooafter", "foo");
+        case([&[], &["After"], &[]], "foo after", "foo");
+        case([&[], &["After"], &[]], "foo__After", "foo");
+        case([&[], &["after"], &[]], "foo - After", "foo");
+        case([&[], &["after"], &[]], "foo.after", "foo");
+        case([&[], &["after"], &[]], "foo\t. After", "foo");
+
+        // exact: {BOUND}+{rule}$
+        case([&[], &[], &["Exact"]], "foo exact", "foo");
+        case([&[], &[], &["Exact"]], "foo__Exact", "foo");
+        case([&[], &[], &["exact"]], "foo - Exact", "foo");
+        case([&[], &[], &["exact"]], "foo.exact", "foo");
+        case([&[], &[], &["exact"]], "foo\t. Exact", "foo");
+
+        // exact: ^{rule}{BOUND}+
+        case([&[], &[], &["Exact"]], "exact foo", "foo");
+        case([&[], &[], &["Exact"]], "Exact__foo", "foo");
+        case([&[], &[], &["exact"]], "Exact - foo", "foo");
+        case([&[], &[], &["exact"]], "exact.foo", "foo");
+        case([&[], &[], &["exact"]], "Exact\t.  foo", "foo");
+
+        // exact: {BOUND}+{rule}
+        case([&[], &[], &["Exact"]], "foo exact bar", "foo bar");
+        case([&[], &[], &["Exact"]], "foo__Exact-bar", "foo-bar");
+        case([&[], &[], &["exact"]], "foo - Exact_bar", "foo_bar");
+        case([&[], &[], &["exact"]], "foo.exact.bar", "foo.bar");
+        case([&[], &[], &["exact"]], "foo\t.  Exact - bar", "foo - bar");
+
+        // exact: {rule}
+        case([&[], &[], &["Exact"]], "fexactoo", "foo");
+        case([&[], &[], &["Exact"]], "fooExact bar", "foo bar");
+        case([&[], &[], &["exact"]], "Exactfoo bar", "foo bar");
+    }
 }
