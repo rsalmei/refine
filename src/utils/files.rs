@@ -294,7 +294,11 @@ mod test {
 
         // exact: {rule}
         case([&[], &[], &["Exact"]], "fexactoo", "foo");
+        case([&[], &[], &["Exact"]], "fexactoExacto", "foo");
         case([&[], &[], &["Exact"]], "fooExact bar", "foo bar");
         case([&[], &[], &["exact"]], "Exactfoo bar", "foo bar");
+
+        // exact: unfortunate case, where I'd need lookahead to avoid it...
+        // case([&[], &[], &["Exact"]], "foo Exactbar", "foo bar");
     }
 }
