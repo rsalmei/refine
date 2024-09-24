@@ -27,16 +27,9 @@ fn main() -> Result<()> {
     install_ctrlc_handler();
 
     let options = {
-        let mut paths = args.paths;
-        let len = paths.len();
-        paths.sort_unstable();
-        paths.dedup();
-        if len != paths.len() {
-            eprintln!("warning: duplicated paths were ignored");
-        }
         // lists files from the given paths, or the current directory if no paths were given.
-        let cd = paths.is_empty().then(|| ".".into());
-        (paths.into_iter().chain(cd), args.filters)
+        let paths = args.paths.is_empty().then(|| vec![".".into()]);
+        (paths.unwrap_or(args.paths), args.filters)
     };
 
     match args.cmd {

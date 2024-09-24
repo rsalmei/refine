@@ -57,16 +57,23 @@ enum RecurseMode {
 
 pub fn find_entries(
     filters: Filters,
-    paths: impl Iterator<Item = PathBuf>,
+    mut paths: Vec<PathBuf>,
     kind: EntryKind,
 ) -> Result<impl Iterator<Item = PathBuf>> {
     parse_input_regexes(&filters)?;
-    let rm = if filters.shallow {
-        RecurseMode::Shallow
-    } else {
-        RecurseMode::Recurse(kind)
+
+    let len = paths.len();
+    paths.sort_unstable();
+    paths.dedup();
+    if len != paths.len() {
+        eprintln!("warning: duplicated paths were ignored");
+    }
+
+    let rm = match filters.shallow {
+        true => RecurseMode::Shallow,
+        false => RecurseMode::Recurse(kind),
     };
-    Ok(paths.flat_map(move |p| entries(p, rm)))
+    Ok(paths.into_iter().flat_map(move |p| entries(p, rm)))
 }
 
 macro_rules! re_input {

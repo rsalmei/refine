@@ -30,10 +30,7 @@ pub trait Refine {
     fn refine(self, medias: Vec<Self::Media>) -> anyhow::Result<()>;
 }
 
-pub fn run<R: Refine>(
-    cmd: R,
-    (paths, filters): (impl Iterator<Item = PathBuf>, Filters),
-) -> anyhow::Result<()> {
+pub fn run<R: Refine>(cmd: R, (paths, filters): (Vec<PathBuf>, Filters)) -> anyhow::Result<()> {
     cmd.refine(gen_medias(find_entries(filters, paths, R::entry_kind())?))
 }
 
