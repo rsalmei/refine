@@ -57,10 +57,7 @@ options!(Join);
 impl Refine for Join {
     type Media = Media;
     const OPENING_LINE: &'static str = "Joining files...";
-
-    fn entry_kind() -> EntryKind {
-        EntryKind::Either
-    }
+    const ENTRY_KIND: EntryKind = EntryKind::Either;
 
     fn refine(self, mut medias: Vec<Self::Media>) -> Result<()> {
         options!(=> self);

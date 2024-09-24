@@ -55,10 +55,7 @@ options!(Rebuild);
 impl Refine for Rebuild {
     type Media = Media;
     const OPENING_LINE: &'static str = "Rebuilding files...";
-
-    fn entry_kind() -> EntryKind {
-        EntryKind::File
-    }
+    const ENTRY_KIND: EntryKind = EntryKind::File;
 
     fn refine(self, mut medias: Vec<Self::Media>) -> Result<()> {
         options!(=> self);

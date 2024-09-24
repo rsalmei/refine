@@ -48,10 +48,7 @@ options!(Rename);
 impl Refine for Rename {
     type Media = Media;
     const OPENING_LINE: &'static str = "Renaming files...";
-
-    fn entry_kind() -> EntryKind {
-        EntryKind::Both
-    }
+    const ENTRY_KIND: EntryKind = EntryKind::Both;
 
     fn refine(self, mut medias: Vec<Self::Media>) -> Result<()> {
         options!(=> self);

@@ -36,10 +36,7 @@ options!(List);
 impl Refine for List {
     type Media = Media;
     const OPENING_LINE: &'static str = "Listing files...";
-
-    fn entry_kind() -> EntryKind {
-        EntryKind::File
-    }
+    const ENTRY_KIND: EntryKind = EntryKind::File;
 
     fn refine(self, mut medias: Vec<Self::Media>) -> Result<()> {
         options!(=> self);
