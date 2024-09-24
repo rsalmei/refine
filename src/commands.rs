@@ -4,9 +4,8 @@ mod list;
 mod rebuild;
 mod rename;
 
-use crate::entries;
+use crate::entries::{find_entries, EntryKind, Filters};
 use clap::Subcommand;
-use entries::EntryKind;
 use std::fmt;
 use std::path::PathBuf;
 
@@ -29,6 +28,28 @@ pub trait Refine {
 
     fn entry_kind() -> EntryKind;
     fn refine(self, medias: Vec<Self::Media>) -> anyhow::Result<()>;
+}
+
+pub fn run<R: Refine>(
+    cmd: R,
+    (paths, filters): (impl Iterator<Item = PathBuf>, Filters),
+) -> anyhow::Result<()> {
+    cmd.refine(gen_medias(find_entries(filters, paths, R::entry_kind())?))
+}
+
+fn gen_medias<T>(entries: impl Iterator<Item = PathBuf>) -> Vec<T>
+where
+    T: TryFrom<PathBuf, Error: fmt::Display>,
+{
+    entries
+        .map(|path| T::try_from(path))
+        .inspect(|res| {
+            if let Err(err) = res {
+                eprintln!("error: load media: {err}");
+            }
+        })
+        .flatten()
+        .collect()
 }
 
 #[macro_export]

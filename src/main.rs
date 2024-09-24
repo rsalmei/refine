@@ -2,10 +2,9 @@ mod commands;
 mod entries;
 mod utils;
 
-use crate::entries::find_entries;
 use anyhow::Result;
 use clap::Parser;
-use commands::{Command, Refine};
+use commands::{run, Command};
 use entries::Filters;
 use std::path::PathBuf;
 use std::sync::{atomic, Arc};
@@ -47,28 +46,6 @@ fn main() -> Result<()> {
         Command::Rename(cmd) => run(cmd, options),
         Command::Join(cmd) => run(cmd, options),
     }
-}
-
-fn run<R: Refine>(
-    cmd: R,
-    (paths, filters): (impl Iterator<Item = PathBuf>, Filters),
-) -> Result<()> {
-    cmd.refine(gen_medias(find_entries(filters, paths, R::entry_kind())?))
-}
-
-fn gen_medias<T>(entries: impl Iterator<Item = PathBuf>) -> Vec<T>
-where
-    T: TryFrom<PathBuf, Error: std::fmt::Display>,
-{
-    entries
-        .map(|path| T::try_from(path))
-        .inspect(|res| {
-            if let Err(err) = res {
-                eprintln!("error: load media: {err}");
-            }
-        })
-        .flatten()
-        .collect()
 }
 
 fn install_ctrlc_handler() {
