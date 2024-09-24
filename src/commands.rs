@@ -23,6 +23,13 @@ pub enum Command {
     Join(join::Join),
 }
 
+pub trait Refine {
+    type Media: TryFrom<PathBuf, Error: fmt::Display>;
+
+    fn entry_kind() -> EntryKind;
+    fn refine(self, medias: Vec<Self::Media>) -> anyhow::Result<()>;
+}
+
 #[macro_export]
 macro_rules! options {
     ($opt:ident => $conf:expr) => {
