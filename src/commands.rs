@@ -1,13 +1,14 @@
+mod dupes;
+mod join;
+mod list;
+mod rebuild;
+mod rename;
+
+use crate::entries;
 use clap::Subcommand;
-use std::sync::OnceLock;
-
-pub mod dupes;
-pub mod join;
-pub mod list;
-pub mod rebuild;
-pub mod rename;
-
-pub static COMMAND: OnceLock<Command> = OnceLock::new();
+use entries::EntryKind;
+use std::fmt;
+use std::path::PathBuf;
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
