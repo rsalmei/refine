@@ -1,3 +1,4 @@
+use crate::commands::Refine;
 use crate::entries::EntryKind;
 use crate::{options, utils};
 use anyhow::{Context, Result};
@@ -42,133 +43,142 @@ pub struct Media {
     ext: &'static str,
 }
 
-options!(Rename => EntryKind::Both);
+options!(Rename);
 
-pub fn run(mut medias: Vec<Media>) -> Result<()> {
-    println!("=> Renaming files...\n");
-    let kind = |p: &Path| if p.is_dir() { "/" } else { "" };
+impl Refine for Rename {
+    type Media = Media;
 
-    // step: apply strip rules.
-    utils::strip_filenames(
-        &mut medias,
-        [&opt().strip_before, &opt().strip_after, &opt().strip_exact],
-    )?;
-
-    // step: apply replacement rules.
-    for (k, v) in &opt().replace {
-        let re =
-            Regex::new(&format!("(?i){k}")).with_context(|| format!("compiling regex: {k:?}"))?;
-        medias.iter_mut().for_each(|m| {
-            if let Cow::Owned(s) = re.replace_all(&m.new_name, v) {
-                m.new_name = s;
-            }
-        })
+    fn entry_kind() -> EntryKind {
+        EntryKind::Both
     }
 
-    utils::user_aborted()?;
+    fn refine(self, mut medias: Vec<Self::Media>) -> Result<()> {
+        println!("=> Renaming files...\n");
+        options!(=> self);
+        let kind = |p: &Path| if p.is_dir() { "/" } else { "" };
 
-    // step: remove medias where the rules cleared the name.
-    let total = medias.len();
-    let mut warnings = utils::remove_cleared(&mut medias);
+        // step: apply strip rules.
+        utils::strip_filenames(
+            &mut medias,
+            [&opt().strip_before, &opt().strip_after, &opt().strip_exact],
+        )?;
 
-    // step: re-include extension in the names.
-    medias
-        .iter_mut()
-        .filter(|m| !m.ext.is_empty())
-        .try_for_each(|m| write!(m.new_name, ".{}", m.ext))?;
+        // step: apply replacement rules.
+        for (k, v) in &opt().replace {
+            let re = Regex::new(&format!("(?i){k}"))
+                .with_context(|| format!("compiling regex: {k:?}"))?;
+            medias.iter_mut().for_each(|m| {
+                if let Cow::Owned(s) = re.replace_all(&m.new_name, v) {
+                    m.new_name = s;
+                }
+            })
+        }
 
-    // step: disallow changes in directories where clashes are detected.
-    medias.sort_unstable_by(|m, n| m.path.cmp(&n.path));
-    medias
-        .chunk_by_mut(|m, n| m.path.parent() == n.path.parent())
-        .filter(|_| utils::is_running())
-        .for_each(|g| {
-            let path = g[0].path.parent().unwrap_or(Path::new("/")).to_owned();
-            let mut clashes = HashMap::with_capacity(g.len());
-            g.iter().for_each(|m| {
-                clashes
-                    .entry(&m.new_name)
-                    .or_insert_with(Vec::new)
-                    .push(&m.path)
-            });
-            clashes.retain(|_, v| v.len() > 1);
-            if !clashes.is_empty() {
-                eprintln!("warning: names clash in: {}/", path.display());
-                let mut clashes = clashes.into_iter().collect::<Vec<_>>();
-                clashes.sort_by(|(k1, _), (k2, _)| k1.cmp(k2));
-                clashes.iter().for_each(|(k, v)| {
-                    let list = v
-                        .iter()
-                        .map(|p| p.file_name().unwrap().to_str().unwrap())
-                        .filter(|f| k != f)
-                        .collect::<Vec<_>>();
-                    warnings += list.len();
-                    let exists = if v.len() != list.len() { " exists" } else { "" };
-                    eprintln!("  > {} --> {k}{exists}", list.join(", "));
+        utils::user_aborted()?;
+
+        // step: remove medias where the rules cleared the name.
+        let total = medias.len();
+        let mut warnings = utils::remove_cleared(&mut medias);
+
+        // step: re-include extension in the names.
+        medias
+            .iter_mut()
+            .filter(|m| !m.ext.is_empty())
+            .try_for_each(|m| write!(m.new_name, ".{}", m.ext))?;
+
+        // step: disallow changes in directories where clashes are detected.
+        medias.sort_unstable_by(|m, n| m.path.cmp(&n.path));
+        medias
+            .chunk_by_mut(|m, n| m.path.parent() == n.path.parent())
+            .filter(|_| utils::is_running())
+            .for_each(|g| {
+                let path = g[0].path.parent().unwrap_or(Path::new("/")).to_owned();
+                let mut clashes = HashMap::with_capacity(g.len());
+                g.iter().for_each(|m| {
+                    clashes
+                        .entry(&m.new_name)
+                        .or_insert_with(Vec::new)
+                        .push(&m.path)
                 });
-                match opt().clashes {
-                    false => g.iter_mut().for_each(|m| m.new_name.clear()),
-                    true => {
-                        let keys = clashes.iter().map(|&(k, _)| k.clone()).collect::<Vec<_>>();
-                        g.iter_mut()
-                            .filter(|m| keys.contains(&m.new_name))
-                            .for_each(|m| m.new_name.clear());
+                clashes.retain(|_, v| v.len() > 1);
+                if !clashes.is_empty() {
+                    eprintln!("warning: names clash in: {}/", path.display());
+                    let mut clashes = clashes.into_iter().collect::<Vec<_>>();
+                    clashes.sort_by(|(k1, _), (k2, _)| k1.cmp(k2));
+                    clashes.iter().for_each(|(k, v)| {
+                        let list = v
+                            .iter()
+                            .map(|p| p.file_name().unwrap().to_str().unwrap())
+                            .filter(|f| k != f)
+                            .collect::<Vec<_>>();
+                        warnings += list.len();
+                        let exists = if v.len() != list.len() { " exists" } else { "" };
+                        eprintln!("  > {} --> {k}{exists}", list.join(", "));
+                    });
+                    match opt().clashes {
+                        false => g.iter_mut().for_each(|m| m.new_name.clear()),
+                        true => {
+                            let keys = clashes.iter().map(|&(k, _)| k.clone()).collect::<Vec<_>>();
+                            g.iter_mut()
+                                .filter(|m| keys.contains(&m.new_name))
+                                .for_each(|m| m.new_name.clear());
+                        }
                     }
                 }
-            }
-        });
-
-    utils::user_aborted()?;
-
-    // step: settle changes.
-    let mut changes = medias
-        .into_iter()
-        .filter(|m| !m.new_name.is_empty()) // new clash detection.
-        .filter(|m| m.new_name != m.path.file_name().unwrap().to_str().unwrap())
-        .collect::<Vec<_>>();
-
-    // step: display the results by parent directory.
-    changes.sort_unstable_by(|m, n| {
-        (Reverse(m.path.components().count()), &m.path)
-            .cmp(&(Reverse(n.path.components().count()), &n.path))
-    });
-    changes
-        .chunk_by(|m, n| m.path.parent() == n.path.parent())
-        .for_each(|g| {
-            println!("{}/:", g[0].path.parent().unwrap().display());
-            g.iter().for_each(|m| {
-                println!(
-                    "  {}{} --> {}{}",
-                    m.path.file_name().unwrap().to_str().unwrap(),
-                    kind(&m.path),
-                    m.new_name,
-                    kind(&m.path),
-                )
             });
+
+        utils::user_aborted()?;
+
+        // step: settle changes.
+        let mut changes = medias
+            .into_iter()
+            .filter(|m| !m.new_name.is_empty()) // new clash detection.
+            .filter(|m| m.new_name != m.path.file_name().unwrap().to_str().unwrap())
+            .collect::<Vec<_>>();
+
+        // step: display the results by parent directory.
+        changes.sort_unstable_by(|m, n| {
+            (Reverse(m.path.components().count()), &m.path)
+                .cmp(&(Reverse(n.path.components().count()), &n.path))
         });
+        changes
+            .chunk_by(|m, n| m.path.parent() == n.path.parent())
+            .for_each(|g| {
+                println!("{}/:", g[0].path.parent().unwrap().display());
+                g.iter().for_each(|m| {
+                    println!(
+                        "  {}{} --> {}{}",
+                        m.path.file_name().unwrap().to_str().unwrap(),
+                        kind(&m.path),
+                        m.new_name,
+                        kind(&m.path),
+                    )
+                });
+            });
 
-    // step: display receipt summary.
-    if !changes.is_empty() || warnings > 0 {
-        println!();
-    }
-    println!("total files: {total}");
-    println!("  changes: {}", changes.len());
-    println!("  warnings: {warnings}");
-    if changes.is_empty() {
-        return Ok(());
-    }
+        // step: display receipt summary.
+        if !changes.is_empty() || warnings > 0 {
+            println!();
+        }
+        println!("total files: {total}");
+        println!("  changes: {}", changes.len());
+        println!("  warnings: {warnings}");
+        if changes.is_empty() {
+            return Ok(());
+        }
 
-    // step: apply changes, if the user agrees.
-    if !opt().yes {
-        utils::prompt_yes_no("apply changes?")?;
-    }
-    utils::rename_move_consuming(&mut changes);
+        // step: apply changes, if the user agrees.
+        if !opt().yes {
+            utils::prompt_yes_no("apply changes?")?;
+        }
+        utils::rename_move_consuming(&mut changes);
 
-    match changes.is_empty() {
-        true => println!("done"),
-        false => println!("found {} errors", changes.len()),
+        match changes.is_empty() {
+            true => println!("done"),
+            false => println!("found {} errors", changes.len()),
+        }
+        Ok(())
     }
-    Ok(())
 }
 
 impl utils::NewName for Media {

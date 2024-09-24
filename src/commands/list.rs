@@ -1,3 +1,4 @@
+use crate::commands::Refine;
 use crate::entries::EntryKind;
 use crate::options;
 use anyhow::Result;
@@ -30,40 +31,49 @@ pub struct Media {
     size: u64,
 }
 
-options!(List => EntryKind::File);
+options!(List);
 
-pub fn run(mut medias: Vec<Media>) -> Result<()> {
-    println!("=> Listing files...\n");
+impl Refine for List {
+    type Media = Media;
 
-    // step: sort the files by name, size, or path.
-    let compare = match opt().by {
-        By::Name => |m: &Media, n: &Media| m.path.file_name().cmp(&n.path.file_name()),
-        By::Size => |m: &Media, n: &Media| m.size.cmp(&n.size),
-        By::Path => |m: &Media, n: &Media| m.path.cmp(&n.path),
-    };
-    let compare: &dyn Fn(&Media, &Media) -> Ordering = match opt().desc {
-        true => &|m, n| compare(m, n).reverse(),
-        false => &compare,
-    };
-    medias.sort_unstable_by(compare);
-
-    // step: display the results.
-    medias.iter().for_each(|m| {
-        println!(
-            "{:>7} {}",
-            format!("{}", m.size.human_count_bytes()),
-            m.path.display()
-        )
-    });
-
-    // step: display receipt summary.
-    if !medias.is_empty() {
-        println!();
+    fn entry_kind() -> EntryKind {
+        EntryKind::File
     }
-    let size = medias.iter().map(|m| m.size).sum::<u64>();
-    println!("total files: {} ({})", medias.len(), size.human_count("B"));
 
-    Ok(())
+    fn refine(self, mut medias: Vec<Self::Media>) -> Result<()> {
+        println!("=> Listing files...\n");
+        options!(=> self);
+
+        // step: sort the files by name, size, or path.
+        let compare = match opt().by {
+            By::Name => |m: &Media, n: &Media| m.path.file_name().cmp(&n.path.file_name()),
+            By::Size => |m: &Media, n: &Media| m.size.cmp(&n.size),
+            By::Path => |m: &Media, n: &Media| m.path.cmp(&n.path),
+        };
+        let compare: &dyn Fn(&Media, &Media) -> Ordering = match opt().desc {
+            true => &|m, n| compare(m, n).reverse(),
+            false => &compare,
+        };
+        medias.sort_unstable_by(compare);
+
+        // step: display the results.
+        medias.iter().for_each(|m| {
+            println!(
+                "{:>7} {}",
+                format!("{}", m.size.human_count_bytes()),
+                m.path.display()
+            )
+        });
+
+        // step: display receipt summary.
+        if !medias.is_empty() {
+            println!();
+        }
+        let size = medias.iter().map(|m| m.size).sum::<u64>();
+        println!("total files: {} ({})", medias.len(), size.human_count("B"));
+
+        Ok(())
+    }
 }
 
 impl TryFrom<PathBuf> for Media {

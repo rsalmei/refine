@@ -1,3 +1,4 @@
+use crate::commands::Refine;
 use crate::entries::EntryKind;
 use crate::options;
 use crate::utils::{self, Sequence};
@@ -49,102 +50,111 @@ pub struct Media {
     created: SystemTime,
 }
 
-options!(Rebuild => EntryKind::File);
+options!(Rebuild);
 
-pub fn run(mut medias: Vec<Media>) -> Result<()> {
-    println!("=> Rebuilding files...\n");
+impl Refine for Rebuild {
+    type Media = Media;
 
-    let (total, warnings) = if let Some(force) = &opt().force {
-        medias.iter_mut().for_each(|m| {
-            m.new_name.clone_from(force);
-        });
-        (medias.len(), 0)
-    } else {
-        // step: strip sequence numbers.
-        medias.iter_mut().for_each(|m| {
-            if let Some(Sequence { len, .. }) = utils::extract_sequence(&m.new_name) {
-                m.new_name.truncate(m.new_name.len() - len); // sequence numbers are always at the end.
+    fn entry_kind() -> EntryKind {
+        EntryKind::File
+    }
+
+    fn refine(self, mut medias: Vec<Self::Media>) -> Result<()> {
+        println!("=> Rebuilding files...\n");
+        options!(=> self);
+
+        let (total, warnings) = if let Some(force) = &opt().force {
+            medias.iter_mut().for_each(|m| {
+                m.new_name.clone_from(force);
+            });
+            (medias.len(), 0)
+        } else {
+            // step: strip sequence numbers.
+            medias.iter_mut().for_each(|m| {
+                if let Some(Sequence { len, .. }) = utils::extract_sequence(&m.new_name) {
+                    m.new_name.truncate(m.new_name.len() - len); // sequence numbers are always at the end.
+                }
+            });
+
+            // step: apply strip rules.
+            utils::strip_filenames(
+                &mut medias,
+                [&opt().strip_before, &opt().strip_after, &opt().strip_exact],
+            )?;
+
+            utils::user_aborted()?;
+
+            // step: remove medias where the rules cleared the name.
+            let total = medias.len();
+            let warnings = utils::remove_cleared(&mut medias);
+
+            // step: smart detect.
+            if !opt().no_smart_detect {
+                static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[\s_]+").unwrap());
+
+                medias.iter_mut().for_each(|m| {
+                    if let Cow::Owned(x) = RE.replace_all(&m.new_name, "") {
+                        m.smart_group = Some(x);
+                    }
+                });
             }
-        });
 
-        // step: apply strip rules.
-        utils::strip_filenames(
-            &mut medias,
-            [&opt().strip_before, &opt().strip_after, &opt().strip_exact],
-        )?;
+            (total, warnings)
+        };
+
+        // step: generate new names to compute the changes.
+        apply_new_names(&mut medias);
 
         utils::user_aborted()?;
 
-        // step: remove medias where the rules cleared the name.
-        let total = medias.len();
-        let warnings = utils::remove_cleared(&mut medias);
+        // step: settle changes, and display the results.
+        let mut changes = medias
+            .into_iter()
+            .filter(|m| m.new_name != m.path.file_name().unwrap().to_str().unwrap()) // the list might have changed on force.
+            .inspect(|m| {
+                println!("{} --> {}", m.path.display(), m.new_name);
+            })
+            .collect::<Vec<_>>();
 
-        // step: smart detect.
-        if !opt().no_smart_detect {
-            static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[\s_]+").unwrap());
-
-            medias.iter_mut().for_each(|m| {
-                if let Cow::Owned(x) = RE.replace_all(&m.new_name, "") {
-                    m.smart_group = Some(x);
-                }
-            });
+        // step: display receipt summary.
+        if !changes.is_empty() || warnings > 0 {
+            println!();
+        }
+        println!("total files: {total}");
+        println!("  changes: {}", changes.len());
+        println!("  warnings: {warnings}");
+        if changes.is_empty() {
+            return Ok(());
         }
 
-        (total, warnings)
-    };
-
-    // step: generate new names to compute the changes.
-    apply_new_names(&mut medias);
-
-    utils::user_aborted()?;
-
-    // step: settle changes, and display the results.
-    let mut changes = medias
-        .into_iter()
-        .filter(|m| m.new_name != m.path.file_name().unwrap().to_str().unwrap()) // the list might have changed on force.
-        .inspect(|m| {
-            println!("{} --> {}", m.path.display(), m.new_name);
-        })
-        .collect::<Vec<_>>();
-
-    // step: display receipt summary.
-    if !changes.is_empty() || warnings > 0 {
-        println!();
-    }
-    println!("total files: {total}");
-    println!("  changes: {}", changes.len());
-    println!("  warnings: {warnings}");
-    if changes.is_empty() {
-        return Ok(());
-    }
-
-    // step: apply changes, if the user agrees.
-    if !opt().yes {
-        utils::prompt_yes_no("apply changes?")?;
-    }
-    utils::rename_move_consuming(&mut changes);
-    if changes.is_empty() {
-        println!("done");
-        return Ok(());
-    }
-
-    // step: fix file already exists errors.
-    println!("attempting to fix {} errors", changes.len());
-    changes.iter_mut().for_each(|m| {
-        let temp = format!("__refine+{}__", m.new_name);
-        let dest = m.path.with_file_name(&temp);
-        match fs::rename(&m.path, &dest) {
-            Ok(()) => m.path = dest,
-            Err(err) => eprintln!("error: {err:?}: {:?} --> {temp:?}", m.path),
+        // step: apply changes, if the user agrees.
+        if !opt().yes {
+            utils::prompt_yes_no("apply changes?")?;
         }
-    });
-    utils::rename_move_consuming(&mut changes);
+        utils::rename_move_consuming(&mut changes);
+        if changes.is_empty() {
+            println!("done");
+            return Ok(());
+        }
 
-    match changes.is_empty() {
-        true => println!("done"),
-        false => println!("still {} errors, giving up", changes.len()),
+        // step: fix file already exists errors.
+        println!("attempting to fix {} errors", changes.len());
+        changes.iter_mut().for_each(|m| {
+            let temp = format!("__refine+{}__", m.new_name);
+            let dest = m.path.with_file_name(&temp);
+            match fs::rename(&m.path, &dest) {
+                Ok(()) => m.path = dest,
+                Err(err) => eprintln!("error: {err:?}: {:?} --> {temp:?}", m.path),
+            }
+        });
+        utils::rename_move_consuming(&mut changes);
+
+        match changes.is_empty() {
+            true => println!("done"),
+            false => println!("still {} errors, giving up", changes.len()),
+        }
+        Ok(())
     }
-    Ok(())
 }
 
 fn apply_new_names(medias: &mut [Media]) {

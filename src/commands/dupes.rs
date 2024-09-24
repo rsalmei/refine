@@ -1,3 +1,4 @@
+use crate::commands::Refine;
 use crate::entries::EntryKind;
 use crate::utils::Sequence;
 use crate::{options, utils};
@@ -25,40 +26,49 @@ pub struct Media {
     sample: Option<Option<Box<[u8]>>>, // only populated if needed, and double to remember when already tried.
 }
 
-options!(Dupes => EntryKind::File);
+options!(Dupes);
 
-pub fn run(mut medias: Vec<Media>) -> Result<()> {
-    println!("=> Detecting duplicate files...\n");
+impl Refine for Dupes {
+    type Media = Media;
 
-    // step: detect duplicates by size.
-    println!("by size:");
-    let by_size = detect_duplicates(
-        &mut medias,
-        |m| &m.size,
-        |&size, acc| {
-            println!("\n{} x{}", size.human_count_bytes(), acc.len());
-            acc.iter().for_each(|&m| println!("{}", m.path.display()));
-        },
-    );
+    fn entry_kind() -> EntryKind {
+        EntryKind::File
+    }
 
-    // step: detect duplicates by name.
-    println!("\nby name:");
-    let by_name = detect_duplicates(
-        &mut medias,
-        |m| &m.words,
-        |words, acc| {
-            println!("\n{:?} x{}", words, acc.len());
-            acc.iter()
-                .for_each(|m| println!("{}: {}", m.size.human_count_bytes(), m.path.display()));
-        },
-    );
+    fn refine(self, mut medias: Vec<Self::Media>) -> Result<()> {
+        println!("=> Detecting duplicate files...\n");
+        options!(=> self);
 
-    // step: display receipt summary.
-    let total = medias.len();
-    println!("\ntotal files: {total}{}", utils::aborted(by_size == 0));
-    println!("  by size: {by_size} dupes{}", utils::aborted(by_name == 0));
-    println!("  by name: {by_name} dupes{}", utils::aborted(true));
-    Ok(())
+        // step: detect duplicates by size.
+        println!("by size:");
+        let by_size = detect_duplicates(
+            &mut medias,
+            |m| &m.size,
+            |&size, acc| {
+                println!("\n{} x{}", size.human_count_bytes(), acc.len());
+                acc.iter().for_each(|&m| println!("{}", m.path.display()));
+            },
+        );
+
+        // step: detect duplicates by name.
+        println!("\nby name:");
+        let by_name = detect_duplicates(
+            &mut medias,
+            |m| &m.words,
+            |words, acc| {
+                println!("\n{:?} x{}", words, acc.len());
+                acc.iter()
+                    .for_each(|m| println!("{}: {}", m.size.human_count_bytes(), m.path.display()));
+            },
+        );
+
+        // step: display receipt summary.
+        let total = medias.len();
+        println!("\ntotal files: {total}{}", utils::aborted(by_size == 0));
+        println!("  by size: {by_size} dupes{}", utils::aborted(by_name == 0));
+        println!("  by name: {by_name} dupes{}", utils::aborted(true));
+        Ok(())
+    }
 }
 
 /// Sort the files by groups, and apply some algorithm on each.
