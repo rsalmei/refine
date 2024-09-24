@@ -35,13 +35,13 @@ options!(List);
 
 impl Refine for List {
     type Media = Media;
+    const OPENING_LINE: &'static str = "Listing files...";
 
     fn entry_kind() -> EntryKind {
         EntryKind::File
     }
 
     fn refine(self, mut medias: Vec<Self::Media>) -> Result<()> {
-        println!("=> Listing files...\n");
         options!(=> self);
 
         // step: sort the files by name, size, or path.

@@ -54,13 +54,13 @@ options!(Rebuild);
 
 impl Refine for Rebuild {
     type Media = Media;
+    const OPENING_LINE: &'static str = "Rebuilding files...";
 
     fn entry_kind() -> EntryKind {
         EntryKind::File
     }
 
     fn refine(self, mut medias: Vec<Self::Media>) -> Result<()> {
-        println!("=> Rebuilding files...\n");
         options!(=> self);
 
         let (total, warnings) = if let Some(force) = &opt().force {

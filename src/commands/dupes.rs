@@ -30,13 +30,13 @@ options!(Dupes);
 
 impl Refine for Dupes {
     type Media = Media;
+    const OPENING_LINE: &'static str = "Detecting duplicate files...";
 
     fn entry_kind() -> EntryKind {
         EntryKind::File
     }
 
     fn refine(self, mut medias: Vec<Self::Media>) -> Result<()> {
-        println!("=> Detecting duplicate files...\n");
         options!(=> self);
 
         // step: detect duplicates by size.

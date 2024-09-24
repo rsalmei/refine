@@ -47,13 +47,13 @@ options!(Rename);
 
 impl Refine for Rename {
     type Media = Media;
+    const OPENING_LINE: &'static str = "Renaming files...";
 
     fn entry_kind() -> EntryKind {
         EntryKind::Both
     }
 
     fn refine(self, mut medias: Vec<Self::Media>) -> Result<()> {
-        println!("=> Renaming files...\n");
         options!(=> self);
         let kind = |p: &Path| if p.is_dir() { "/" } else { "" };
 

@@ -56,13 +56,13 @@ options!(Join);
 
 impl Refine for Join {
     type Media = Media;
+    const OPENING_LINE: &'static str = "Joining files...";
 
     fn entry_kind() -> EntryKind {
         EntryKind::Either
     }
 
     fn refine(self, mut medias: Vec<Self::Media>) -> Result<()> {
-        println!("=> Joining files...\n");
         options!(=> self);
         let target = opt().to.canonicalize().map_err(|_| opt().to.to_owned());
         TARGET.set(target).unwrap();
