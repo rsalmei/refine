@@ -1,4 +1,5 @@
 use crate::utils;
+use anyhow::Result;
 use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
 use regex::Regex;
@@ -80,8 +81,9 @@ where
 macro_rules! re_input {
     ($($re:ident, $name:ident);+ $(;)?) => {
         $( static $re: OnceLock<Regex> = OnceLock::new(); )+
-        fn parse_input_regexes(filters: &Filters) {
-            $( utils::set_re(&filters.$name, &$re, stringify!($name)); )+
+        fn parse_input_regexes(filters: &Filters) -> Result<()> {
+            $( utils::set_re(&filters.$name, &$re, stringify!($name))?; )+
+            Ok(())
         }
     };
 }

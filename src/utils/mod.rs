@@ -61,15 +61,15 @@ pub fn intern(text: &str) -> &'static str {
 }
 
 /// Set an optional regex (case-insensitive).
-pub fn set_re(value: &Option<String>, var: &OnceLock<Regex>, param: &str) {
-    if let Some(s) = value {
-        match Regex::new(&format!("(?i){s}")).with_context(|| format!("compiling regex: {s:?}")) {
-            Ok(re) => var.set(re).unwrap(),
-            Err(err) => {
-                eprintln!("error: invalid --{param}: {err:?}");
-                std::process::exit(1);
-            }
-        }
+pub fn set_re(value: &Option<String>, var: &OnceLock<Regex>, param: &str) -> Result<()> {
+    match value {
+        None => Ok(()),
+        Some(s) => match Regex::new(&format!("(?i){s}"))
+            .with_context(|| format!("compiling regex: {s:?}"))
+        {
+            Ok(re) => Ok(var.set(re).unwrap()),
+            Err(err) => Err(anyhow!("error: invalid --{param}: {err:?}")),
+        },
     }
 }
 
