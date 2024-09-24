@@ -32,15 +32,14 @@ pub trait Refine {
 
 #[macro_export]
 macro_rules! options {
-    ($opt:ident => $conf:expr) => {
-        /// The kind of entry this command expects.
-        pub const KIND: $crate::entries::EntryKind = $conf;
+    ($opt:ty) => {
+        static OPTIONS: std::sync::OnceLock<$opt> = std::sync::OnceLock::new();
         /// Retrieves the options given to this command.
         fn opt() -> &'static $opt {
-            match $crate::commands::COMMAND.get().unwrap() {
-                $crate::commands::Command::$opt(opt) => opt,
-                _ => unreachable!(),
-            }
+            OPTIONS.get().unwrap()
         }
+    };
+    (=> $opt:expr) => {
+        OPTIONS.set($opt).unwrap();
     };
 }
