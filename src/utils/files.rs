@@ -51,13 +51,6 @@ pub fn extract_sequence(stem: &str) -> Option<Sequence> {
     })
 }
 
-#[derive(Debug)]
-pub enum StripPos {
-    Before,
-    After,
-    Exact,
-}
-
 pub trait NewName {
     fn new_name(&mut self) -> &mut String;
 }
