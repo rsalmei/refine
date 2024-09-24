@@ -2,9 +2,11 @@ mod commands;
 mod entries;
 mod utils;
 
+use crate::entries::find_entries;
+use anyhow::Result;
 use clap::Parser;
-use commands::{dupes, join, list, rebuild, rename, Command, COMMAND};
-use entries::{gen_medias, Filters, FILTERS};
+use commands::{Command, Refine};
+use entries::Filters;
 use std::path::PathBuf;
 use std::sync::{atomic, Arc};
 
@@ -20,16 +22,12 @@ pub struct Args {
     pub filters: Filters,
 }
 
-fn main() {
+fn main() -> Result<()> {
     println!("Refine v{}", env!("CARGO_PKG_VERSION"));
     let args = Args::parse();
-    COMMAND.set(args.cmd).unwrap();
-    FILTERS.set(args.filters).unwrap();
     install_ctrlc_handler();
 
-    // lists files from the given paths, or the current directory if no paths were given.
-    let cd = args.paths.is_empty().then(|| ".".into());
-    let paths = {
+    let options = {
         let mut paths = args.paths;
         let len = paths.len();
         paths.sort_unstable();
@@ -37,19 +35,25 @@ fn main() {
         if len != paths.len() {
             eprintln!("warning: duplicated paths were ignored");
         }
-        paths.into_iter().chain(cd)
+        // lists files from the given paths, or the current directory if no paths were given.
+        let cd = paths.is_empty().then(|| ".".into());
+        (paths.into_iter().chain(cd), args.filters)
     };
 
-    if let Err(err) = match COMMAND.get().unwrap() {
-        Command::Dupes(_) => dupes::run(gen_medias(paths, dupes::KIND)),
-        Command::Rebuild(_) => rebuild::run(gen_medias(paths, rebuild::KIND)),
-        Command::List(_) => list::run(gen_medias(paths, list::KIND)),
-        Command::Rename(_) => rename::run(gen_medias(paths, rename::KIND)),
-        Command::Join(_) => join::run(gen_medias(paths, join::KIND)),
-    } {
-        eprintln!("error: {err:?}");
-        std::process::exit(1);
+    match args.cmd {
+        Command::Dupes(cmd) => run(cmd, options),
+        Command::Rebuild(cmd) => run(cmd, options),
+        Command::List(cmd) => run(cmd, options),
+        Command::Rename(cmd) => run(cmd, options),
+        Command::Join(cmd) => run(cmd, options),
     }
+}
+
+fn run<R: Refine>(
+    cmd: R,
+    (paths, filters): (impl Iterator<Item = PathBuf>, Filters),
+) -> Result<()> {
+    cmd.refine(gen_medias(find_entries(filters, paths, R::entry_kind())?))
 }
 
 fn gen_medias<T>(entries: impl Iterator<Item = PathBuf>) -> Vec<T>
