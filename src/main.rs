@@ -52,6 +52,21 @@ fn main() {
     }
 }
 
+fn gen_medias<T>(entries: impl Iterator<Item = PathBuf>) -> Vec<T>
+where
+    T: TryFrom<PathBuf, Error: std::fmt::Display>,
+{
+    entries
+        .map(|path| T::try_from(path))
+        .inspect(|res| {
+            if let Err(err) = res {
+                eprintln!("error: load media: {err}");
+            }
+        })
+        .flatten()
+        .collect()
+}
+
 fn install_ctrlc_handler() {
     if let Err(err) = ctrlc::set_handler({
         let running = Arc::clone(utils::running_flag());

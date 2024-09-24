@@ -3,9 +3,9 @@ use anyhow::Result;
 use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
 use regex::Regex;
+use std::iter;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
-use std::{fmt, iter};
 
 #[derive(Debug, Args)]
 pub struct Filters {
@@ -55,27 +55,18 @@ enum RecurseMode {
     Shallow,
 }
 
-pub static FILTERS: OnceLock<Filters> = OnceLock::new();
-
-pub fn gen_medias<T>(paths: impl Iterator<Item = PathBuf>, kind: EntryKind) -> Vec<T>
-where
-    T: TryFrom<PathBuf, Error: fmt::Display>,
-{
-    let filters = FILTERS.get().unwrap();
-    parse_input_regexes(filters);
-    use RecurseMode::*;
-    #[allow(clippy::obfuscated_if_else)]
-    let rm = filters.shallow.then_some(Shallow).unwrap_or(Recurse(kind));
-    paths
-        .flat_map(|p| entries(p, rm))
-        .map(|path| T::try_from(path))
-        .inspect(|res| {
-            if let Err(err) = res {
-                eprintln!("error: load media: {err}");
-            }
-        })
-        .flatten()
-        .collect()
+pub fn find_entries(
+    filters: Filters,
+    paths: impl Iterator<Item = PathBuf>,
+    kind: EntryKind,
+) -> Result<impl Iterator<Item = PathBuf>> {
+    parse_input_regexes(&filters)?;
+    let rm = if filters.shallow {
+        RecurseMode::Shallow
+    } else {
+        RecurseMode::Recurse(kind)
+    };
+    Ok(paths.flat_map(move |p| entries(p, rm)))
 }
 
 macro_rules! re_input {
