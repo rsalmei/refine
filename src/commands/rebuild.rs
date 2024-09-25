@@ -1,6 +1,5 @@
 use crate::commands::Refine;
 use crate::entries::EntryKind;
-use crate::options;
 use crate::utils::{self, Sequence};
 use anyhow::Result;
 use clap::builder::NonEmptyStringValueParser;
@@ -50,17 +49,13 @@ pub struct Media {
     created: SystemTime,
 }
 
-options!(Rebuild);
-
 impl Refine for Rebuild {
     type Media = Media;
     const OPENING_LINE: &'static str = "Rebuilding files...";
     const ENTRY_KIND: EntryKind = EntryKind::File;
 
     fn refine(self, mut medias: Vec<Self::Media>) -> Result<()> {
-        options!(=> self);
-
-        let (total, warnings) = if let Some(force) = &opt().force {
+        let (total, warnings) = if let Some(force) = &self.force {
             medias.iter_mut().for_each(|m| {
                 m.new_name.clone_from(force);
             });
@@ -76,7 +71,7 @@ impl Refine for Rebuild {
             // step: apply strip rules.
             utils::strip_filenames(
                 &mut medias,
-                [&opt().strip_before, &opt().strip_after, &opt().strip_exact],
+                [&self.strip_before, &self.strip_after, &self.strip_exact],
             )?;
 
             utils::user_aborted()?;
@@ -86,7 +81,7 @@ impl Refine for Rebuild {
             let warnings = utils::remove_cleared(&mut medias);
 
             // step: smart detect.
-            if !opt().no_smart_detect {
+            if !self.no_smart_detect {
                 static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[\s_]+").unwrap());
 
                 medias.iter_mut().for_each(|m| {
@@ -100,7 +95,7 @@ impl Refine for Rebuild {
         };
 
         // step: generate new names to compute the changes.
-        apply_new_names(&mut medias);
+        apply_new_names(&mut medias, self.no_smart_detect);
 
         utils::user_aborted()?;
 
@@ -125,7 +120,7 @@ impl Refine for Rebuild {
         }
 
         // step: apply changes, if the user agrees.
-        if !opt().yes {
+        if !self.yes {
             utils::prompt_yes_no("apply changes?")?;
         }
         utils::rename_move_consuming(&mut changes);
@@ -154,18 +149,17 @@ impl Refine for Rebuild {
     }
 }
 
-fn apply_new_names(medias: &mut [Media]) {
+fn apply_new_names(medias: &mut [Media], no_smart_detect: bool) {
     medias.sort_unstable_by(|m, n| m.group().cmp(n.group()));
     medias
         .chunk_by_mut(|m, n| m.group() == n.group())
         .for_each(|g| {
             g.sort_by_key(|m| m.created);
-            let base = match opt().no_smart_detect {
-                false => {
-                    let vars = g.iter().map(|m| &m.new_name).collect::<HashSet<_>>();
-                    vars.iter().map(|&x| (x.len(), x)).max().unwrap().1
-                }
-                true => &g[0].new_name,
+            let base = if no_smart_detect {
+                &g[0].new_name
+            } else {
+                let vars = g.iter().map(|m| &m.new_name).collect::<HashSet<_>>();
+                vars.iter().map(|&x| (x.len(), x)).max().unwrap().1
             };
             let base = base.replace(' ', "_");
             g.iter_mut().enumerate().for_each(|(i, m)| {

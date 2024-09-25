@@ -1,6 +1,6 @@
 use crate::commands::Refine;
 use crate::entries::EntryKind;
-use crate::{options, utils};
+use crate::utils;
 use anyhow::{Context, Result};
 use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
@@ -43,25 +43,22 @@ pub struct Media {
     ext: &'static str,
 }
 
-options!(Rename);
-
 impl Refine for Rename {
     type Media = Media;
     const OPENING_LINE: &'static str = "Renaming files...";
     const ENTRY_KIND: EntryKind = EntryKind::Both;
 
     fn refine(self, mut medias: Vec<Self::Media>) -> Result<()> {
-        options!(=> self);
         let kind = |p: &Path| if p.is_dir() { "/" } else { "" };
 
         // step: apply strip rules.
         utils::strip_filenames(
             &mut medias,
-            [&opt().strip_before, &opt().strip_after, &opt().strip_exact],
+            [&self.strip_before, &self.strip_after, &self.strip_exact],
         )?;
 
         // step: apply replacement rules.
-        for (k, v) in &opt().replace {
+        for (k, v) in &self.replace {
             let re = Regex::new(&format!("(?i){k}"))
                 .with_context(|| format!("compiling regex: {k:?}"))?;
             medias.iter_mut().for_each(|m| {
@@ -112,7 +109,7 @@ impl Refine for Rename {
                         let exists = if v.len() != list.len() { " exists" } else { "" };
                         eprintln!("  > {} --> {k}{exists}", list.join(", "));
                     });
-                    match opt().clashes {
+                    match self.clashes {
                         false => g.iter_mut().for_each(|m| m.new_name.clear()),
                         true => {
                             let keys = clashes.iter().map(|&(k, _)| k.clone()).collect::<Vec<_>>();
@@ -165,7 +162,7 @@ impl Refine for Rename {
         }
 
         // step: apply changes, if the user agrees.
-        if !opt().yes {
+        if !self.yes {
             utils::prompt_yes_no("apply changes?")?;
         }
         utils::rename_move_consuming(&mut changes);

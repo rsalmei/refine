@@ -1,6 +1,6 @@
 use crate::commands::Refine;
 use crate::entries::EntryKind;
-use crate::{options, utils};
+use crate::utils;
 use anyhow::{Context, Result};
 use clap::{Args, ValueEnum};
 use std::collections::HashSet;
@@ -51,8 +51,7 @@ pub struct Media {
 }
 
 static TARGET: OnceLock<Result<PathBuf, PathBuf>> = OnceLock::new();
-
-options!(Join);
+static FORCE: OnceLock<bool> = OnceLock::new();
 
 impl Refine for Join {
     type Media = Media;
@@ -60,8 +59,8 @@ impl Refine for Join {
     const ENTRY_KIND: EntryKind = EntryKind::Either;
 
     fn refine(self, mut medias: Vec<Self::Media>) -> Result<()> {
-        options!(=> self);
-        let target = opt().to.canonicalize().map_err(|_| opt().to.to_owned());
+        FORCE.set(self.force).unwrap();
+        let target = self.to.canonicalize().map_err(|_| self.to.to_owned());
         TARGET.set(target).unwrap();
         let kind = |p: &Path| if p.is_dir() { "/" } else { "" };
 
@@ -78,7 +77,7 @@ impl Refine for Join {
                 let path = g[0].path.to_owned();
                 let (name, ext) = utils::filename_parts(&path).unwrap(); // files were already checked.
                 let dot = if ext.is_empty() { "" } else { "." };
-                match opt().clash {
+                match self.clash {
                     ClashResolve::Sequence => (1..).zip(g).skip(1).for_each(|(i, m)| {
                         m.new_name = Some(format!("{name}-{i}{dot}{ext}"));
                     }),
@@ -123,13 +122,13 @@ impl Refine for Join {
             return Ok(());
         }
         let target = TARGET.get().unwrap().as_ref().unwrap_or_else(|x| x);
-        println!("\njoin [by {:?}] to: {}", opt().strategy, target.display());
-        if !opt().yes {
+        println!("\njoin [by {:?}] to: {}", self.strategy, target.display());
+        if !self.yes {
             utils::prompt_yes_no("apply changes?")?;
         }
 
         // step: grab the files' parent directories before the consuming operations.
-        let dirs = match opt().no_remove {
+        let dirs = match self.no_remove {
             true => HashSet::new(),
             false => medias
                 .iter()
@@ -139,21 +138,21 @@ impl Refine for Join {
 
         // step: apply changes, if the user agrees.
         fs::create_dir_all(target).with_context(|| format!("creating {target:?}"))?;
-        match opt().strategy {
+        match self.strategy {
             Strategy::Move => utils::rename_move_consuming(&mut medias),
             Strategy::Copy => utils::copy_consuming(&mut medias),
         };
 
         // step: recover from CrossDevice errors.
         if !medias.is_empty() {
-            if let Strategy::Move = opt().strategy {
+            if let Strategy::Move = self.strategy {
                 println!("attempting to fix {} errors", medias.len());
                 utils::cross_move_consuming(&mut medias);
             }
         }
 
         // step: remove the empty parent directories.
-        if !opt().no_remove {
+        if !self.no_remove {
             dirs.into_iter().for_each(|dir| {
                 if let Ok(rd) = fs::read_dir(&dir) {
                     if rd // .DS_Store might exist on macOS, but should be removed if it is the only file in there.
@@ -173,7 +172,7 @@ impl Refine for Join {
             });
         }
 
-        match (medias.is_empty(), opt().strategy) {
+        match (medias.is_empty(), self.strategy) {
             (true, _) => println!("done"),
             (false, Strategy::Move) => println!("still {} errors, giving up", medias.len()),
             (false, Strategy::Copy) => println!("found {} errors", medias.len()),
@@ -189,7 +188,7 @@ impl Media {
         }
 
         let target = TARGET.get().unwrap().as_ref().unwrap();
-        if opt().force {
+        if *FORCE.get().unwrap() {
             return self.path.parent().unwrap() == target;
         }
 

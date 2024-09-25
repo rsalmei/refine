@@ -1,6 +1,5 @@
 use crate::commands::Refine;
 use crate::entries::EntryKind;
-use crate::options;
 use anyhow::Result;
 use clap::{Args, ValueEnum};
 use human_repr::HumanCount;
@@ -31,23 +30,19 @@ pub struct Media {
     size: u64,
 }
 
-options!(List);
-
 impl Refine for List {
     type Media = Media;
     const OPENING_LINE: &'static str = "Listing files...";
     const ENTRY_KIND: EntryKind = EntryKind::File;
 
     fn refine(self, mut medias: Vec<Self::Media>) -> Result<()> {
-        options!(=> self);
-
         // step: sort the files by name, size, or path.
-        let compare = match opt().by {
+        let compare = match self.by {
             By::Name => |m: &Media, n: &Media| m.path.file_name().cmp(&n.path.file_name()),
             By::Size => |m: &Media, n: &Media| m.size.cmp(&n.size),
             By::Path => |m: &Media, n: &Media| m.path.cmp(&n.path),
         };
-        let compare: &dyn Fn(&Media, &Media) -> Ordering = match opt().desc {
+        let compare: &dyn Fn(&Media, &Media) -> Ordering = match self.desc {
             true => &|m, n| compare(m, n).reverse(),
             false => &compare,
         };

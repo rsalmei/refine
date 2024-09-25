@@ -50,20 +50,3 @@ where
         .flatten()
         .collect()
 }
-
-/// Optional static variable that holds the options given to a command.
-///
-/// Useful for sharing the options out of the main refine function.
-#[macro_export]
-macro_rules! options {
-    ($opt:ty) => {
-        static OPTIONS: std::sync::OnceLock<$opt> = std::sync::OnceLock::new();
-        /// Retrieves the options given to this command.
-        fn opt() -> &'static $opt {
-            OPTIONS.get().unwrap()
-        }
-    };
-    (=> $opt:expr) => {
-        OPTIONS.set($opt).unwrap();
-    };
-}
