@@ -67,7 +67,10 @@ pub fn set_re(value: &Option<String>, var: &OnceLock<Regex>, param: &str) -> Res
         Some(s) => match Regex::new(&format!("(?i){s}"))
             .with_context(|| format!("compiling regex: {s:?}"))
         {
-            Ok(re) => Ok(var.set(re).unwrap()),
+            Ok(re) => {
+                var.set(re).unwrap();
+                Ok(())
+            }
             Err(err) => Err(anyhow!("error: invalid --{param}: {err:?}")),
         },
     }
