@@ -176,7 +176,10 @@ impl Refine for Rename {
 }
 
 impl utils::NewName for Media {
-    fn new_name(&mut self) -> &mut String {
+    fn new_name(&self) -> &str {
+        &self.new_name
+    }
+    fn new_name_mut(&mut self) -> &mut String {
         &mut self.new_name
     }
 }

@@ -52,7 +52,8 @@ pub fn extract_sequence(stem: &str) -> Option<Sequence> {
 }
 
 pub trait NewName {
-    fn new_name(&mut self) -> &mut String;
+    fn new_name(&self) -> &str;
+    fn new_name_mut(&mut self) -> &mut String;
 }
 
 pub fn strip_filenames(medias: &mut [impl NewName], rules: [&[impl AsRef<str>]; 3]) -> Result<()> {
@@ -73,12 +74,12 @@ pub fn strip_filenames(medias: &mut [impl NewName], rules: [&[impl AsRef<str>]; 
     let regs = regs;
 
     medias.iter_mut().for_each(|m| {
-        let mut name = std::mem::take(m.new_name());
+        let mut name = std::mem::take(m.new_name_mut());
         regs.iter().for_each(|re| match re.replace_all(&name, "") {
             Cow::Borrowed(_) => {}
             Cow::Owned(x) => name = x,
         });
-        *m.new_name() = name;
+        *m.new_name_mut() = name;
     });
     Ok(())
 }
@@ -88,16 +89,18 @@ pub trait OriginalPath {
     fn path(&self) -> &Path;
 }
 
+/// Remove cleared filenames after applying some renaming rules.
 pub fn remove_cleared(medias: &mut Vec<impl NewName + OriginalPath>) -> usize {
     medias.sort_unstable_by(|m, n| m.path().cmp(n.path()));
     let mut warnings = 0;
-    medias.retain_mut(|m| match m.new_name().is_empty() {
-        true => {
+    medias.retain(|m| {
+        if m.new_name().is_empty() {
             warnings += 1;
             eprintln!("warning: rules cleared name: {}", m.path().display());
             false
+        } else {
+            true
         }
-        false => true,
     });
     warnings
 }
@@ -238,7 +241,10 @@ mod test {
     fn strip() {
         struct Media(String);
         impl NewName for Media {
-            fn new_name(&mut self) -> &mut String {
+            fn new_name(&self) -> &str {
+                &self.0
+            }
+            fn new_name_mut(&mut self) -> &mut String {
                 &mut self.0
             }
         }
