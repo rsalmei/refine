@@ -22,7 +22,7 @@ pub struct Rename {
     /// Remove all occurrences of this str in the name; blanks are automatically removed.
     #[arg(short = 'e', long, value_name = "STR|REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     strip_exact: Vec<String>,
-    ///  Replace all occurrences of one str with another; applied in order and after the strip rules.
+    ///  Replace all occurrences of one str with another; applied in order after the strip rules.
     #[arg(short = 'r', long, value_name = "{STR|REGEX}=STR", allow_hyphen_values = true, value_parser = utils::parse_key_value::<String, String>)]
     replace: Vec<(String, String)>,
     /// Allow changes in directories where clashes are detected.

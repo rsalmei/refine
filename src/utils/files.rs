@@ -56,6 +56,7 @@ pub trait NewName {
     fn new_name_mut(&mut self) -> &mut String;
 }
 
+/// Strip parts of filenames, either before, after, or exactly a certain string.
 pub fn strip_filenames(medias: &mut [impl NewName], rules: [&[impl AsRef<str>]; 3]) -> Result<()> {
     const BOUND: &str = r"[-_\.\s]";
     let before = |rule| format!("(?i)^.*{rule}{BOUND}*");
@@ -73,6 +74,7 @@ pub fn strip_filenames(medias: &mut [impl NewName], rules: [&[impl AsRef<str>]; 
     }
     let regs = regs;
 
+    // apply all rules in order.
     medias.iter_mut().for_each(|m| {
         let mut name = std::mem::take(m.new_name_mut());
         regs.iter().for_each(|re| match re.replace_all(&name, "") {
@@ -133,7 +135,7 @@ fn copy_path(p: &Path, q: &Path, remove_dir: bool, n: usize) -> io::Result<()> {
             let files = fs::read_dir(p)?
                 .flatten()
                 .try_fold(Vec::new(), |mut acc, de| {
-                    let is_dir = de.path().is_dir(); // need to cache is_dir because it goes to the fs again, and copy_path below may delete it.
+                    let is_dir = de.path().is_dir(); // need to cache because is_dir goes to the fs again, and copy_path may have removed it.
                     copy_path(&de.path(), &q.join(de.file_name()), remove_dir, n + 1).map(|()| {
                         if !is_dir {
                             verbose(b".");

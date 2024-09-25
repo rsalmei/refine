@@ -8,6 +8,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
+// TODO: consider the target folder might not be empty, so clashes must also be resolved.
+
 #[derive(Debug, Args)]
 pub struct Join {
     /// The target directory; will be created if it doesn't exist.
