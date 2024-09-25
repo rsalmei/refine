@@ -51,6 +51,9 @@ where
         .collect()
 }
 
+/// Optional static variable that holds the options given to a command.
+///
+/// Useful for sharing the options out of the main refine function.
 #[macro_export]
 macro_rules! options {
     ($opt:ty) => {
