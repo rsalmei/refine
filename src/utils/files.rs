@@ -94,17 +94,16 @@ pub trait OriginalPath {
 /// Remove cleared filenames after applying some renaming rules.
 pub fn remove_cleared(medias: &mut Vec<impl NewName + OriginalPath>) -> usize {
     medias.sort_unstable_by(|m, n| m.path().cmp(n.path()));
-    let mut warnings = 0;
+    let total = medias.len();
     medias.retain(|m| {
         if m.new_name().is_empty() {
-            warnings += 1;
             eprintln!("warning: rules cleared name: {}", m.path().display());
             false
         } else {
             true
         }
     });
-    warnings
+    total - medias.len()
 }
 
 pub trait NewPath {

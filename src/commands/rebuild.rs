@@ -55,11 +55,12 @@ impl Refine for Rebuild {
     const ENTRY_KIND: EntryKind = EntryKind::File;
 
     fn refine(self, mut medias: Vec<Self::Media>) -> Result<()> {
-        let (total, warnings) = if let Some(force) = &self.force {
+        let total = medias.len();
+        let warnings = if let Some(force) = &self.force {
             medias.iter_mut().for_each(|m| {
                 m.new_name.clone_from(force);
             });
-            (medias.len(), 0)
+            0
         } else {
             // step: strip sequence numbers.
             medias.iter_mut().for_each(|m| {
@@ -77,7 +78,6 @@ impl Refine for Rebuild {
             utils::user_aborted()?;
 
             // step: remove medias where the rules cleared the name.
-            let total = medias.len();
             let warnings = utils::remove_cleared(&mut medias);
 
             // step: smart detect.
@@ -90,8 +90,7 @@ impl Refine for Rebuild {
                     }
                 });
             }
-
-            (total, warnings)
+            warnings
         };
 
         // step: generate new names to compute the changes.
