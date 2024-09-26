@@ -127,9 +127,10 @@ pub fn cross_move_consuming(medias: &mut Vec<impl OriginalPath + NewPath>) {
     files_op(medias, verbose, |p, q| copy_path(p, q, true, 0))
 }
 
+// `n` is just a counter for verbose output.
 fn copy_path(p: &Path, q: &Path, remove_dir: bool, n: usize) -> io::Result<()> {
-    match p.is_dir() {
-        true => fs::create_dir(q).and_then(|()| {
+    if p.is_dir() {
+        fs::create_dir(q).and_then(|()| {
             verbose(b"d[");
             let files = fs::read_dir(p)?
                 .flatten()
@@ -146,18 +147,21 @@ fn copy_path(p: &Path, q: &Path, remove_dir: bool, n: usize) -> io::Result<()> {
                     })
                 });
             verbose(b"]");
-            match remove_dir {
-                true => files
+            if remove_dir {
+                files
                     .and_then(|files| files.iter().try_for_each(fs::remove_file))
-                    .and_then(|_| fs::remove_dir(p)),
-                false => files.map(|_| ()),
+                    .and_then(|()| fs::remove_dir(p))
+            } else {
+                files.map(|_| ())
             }
-        }),
-        false if n == 0 => fs::copy(p, q).and_then(|_| {
+        })
+    } else if n == 0 {
+        fs::copy(p, q).and_then(|_| {
             verbose(b".");
             fs::remove_file(p)
-        }),
-        false => fs::copy(p, q).map(|_| ()), // this is called recursively by the is_dir case above.
+        })
+    } else {
+        fs::copy(p, q).map(|_| ()) // this is called recursively by the is_dir case above.
     }
 }
 
@@ -167,8 +171,11 @@ fn verbose(c: &[u8]) {
     io::stdout().flush().unwrap();
 }
 
-type FileOp = fn(&Path, &Path) -> io::Result<()>;
-fn files_op(paths: &mut Vec<impl OriginalPath + NewPath>, notify: fn(&[u8]), op: FileOp) {
+fn files_op(
+    paths: &mut Vec<impl OriginalPath + NewPath>,
+    notify: fn(&[u8]),
+    op: fn(&Path, &Path) -> io::Result<()>,
+) {
     paths.retain(|m| {
         let target = m.new_path();
         if target.exists() {
