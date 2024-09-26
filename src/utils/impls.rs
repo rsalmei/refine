@@ -1,3 +1,6 @@
+use crate::utils::{NewName, NewPath, OriginalPath};
+use std::path::PathBuf;
+
 #[macro_export]
 macro_rules! impl_new_name {
     ($t:ty) => {
@@ -23,3 +26,8 @@ macro_rules! impl_original_path {
     };
 }
 
+impl<M: NewName + OriginalPath> NewPath for M {
+    fn new_path(&self) -> PathBuf {
+        self.path().with_file_name(self.new_name())
+    }
+}
