@@ -23,17 +23,22 @@ pub enum Command {
     Join(join::Join),
 }
 
+/// The common interface for commands.
+///
+/// Implemented for each command's options, conferring its functionality.
 pub trait Refine {
     type Media: TryFrom<PathBuf, Error: fmt::Display>;
     const OPENING_LINE: &'static str;
     const ENTRY_KIND: EntryKind;
 
-    fn refine(self, medias: Vec<Self::Media>) -> anyhow::Result<()>;
+    fn refine(self, medias: &mut Vec<Self::Media>) -> anyhow::Result<()>;
 }
 
 pub fn run<R: Refine>(cmd: R, (paths, filters): (Vec<PathBuf>, Filters)) -> anyhow::Result<()> {
     println!("=> {}\n", R::OPENING_LINE);
-    cmd.refine(gen_medias(find_entries(filters, paths, R::ENTRY_KIND)?))
+    let entries = find_entries(filters, paths, R::ENTRY_KIND)?;
+    let mut medias = gen_medias(entries);
+    cmd.refine(&mut medias)
 }
 
 fn gen_medias<T>(entries: impl Iterator<Item = PathBuf>) -> Vec<T>

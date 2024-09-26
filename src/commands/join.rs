@@ -60,7 +60,7 @@ impl Refine for Join {
     const OPENING_LINE: &'static str = "Joining files...";
     const ENTRY_KIND: EntryKind = EntryKind::Either;
 
-    fn refine(self, mut medias: Vec<Self::Media>) -> Result<()> {
+    fn refine(self, medias: &mut Vec<Self::Media>) -> Result<()> {
         FORCE.set(self.force).unwrap();
         let target = self.to.canonicalize().map_err(|_| self.to.to_owned());
         TARGET.set(target).unwrap();
@@ -141,15 +141,15 @@ impl Refine for Join {
         // step: apply changes, if the user agrees.
         fs::create_dir_all(target).with_context(|| format!("creating {target:?}"))?;
         match self.strategy {
-            Strategy::Move => utils::rename_move_consuming(&mut medias),
-            Strategy::Copy => utils::copy_consuming(&mut medias),
+            Strategy::Move => utils::rename_move_consuming(medias),
+            Strategy::Copy => utils::copy_consuming(medias),
         };
 
         // step: recover from CrossDevice errors.
         if !medias.is_empty() {
             if let Strategy::Move = self.strategy {
                 println!("attempting to fix {} errors", medias.len());
-                utils::cross_move_consuming(&mut medias);
+                utils::cross_move_consuming(medias);
             }
         }
 

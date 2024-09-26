@@ -54,7 +54,7 @@ impl Refine for Rebuild {
     const OPENING_LINE: &'static str = "Rebuilding files...";
     const ENTRY_KIND: EntryKind = EntryKind::File;
 
-    fn refine(self, mut medias: Vec<Self::Media>) -> Result<()> {
+    fn refine(self, medias: &mut Vec<Self::Media>) -> Result<()> {
         let total = medias.len();
         let warnings = if let Some(force) = &self.force {
             medias.iter_mut().for_each(|m| {
@@ -71,14 +71,14 @@ impl Refine for Rebuild {
 
             // step: apply strip rules.
             utils::strip_filenames(
-                &mut medias,
+                medias,
                 [&self.strip_before, &self.strip_after, &self.strip_exact],
             )?;
 
             utils::user_aborted()?;
 
             // step: remove medias where the rules cleared the name.
-            let warnings = utils::remove_cleared(&mut medias);
+            let warnings = utils::remove_cleared(medias);
 
             // step: smart detect.
             if !self.no_smart_detect {
