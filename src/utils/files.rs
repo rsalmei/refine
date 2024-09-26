@@ -111,6 +111,12 @@ pub trait NewPath {
     fn new_path(&self) -> PathBuf;
 }
 
+impl<M: NewName + OriginalPath> NewPath for M {
+    fn new_path(&self) -> PathBuf {
+        self.path().with_file_name(self.new_name())
+    }
+}
+
 /// Rename files and directories. Works only within the same file system.
 /// Can also be used to move files and directories, when the target path is not the same.
 pub fn rename_move_consuming(medias: &mut Vec<impl OriginalPath + NewPath>) {

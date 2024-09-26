@@ -190,12 +190,6 @@ impl utils::OriginalPath for Media {
     }
 }
 
-impl utils::NewPath for Media {
-    fn new_path(&self) -> PathBuf {
-        self.path.with_file_name(&self.new_name)
-    }
-}
-
 impl TryFrom<PathBuf> for Media {
     type Error = anyhow::Error;
 

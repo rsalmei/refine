@@ -186,12 +186,6 @@ impl utils::OriginalPath for Media {
     }
 }
 
-impl utils::NewPath for Media {
-    fn new_path(&self) -> PathBuf {
-        self.path.with_file_name(&self.new_name)
-    }
-}
-
 impl Media {
     fn group(&self) -> &str {
         self.smart_group.as_deref().unwrap_or(&self.new_name)
