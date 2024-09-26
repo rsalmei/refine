@@ -1,6 +1,6 @@
 use crate::commands::Refine;
 use crate::entries::EntryKind;
-use crate::utils;
+use crate::{impl_new_name, impl_original_path, utils};
 use anyhow::{Context, Result};
 use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
@@ -174,20 +174,8 @@ impl Refine for Rename {
     }
 }
 
-impl utils::NewName for Media {
-    fn new_name(&self) -> &str {
-        &self.new_name
-    }
-    fn new_name_mut(&mut self) -> &mut String {
-        &mut self.new_name
-    }
-}
-
-impl utils::OriginalPath for Media {
-    fn path(&self) -> &Path {
-        &self.path
-    }
-}
+impl_new_name!(Media);
+impl_original_path!(Media);
 
 impl TryFrom<PathBuf> for Media {
     type Error = anyhow::Error;

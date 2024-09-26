@@ -1,6 +1,6 @@
 use crate::commands::Refine;
 use crate::entries::EntryKind;
-use crate::utils;
+use crate::{impl_original_path, utils};
 use anyhow::{Context, Result};
 use clap::{Args, ValueEnum};
 use std::collections::HashSet;
@@ -201,11 +201,7 @@ impl Media {
     }
 }
 
-impl utils::OriginalPath for Media {
-    fn path(&self) -> &Path {
-        &self.path
-    }
-}
+impl_original_path!(Media);
 
 impl utils::NewPath for Media {
     fn new_path(&self) -> PathBuf {
