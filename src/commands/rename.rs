@@ -124,18 +124,17 @@ impl Refine for Rename {
         utils::user_aborted()?;
 
         // step: settle changes.
-        let mut changes = medias
-            .into_iter()
-            .filter(|m| !m.new_name.is_empty()) // new clash detection.
-            .filter(|m| m.new_name != m.path.file_name().unwrap().to_str().unwrap())
-            .collect::<Vec<_>>();
+        medias.retain(|m| {
+            !m.new_name.is_empty() // new clash detection.
+            && m.new_name != m.path.file_name().unwrap().to_str().unwrap()
+        });
 
         // step: display the results by parent directory.
-        changes.sort_unstable_by(|m, n| {
+        medias.sort_unstable_by(|m, n| {
             (Reverse(m.path.components().count()), &m.path)
                 .cmp(&(Reverse(n.path.components().count()), &n.path))
         });
-        changes
+        medias
             .chunk_by(|m, n| m.path.parent() == n.path.parent())
             .for_each(|g| {
                 println!("{}/:", g[0].path.parent().unwrap().display());
@@ -151,13 +150,13 @@ impl Refine for Rename {
             });
 
         // step: display receipt summary.
-        if !changes.is_empty() || warnings > 0 {
+        if !medias.is_empty() || warnings > 0 {
             println!();
         }
         println!("total files: {total}");
-        println!("  changes: {}", changes.len());
+        println!("  changes: {}", medias.len());
         println!("  warnings: {warnings}");
-        if changes.is_empty() {
+        if medias.is_empty() {
             return Ok(());
         }
 
@@ -165,11 +164,11 @@ impl Refine for Rename {
         if !self.yes {
             utils::prompt_yes_no("apply changes?")?;
         }
-        utils::rename_move_consuming(&mut changes);
+        utils::rename_move_consuming(medias);
 
-        match changes.is_empty() {
+        match medias.is_empty() {
             true => println!("done"),
-            false => println!("found {} errors", changes.len()),
+            false => println!("found {} errors", medias.len()),
         }
         Ok(())
     }

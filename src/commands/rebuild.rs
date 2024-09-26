@@ -94,27 +94,24 @@ impl Refine for Rebuild {
         };
 
         // step: generate new names to compute the changes.
-        apply_new_names(&mut medias, self.no_smart_detect);
+        apply_new_names(medias, self.no_smart_detect);
 
         utils::user_aborted()?;
 
         // step: settle changes, and display the results.
-        let mut changes = medias
-            .into_iter()
-            .filter(|m| m.new_name != m.path.file_name().unwrap().to_str().unwrap()) // the list might have changed on force.
-            .inspect(|m| {
-                println!("{} --> {}", m.path.display(), m.new_name);
-            })
-            .collect::<Vec<_>>();
+        medias.retain(|m| m.new_name != m.path.file_name().unwrap().to_str().unwrap()); // the list might have changed on force.
+        medias
+            .iter()
+            .for_each(|m| println!("{} --> {}", m.path.display(), m.new_name));
 
         // step: display receipt summary.
-        if !changes.is_empty() || warnings > 0 {
+        if !medias.is_empty() || warnings > 0 {
             println!();
         }
         println!("total files: {total}");
-        println!("  changes: {}", changes.len());
+        println!("  changes: {}", medias.len());
         println!("  warnings: {warnings}");
-        if changes.is_empty() {
+        if medias.is_empty() {
             return Ok(());
         }
 
@@ -122,15 +119,15 @@ impl Refine for Rebuild {
         if !self.yes {
             utils::prompt_yes_no("apply changes?")?;
         }
-        utils::rename_move_consuming(&mut changes);
-        if changes.is_empty() {
+        utils::rename_move_consuming(medias);
+        if medias.is_empty() {
             println!("done");
             return Ok(());
         }
 
         // step: fix file already exists errors.
-        println!("attempting to fix {} errors", changes.len());
-        changes.iter_mut().for_each(|m| {
+        println!("attempting to fix {} errors", medias.len());
+        medias.iter_mut().for_each(|m| {
             let temp = format!("__refine+{}__", m.new_name);
             let dest = m.path.with_file_name(&temp);
             match fs::rename(&m.path, &dest) {
@@ -138,11 +135,11 @@ impl Refine for Rebuild {
                 Err(err) => eprintln!("error: {err:?}: {:?} --> {temp:?}", m.path),
             }
         });
-        utils::rename_move_consuming(&mut changes);
+        utils::rename_move_consuming(medias);
 
-        match changes.is_empty() {
+        match medias.is_empty() {
             true => println!("done"),
-            false => println!("still {} errors, giving up", changes.len()),
+            false => println!("still {} errors, giving up", medias.len()),
         }
         Ok(())
     }
