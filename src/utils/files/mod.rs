@@ -1,10 +1,13 @@
 use anyhow::{anyhow, Context, Result};
+pub use domain::*;
+pub use ops::*;
 use regex::Regex;
 use std::borrow::Cow;
-use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::LazyLock;
-use std::{fs, io};
+
+mod domain;
+mod ops;
 
 /// Get the file stem and extension from files, or name from directories.
 pub fn filename_parts(path: &Path) -> Result<(&str, &str)> {
@@ -30,12 +33,6 @@ pub fn filename_parts(path: &Path) -> Result<(&str, &str)> {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct Sequence {
-    pub len: usize,
-    pub seq: u32,
-}
-
 /// Extract the sequence number from a file stem.
 pub fn extract_sequence(stem: &str) -> Option<Sequence> {
     static RE_SEQ: LazyLock<Regex> =
@@ -51,13 +48,11 @@ pub fn extract_sequence(stem: &str) -> Option<Sequence> {
     })
 }
 
-pub trait NewName {
-    fn new_name(&self) -> &str;
-    fn new_name_mut(&mut self) -> &mut String;
-}
-
 /// Strip parts of filenames, either before, after, or exactly a certain string.
-pub fn strip_filenames(medias: &mut [impl NewName], rules: [&[impl AsRef<str>]; 3]) -> Result<()> {
+pub fn strip_filenames(
+    medias: &mut [impl NewNameMut],
+    rules: [&[impl AsRef<str>]; 3],
+) -> Result<()> {
     const BOUND: &str = r"[-_\.\s]";
     let before = |rule| format!("(?i)^.*{rule}{BOUND}*");
     let after = |rule| format!("(?i){BOUND}*{rule}.*$");
@@ -86,11 +81,6 @@ pub fn strip_filenames(medias: &mut [impl NewName], rules: [&[impl AsRef<str>]; 
     Ok(())
 }
 
-pub trait OriginalPath {
-    /// The original path to the file.
-    fn path(&self) -> &Path;
-}
-
 /// Remove cleared filenames after applying some renaming rules.
 pub fn remove_cleared(medias: &mut Vec<impl NewName + OriginalPath>) -> usize {
     medias.sort_unstable_by(|m, n| m.path().cmp(n.path()));
@@ -106,103 +96,14 @@ pub fn remove_cleared(medias: &mut Vec<impl NewName + OriginalPath>) -> usize {
     total - medias.len()
 }
 
-pub trait NewPath {
-    /// The original path to the file.
-    fn new_path(&self) -> PathBuf;
-}
-
-/// Rename files and directories. Works only within the same file system.
-/// Can also be used to move files and directories, when the target path is not the same.
-pub fn rename_move_consuming(medias: &mut Vec<impl OriginalPath + NewPath>) {
-    files_op(medias, silent, |p, q| fs::rename(p, q))
-}
-
-/// Copy files to a new location. Works between file systems.
-pub fn copy_consuming(medias: &mut Vec<impl OriginalPath + NewPath>) {
-    files_op(medias, verbose, |p, q| copy_path(p, q, false, 0))
-}
-
-/// Move files to a new location by copying and removing the original. Works between file systems.
-pub fn cross_move_consuming(medias: &mut Vec<impl OriginalPath + NewPath>) {
-    files_op(medias, verbose, |p, q| copy_path(p, q, true, 0))
-}
-
-// `n` is just a counter for verbose output.
-fn copy_path(p: &Path, q: &Path, remove_dir: bool, n: usize) -> io::Result<()> {
-    if p.is_dir() {
-        fs::create_dir(q).and_then(|()| {
-            verbose(b"d[");
-            let files = fs::read_dir(p)?
-                .flatten()
-                .try_fold(Vec::new(), |mut acc, de| {
-                    let is_dir = de.path().is_dir(); // need to cache because is_dir goes to the fs again, and copy_path may have removed it.
-                    copy_path(&de.path(), &q.join(de.file_name()), remove_dir, n + 1).map(|()| {
-                        if !is_dir {
-                            verbose(b".");
-                            if remove_dir {
-                                acc.push(de.path())
-                            }
-                        }
-                        acc
-                    })
-                });
-            verbose(b"]");
-            if remove_dir {
-                files
-                    .and_then(|files| files.iter().try_for_each(fs::remove_file))
-                    .and_then(|()| fs::remove_dir(p))
-            } else {
-                files.map(|_| ())
-            }
-        })
-    } else if n == 0 {
-        fs::copy(p, q).and_then(|_| {
-            verbose(b".");
-            fs::remove_file(p)
-        })
-    } else {
-        fs::copy(p, q).map(|_| ()) // this is called recursively by the is_dir case above.
-    }
-}
-
-fn silent(_: &[u8]) {}
-fn verbose(c: &[u8]) {
-    io::stdout().write_all(c).unwrap();
-    io::stdout().flush().unwrap();
-}
-
-fn files_op(
-    paths: &mut Vec<impl OriginalPath + NewPath>,
-    notify: fn(&[u8]),
-    op: fn(&Path, &Path) -> io::Result<()>,
-) {
-    paths.retain(|m| {
-        let target = m.new_path();
-        if target.exists() {
-            notify(b"-\n");
-            eprintln!("file already exists: {:?} -> {target:?}", m.path());
-            notify(b"\n");
-            return true;
-        }
-        match op(m.path(), &target) {
-            Ok(()) => false,
-            Err(err) => {
-                notify(b"x\n");
-                eprintln!("error: {err}: {:?} -> {target:?}", m.path());
-                notify(b"\n");
-                true
-            }
-        }
-    });
-    notify(b"\n");
-}
-
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
+    use std::fs;
+    use std::path::PathBuf;
 
     #[test]
-    fn filename() {
+    fn parts() {
         #[track_caller]
         fn case(p: impl AsRef<Path>, (s, e): (&str, &str)) {
             assert_eq!(filename_parts(p.as_ref()).unwrap(), (s, e));
@@ -248,10 +149,7 @@ mod test {
     #[test]
     fn strip() {
         struct Media(String);
-        impl NewName for Media {
-            fn new_name(&self) -> &str {
-                &self.0
-            }
+        impl NewNameMut for Media {
             fn new_name_mut(&mut self) -> &mut String {
                 &mut self.0
             }
@@ -307,5 +205,39 @@ mod test {
 
         // exact: unfortunate case, where I'd need lookahead to avoid it...
         // case([&[], &[], &["Exact"]], "foo Exactbar", "foo bar");
+    }
+
+    #[test]
+    fn cleared() {
+        #[derive(Debug, PartialEq)]
+        struct Media(String, PathBuf);
+        impl NewName for Media {
+            fn new_name(&self) -> &str {
+                &self.0
+            }
+        }
+        impl OriginalPath for Media {
+            fn path(&self) -> &Path {
+                &self.1
+            }
+        }
+
+        let mut medias = vec![
+            Media("".to_owned(), PathBuf::from("/2")),
+            Media("bar".to_owned(), PathBuf::from("/2")),
+            Media("".to_owned(), PathBuf::from("/3")),
+            Media("foo".to_owned(), PathBuf::from("/1")),
+            Media("".to_owned(), PathBuf::from("/1")),
+        ];
+
+        let cleared = remove_cleared(&mut medias);
+        assert_eq!(cleared, 3);
+        assert_eq!(
+            medias,
+            vec![
+                Media("foo".to_owned(), PathBuf::from("/1")),
+                Media("bar".to_owned(), PathBuf::from("/2"))
+            ]
+        );
     }
 }
