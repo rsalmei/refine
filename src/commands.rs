@@ -4,7 +4,8 @@ mod list;
 mod rebuild;
 mod rename;
 
-use crate::entries::{find_entries, EntryKind, Filters};
+use crate::entries::{Entries, EntryKind};
+use anyhow::Result;
 use clap::Subcommand;
 use std::fmt;
 use std::path::PathBuf;
@@ -47,18 +48,17 @@ impl Command {
     }
 }
 
+fn run<R: Refine>(mut cmd: R, entries: Entries) -> Result<()> {
     println!("=> {}\n", R::OPENING_LINE);
-    let entries = find_entries(filters, paths, R::ENTRY_KIND)?;
-    let mut medias = gen_medias(entries);
-    cmd.refine(&mut medias)
     cmd.adjust(&entries);
+    cmd.refine(gen_medias(entries.read(R::ENTRY_KIND)))
 }
 
-fn gen_medias<T>(entries: impl Iterator<Item = PathBuf>) -> Vec<T>
+fn gen_medias<T>(paths: impl Iterator<Item = PathBuf>) -> Vec<T>
 where
     T: TryFrom<PathBuf, Error: fmt::Display>,
 {
-    entries
+    paths
         .map(|path| T::try_from(path))
         .inspect(|res| {
             if let Err(err) = res {

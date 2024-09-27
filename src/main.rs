@@ -4,8 +4,8 @@ mod utils;
 
 use anyhow::Result;
 use clap::Parser;
-use commands::{run, Command};
-use entries::Filters;
+use commands::Command;
+use entries::{Entries, Filters};
 use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
@@ -21,14 +21,14 @@ pub struct Args {
 }
 
 fn main() -> Result<()> {
-    println!("Refine v{}", env!("CARGO_PKG_VERSION"));
-    let args = Args::parse();
     utils::install_ctrl_c_handler();
 
-    let options = {
+    println!("Refine v{}", env!("CARGO_PKG_VERSION"));
+    let args = Args::parse();
+    let entries = {
         // lists files from the given paths, or the current directory if no paths were given.
         let paths = args.paths.is_empty().then(|| vec![".".into()]);
-        (paths.unwrap_or(args.paths), args.filters)
+        Entries::new(paths.unwrap_or(args.paths), args.filters)?
     };
     args.cmd.run(entries)
 }
