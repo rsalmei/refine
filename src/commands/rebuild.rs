@@ -1,5 +1,5 @@
 use crate::commands::Refine;
-use crate::entries::EntryKind;
+use crate::entries::{Entries, EntryKind};
 use crate::utils::{self, Sequence};
 use crate::{impl_new_name, impl_original_path};
 use anyhow::Result;
@@ -57,6 +57,13 @@ impl Refine for Rebuild {
     type Media = Media;
     const OPENING_LINE: &'static str = "Rebuilding files...";
     const ENTRY_KIND: EntryKind = EntryKind::File;
+
+    fn adjust(&mut self, entries: &Entries) {
+        if entries.missing && !self.partial {
+            self.partial = true;
+            eprintln!("warning: some paths are missing => assuming partial rebuild");
+        }
+    }
 
     fn refine(self, mut medias: Vec<Self::Media>) -> Result<()> {
         let total = medias.len();
