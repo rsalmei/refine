@@ -31,8 +31,8 @@ pub trait Refine {
     const OPENING_LINE: &'static str;
     const ENTRY_KIND: EntryKind;
 
-    fn refine(self, medias: &mut Vec<Self::Media>) -> anyhow::Result<()>;
     fn adjust(&mut self, _entries: &Entries) {}
+    fn refine(self, medias: Vec<Self::Media>) -> Result<()>;
 }
 
 impl Command {

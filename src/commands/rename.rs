@@ -48,12 +48,12 @@ impl Refine for Rename {
     const OPENING_LINE: &'static str = "Renaming files...";
     const ENTRY_KIND: EntryKind = EntryKind::Both;
 
-    fn refine(self, medias: &mut Vec<Self::Media>) -> Result<()> {
+    fn refine(self, mut medias: Vec<Self::Media>) -> Result<()> {
         let kind = |p: &Path| if p.is_dir() { "/" } else { "" };
 
         // step: apply strip rules.
         utils::strip_filenames(
-            medias,
+            &mut medias,
             [&self.strip_before, &self.strip_after, &self.strip_exact],
         )?;
 
@@ -72,7 +72,7 @@ impl Refine for Rename {
 
         // step: remove medias where the rules cleared the name.
         let total = medias.len();
-        let mut warnings = utils::remove_cleared(medias);
+        let mut warnings = utils::remove_cleared(&mut medias);
 
         // step: re-include extension in the names.
         medias
@@ -164,7 +164,7 @@ impl Refine for Rename {
         if !self.yes {
             utils::prompt_yes_no("apply changes?")?;
         }
-        utils::rename_move_consuming(medias);
+        utils::rename_move_consuming(&mut medias);
 
         match medias.is_empty() {
             true => println!("done"),

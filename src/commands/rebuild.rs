@@ -55,7 +55,7 @@ impl Refine for Rebuild {
     const OPENING_LINE: &'static str = "Rebuilding files...";
     const ENTRY_KIND: EntryKind = EntryKind::File;
 
-    fn refine(self, medias: &mut Vec<Self::Media>) -> Result<()> {
+    fn refine(self, mut medias: Vec<Self::Media>) -> Result<()> {
         let total = medias.len();
         let warnings = if let Some(force) = &self.force {
             medias.iter_mut().for_each(|m| {
@@ -72,14 +72,14 @@ impl Refine for Rebuild {
 
             // step: apply strip rules.
             utils::strip_filenames(
-                medias,
+                &mut medias,
                 [&self.strip_before, &self.strip_after, &self.strip_exact],
             )?;
 
             utils::user_aborted()?;
 
             // step: remove medias where the rules cleared the name.
-            let warnings = utils::remove_cleared(medias);
+            let warnings = utils::remove_cleared(&mut medias);
 
             // step: smart detect.
             if !self.no_smart_detect {
@@ -120,7 +120,7 @@ impl Refine for Rebuild {
         if !self.yes {
             utils::prompt_yes_no("apply changes?")?;
         }
-        utils::rename_move_consuming(medias);
+        utils::rename_move_consuming(&mut medias);
         if medias.is_empty() {
             println!("done");
             return Ok(());
@@ -136,7 +136,7 @@ impl Refine for Rebuild {
                 Err(err) => eprintln!("error: {err:?}: {:?} --> {temp:?}", m.path),
             }
         });
-        utils::rename_move_consuming(medias);
+        utils::rename_move_consuming(&mut medias);
 
         match medias.is_empty() {
             true => println!("done"),
