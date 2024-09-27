@@ -68,8 +68,6 @@ impl Refine for Rename {
             })
         }
 
-        utils::user_aborted()?;
-
         // step: remove medias where the rules cleared the name.
         let total = medias.len();
         let mut warnings = utils::remove_cleared(&mut medias);

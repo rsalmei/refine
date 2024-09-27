@@ -76,8 +76,6 @@ impl Refine for Rebuild {
                 [&self.strip_before, &self.strip_after, &self.strip_exact],
             )?;
 
-            utils::user_aborted()?;
-
             // step: remove medias where the rules cleared the name.
             let warnings = utils::remove_cleared(&mut medias);
 
