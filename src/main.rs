@@ -30,12 +30,5 @@ fn main() -> Result<()> {
         let paths = args.paths.is_empty().then(|| vec![".".into()]);
         (paths.unwrap_or(args.paths), args.filters)
     };
-
-    match args.cmd {
-        Command::Dupes(cmd) => run(cmd, options),
-        Command::Rebuild(cmd) => run(cmd, options),
-        Command::List(cmd) => run(cmd, options),
-        Command::Rename(cmd) => run(cmd, options),
-        Command::Join(cmd) => run(cmd, options),
-    }
+    args.cmd.run(entries)
 }

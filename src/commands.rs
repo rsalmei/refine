@@ -34,7 +34,18 @@ pub trait Refine {
     fn refine(self, medias: &mut Vec<Self::Media>) -> anyhow::Result<()>;
 }
 
-pub fn run<R: Refine>(cmd: R, (paths, filters): (Vec<PathBuf>, Filters)) -> anyhow::Result<()> {
+impl Command {
+    pub fn run(self, entries: Entries) -> Result<()> {
+        match self {
+            Command::Dupes(cmd) => run(cmd, entries),
+            Command::Rebuild(cmd) => run(cmd, entries),
+            Command::List(cmd) => run(cmd, entries),
+            Command::Rename(cmd) => run(cmd, entries),
+            Command::Join(cmd) => run(cmd, entries),
+        }
+    }
+}
+
     println!("=> {}\n", R::OPENING_LINE);
     let entries = find_entries(filters, paths, R::ENTRY_KIND)?;
     let mut medias = gen_medias(entries);
