@@ -95,7 +95,26 @@ impl Refine for Rebuild {
         };
 
         // step: generate new names to compute the changes.
-        apply_new_names(medias, self.no_smart_detect);
+        medias.sort_unstable_by(|m, n| m.group().cmp(n.group()));
+        medias
+            .chunk_by_mut(|m, n| m.group() == n.group())
+            .for_each(|g| {
+                g.sort_by_key(|m| m.created);
+                let base = if self.no_smart_detect {
+                    &g[0].new_name
+                } else {
+                    let vars = g.iter().map(|m| &m.new_name).collect::<HashSet<_>>();
+                    vars.iter().map(|&x| (x.len(), x)).max().unwrap().1
+                };
+                let base = base.replace(' ', "_");
+                g.iter_mut().enumerate().for_each(|(i, m)| {
+                    m.new_name.clear(); // because of the force option.
+                    write!(m.new_name, "{base}-{}", i + 1).unwrap();
+                    if !m.ext.is_empty() {
+                        write!(m.new_name, ".{}", m.ext).unwrap();
+                    }
+                });
+            });
 
         utils::user_aborted()?;
 
@@ -144,29 +163,6 @@ impl Refine for Rebuild {
         }
         Ok(())
     }
-}
-
-fn apply_new_names(medias: &mut [Media], no_smart_detect: bool) {
-    medias.sort_unstable_by(|m, n| m.group().cmp(n.group()));
-    medias
-        .chunk_by_mut(|m, n| m.group() == n.group())
-        .for_each(|g| {
-            g.sort_by_key(|m| m.created);
-            let base = if no_smart_detect {
-                &g[0].new_name
-            } else {
-                let vars = g.iter().map(|m| &m.new_name).collect::<HashSet<_>>();
-                vars.iter().map(|&x| (x.len(), x)).max().unwrap().1
-            };
-            let base = base.replace(' ', "_");
-            g.iter_mut().enumerate().for_each(|(i, m)| {
-                m.new_name.clear(); // because of the force option.
-                write!(m.new_name, "{base}-{}", i + 1).unwrap();
-                if !m.ext.is_empty() {
-                    write!(m.new_name, ".{}", m.ext).unwrap();
-                }
-            });
-        });
 }
 
 impl_new_name!(Media);
