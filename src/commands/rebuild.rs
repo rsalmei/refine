@@ -29,8 +29,11 @@ pub struct Rebuild {
     #[arg(short = 's', long)]
     no_smart_detect: bool,
     /// Easily overwrite filenames (use the Global options to filter them).
-    #[arg(short = 'f', long, value_name = "STR", conflicts_with_all = ["strip_before", "strip_after", "strip_exact", "no_smart_detect"], value_parser = NonEmptyStringValueParser::new())]
+    #[arg(short = 'f', long, value_name = "STR", conflicts_with_all = ["strip_before", "strip_after", "strip_exact", "no_smart_detect", "partial"], value_parser = NonEmptyStringValueParser::new())]
     force: Option<String>,
+    /// Assume some paths are missing, so only touch files actually modified by the given rules.
+    #[arg(short = 'p', long)]
+    partial: bool,
     /// Skip the confirmation prompt, useful for automation.
     #[arg(short = 'y', long)]
     yes: bool,
