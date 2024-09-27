@@ -32,6 +32,7 @@ pub trait Refine {
     const ENTRY_KIND: EntryKind;
 
     fn refine(self, medias: &mut Vec<Self::Media>) -> anyhow::Result<()>;
+    fn adjust(&mut self, _entries: &Entries) {}
 }
 
 impl Command {
@@ -50,6 +51,7 @@ impl Command {
     let entries = find_entries(filters, paths, R::ENTRY_KIND)?;
     let mut medias = gen_medias(entries);
     cmd.refine(&mut medias)
+    cmd.adjust(&entries);
 }
 
 fn gen_medias<T>(entries: impl Iterator<Item = PathBuf>) -> Vec<T>
