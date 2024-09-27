@@ -1,5 +1,5 @@
 use crate::utils;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
 use regex::Regex;
@@ -55,25 +55,47 @@ enum RecurseMode {
     Shallow,
 }
 
-pub fn find_entries(
-    filters: Filters,
-    mut paths: Vec<PathBuf>,
-    kind: EntryKind,
-) -> Result<impl Iterator<Item = PathBuf>> {
-    parse_input_regexes(&filters)?;
+#[derive(Debug)]
+pub struct Entries {
+    /// Used to check if any given path on the CLI is missing.
+    pub missing: bool,
+    paths: Vec<PathBuf>,
+    shallow: bool,
+}
 
-    let len = paths.len();
-    paths.sort_unstable();
-    paths.dedup();
-    if len != paths.len() {
-        eprintln!("warning: duplicated paths were ignored");
+impl Entries {
+    pub fn new(mut paths: Vec<PathBuf>, filters: Filters) -> Result<Entries> {
+        parse_input_regexes(&filters)?;
+
+        let prev = paths.len();
+        paths.sort_unstable();
+        paths.dedup();
+        if prev != paths.len() {
+            eprintln!("warning: {} duplicated path(s) ignored", prev - paths.len());
+        }
+
+        let prev = paths.len();
+        paths.retain(|p| p.is_dir());
+        if paths.is_empty() {
+            return Err(anyhow!("no valid paths given"));
+        }
+
+        Ok(Entries {
+            missing: prev != paths.len(), // use paths before moving it below.
+            paths,
+            shallow: filters.shallow,
+        })
     }
 
-    let rm = match filters.shallow {
-        true => RecurseMode::Shallow,
-        false => RecurseMode::Recurse(kind),
-    };
-    Ok(paths.into_iter().flat_map(move |p| entries(p, rm)))
+    pub fn read(&self, kind: EntryKind) -> impl Iterator<Item = PathBuf> + '_ {
+        let rm = match self.shallow {
+            true => RecurseMode::Shallow,
+            false => RecurseMode::Recurse(kind),
+        };
+        self.paths
+            .iter()
+            .flat_map(move |p| entries(p.to_owned(), rm))
+    }
 }
 
 macro_rules! re_input {
