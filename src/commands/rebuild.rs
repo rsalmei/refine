@@ -66,12 +66,11 @@ impl Refine for Rebuild {
     }
 
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
-        let total = medias.len();
-        let warnings = if let Some(force) = &self.force {
+        let (total, mut warnings) = (medias.len(), 0);
+        if let Some(force) = &self.force {
             medias.iter_mut().for_each(|m| {
                 m.new_name.clone_from(force);
             });
-            0
         } else {
             // step: strip sequence numbers.
             medias.iter_mut().for_each(|m| {
@@ -87,7 +86,7 @@ impl Refine for Rebuild {
             )?;
 
             // step: remove medias where the rules cleared the name.
-            let warnings = utils::remove_cleared(&mut medias);
+            warnings += utils::remove_cleared(&mut medias);
 
             // step: smart detect.
             if !self.no_smart_detect {
@@ -99,8 +98,6 @@ impl Refine for Rebuild {
                     }
                 });
             }
-
-            warnings
         };
 
         // step: generate new names before computing the changes.
