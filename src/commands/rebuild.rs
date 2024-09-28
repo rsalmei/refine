@@ -65,7 +65,7 @@ impl Refine for Rebuild {
         }
     }
 
-    fn refine(self, mut medias: Vec<Self::Media>) -> Result<()> {
+    fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         let total = medias.len();
         let warnings = if let Some(force) = &self.force {
             medias.iter_mut().for_each(|m| {

@@ -60,7 +60,7 @@ impl Refine for Join {
     const OPENING_LINE: &'static str = "Joining files...";
     const ENTRY_KIND: EntryKind = EntryKind::Either;
 
-    fn refine(self, mut medias: Vec<Self::Media>) -> Result<()> {
+    fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         FORCE.set(self.force).unwrap();
         let target = self.to.canonicalize().map_err(|_| self.to.to_owned());
         TARGET.set(target).unwrap();

@@ -31,7 +31,7 @@ impl Refine for Dupes {
     const OPENING_LINE: &'static str = "Detecting duplicate files...";
     const ENTRY_KIND: EntryKind = EntryKind::File;
 
-    fn refine(self, mut medias: Vec<Self::Media>) -> Result<()> {
+    fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         // step: detect duplicates by size.
         println!("by size:");
         let by_size = detect_duplicates(

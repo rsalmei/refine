@@ -48,7 +48,7 @@ impl Refine for Rename {
     const OPENING_LINE: &'static str = "Renaming files...";
     const ENTRY_KIND: EntryKind = EntryKind::Both;
 
-    fn refine(self, mut medias: Vec<Self::Media>) -> Result<()> {
+    fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         let kind = |p: &Path| if p.is_dir() { "/" } else { "" };
 
         // step: apply strip rules.

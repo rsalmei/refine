@@ -35,7 +35,7 @@ impl Refine for List {
     const OPENING_LINE: &'static str = "Listing files...";
     const ENTRY_KIND: EntryKind = EntryKind::File;
 
-    fn refine(self, mut medias: Vec<Self::Media>) -> Result<()> {
+    fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         // step: sort the files by name, size, or path.
         let compare = match self.by {
             By::Name => |m: &Media, n: &Media| m.path.file_name().cmp(&n.path.file_name()),
