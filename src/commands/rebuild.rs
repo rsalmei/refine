@@ -99,22 +99,25 @@ impl Refine for Rebuild {
                     }
                 });
             }
+
             warnings
         };
 
-        // step: generate new names to compute the changes.
+        // step: generate new names before computing the changes.
+        let name_picker = if self.no_smart_detect || self.force.is_some() {
+            |g: &[Media]| g[0].new_name.to_owned() // must return owned value because g mustn't be borrowed to be modified.
+        } else {
+            |g: &[Media]| {
+                let nn = g.iter().map(|m| &m.new_name).collect::<HashSet<_>>();
+                nn.iter().map(|&x| (x.len(), x)).max().unwrap().1.to_owned()
+            }
+        };
         medias.sort_unstable_by(|m, n| m.group().cmp(n.group()));
         medias
             .chunk_by_mut(|m, n| m.group() == n.group())
             .for_each(|g| {
                 g.sort_by_key(|m| m.created);
-                let base = if self.no_smart_detect {
-                    &g[0].new_name
-                } else {
-                    let vars = g.iter().map(|m| &m.new_name).collect::<HashSet<_>>();
-                    vars.iter().map(|&x| (x.len(), x)).max().unwrap().1
-                };
-                let base = base.replace(' ', "_");
+                let base = name_picker(g);
                 g.iter_mut().enumerate().for_each(|(i, m)| {
                     m.new_name.clear(); // because of the force option.
                     write!(m.new_name, "{base}-{}", i + 1).unwrap();
