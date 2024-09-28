@@ -31,7 +31,7 @@ pub struct Rebuild {
     /// Easily overwrite filenames (use the Global options to filter them).
     #[arg(short = 'f', long, value_name = "STR", conflicts_with_all = ["strip_before", "strip_after", "strip_exact", "no_smart_detect", "partial"], value_parser = NonEmptyStringValueParser::new())]
     force: Option<String>,
-    /// Assume some paths are missing, so only touch files actually modified by the given rules.
+    /// Assume some paths are not available, so only touch files actually modified by the given rules.
     #[arg(short = 'p', long)]
     partial: bool,
     /// Skip the confirmation prompt, useful for automation.
@@ -59,9 +59,9 @@ impl Refine for Rebuild {
     const ENTRY_KIND: EntryKind = EntryKind::File;
 
     fn adjust(&mut self, entries: &Entries) {
-        if entries.missing && !self.partial {
+        if entries.missing && !self.partial && self.force.is_none() {
             self.partial = true;
-            eprintln!("warning: some paths are missing => assuming partial rebuild");
+            eprintln!("warning: one or more paths are not available => entering partial mode\n");
         }
     }
 
