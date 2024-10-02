@@ -61,7 +61,7 @@ impl Refine for Rebuild {
     fn adjust(&mut self, entries: &Entries) {
         if entries.missing && !self.partial && self.force.is_none() {
             self.partial = true;
-            eprintln!("warning: one or more paths are not available => entering partial mode\n");
+            eprintln!("warning: one or more paths are not available => enabling partial mode\n");
         }
     }
 
@@ -102,7 +102,7 @@ impl Refine for Rebuild {
 
         // step: generate new names before computing the changes.
         let name_picker = if self.no_smart_detect || self.force.is_some() {
-            |g: &[Media]| g[0].new_name.to_owned() // must return owned value because g mustn't be borrowed to be modified.
+            |g: &[Media]| g[0].new_name.to_owned() // must return owned value because new_name mustn't be borrowed to be modified.
         } else {
             |g: &[Media]| {
                 let nn = g.iter().map(|m| &m.new_name).collect::<HashSet<_>>();
@@ -114,9 +114,9 @@ impl Refine for Rebuild {
             .chunk_by_mut(|m, n| m.group() == n.group())
             .for_each(|g| {
                 g.sort_by_key(|m| m.created);
-                let base = name_picker(g);
+                let base = name_picker(g); // this used to have a .replace(' ', "_")... I don't remember why.
                 g.iter_mut().enumerate().for_each(|(i, m)| {
-                    m.new_name.clear(); // because of the force option.
+                    m.new_name.clear(); // because of the force and smart options.
                     write!(m.new_name, "{base}-{}", i + 1).unwrap();
                     if !m.ext.is_empty() {
                         write!(m.new_name, ".{}", m.ext).unwrap();
