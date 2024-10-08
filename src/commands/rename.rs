@@ -1,8 +1,8 @@
 use crate::commands::Refine;
 use crate::entries::EntryKind;
-use crate::{impl_new_name, impl_original_path, utils};
 use anyhow::{Context, Result};
 use clap::builder::NonEmptyStringValueParser;
+use crate::{impl_new_name, impl_new_name_mut, impl_original_path, utils};
 use clap::Args;
 use regex::Regex;
 use std::borrow::Cow;
@@ -173,6 +173,7 @@ impl Refine for Rename {
 }
 
 impl_new_name!(Media);
+impl_new_name_mut!(Media {});
 impl_original_path!(Media);
 
 impl TryFrom<PathBuf> for Media {

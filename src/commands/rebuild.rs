@@ -1,7 +1,7 @@
 use crate::commands::Refine;
 use crate::entries::{Entries, EntryKind};
 use crate::utils::{self, Sequence};
-use crate::{impl_new_name, impl_original_path};
+use crate::{impl_new_name, impl_new_name_mut, impl_original_path};
 use anyhow::Result;
 use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
@@ -172,6 +172,7 @@ impl Refine for Rebuild {
 }
 
 impl_new_name!(Media);
+impl_new_name_mut!(Media {});
 impl_original_path!(Media);
 
 impl Media {
