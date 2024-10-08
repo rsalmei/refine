@@ -113,16 +113,13 @@ mod tests {
 
     /// A dummy type that expects it is always changed.
     #[derive(Debug, PartialEq)]
-    struct MediaAlways(String);
-    impl NewNameMut for MediaAlways {
+    struct Media(String);
+    impl NewNameMut for Media {
         fn new_name_mut(&mut self) -> &mut String {
             &mut self.0
         }
-        fn mark_changed(&mut self, changed: bool) {
-            assert!(changed)
-        }
     }
-    impl OriginalPath for MediaAlways {
+    impl OriginalPath for Media {
         fn path(&self) -> &Path {
             "".as_ref()
         }
@@ -132,8 +129,11 @@ mod tests {
     fn strip_rules() {
         #[track_caller]
         fn case(rules: [&[&str]; 3], stem: &str, new_name: &str) {
-            let mut medias = vec![MediaAlways(stem.to_owned())];
-            assert_eq!(apply_rules(rules, NO_REPLACE, &mut medias).unwrap(), 0);
+            let mut medias = vec![Media(stem.to_owned())];
+            let res = apply_rules(rules, NO_REPLACE, &mut medias, |_, changed| {
+                assert!(changed)
+            });
+            assert_eq!(res.unwrap(), 0);
             assert_eq!(medias[0].0, new_name);
         }
 
@@ -186,8 +186,9 @@ mod tests {
     fn replace_rules() {
         #[track_caller]
         fn case(rules: &[(&str, &str)], stem: &str, new_name: &str) {
-            let mut medias = vec![MediaAlways(stem.to_owned())];
-            assert_eq!(apply_rules(NO_STRIP, rules, &mut medias).unwrap(), 0);
+            let mut medias = vec![Media(stem.to_owned())];
+            let res = apply_rules(NO_STRIP, rules, &mut medias, |_, changed| assert!(changed));
+            assert_eq!(res.unwrap(), 0);
             assert_eq!(medias[0].0, new_name);
         }
 
@@ -198,28 +199,19 @@ mod tests {
 
     #[test]
     fn mark() {
-        struct Media(String);
-        impl NewNameMut for Media {
-            fn new_name_mut(&mut self) -> &mut String {
-                &mut self.0
-            }
-            fn mark_changed(&mut self, changed: bool) {
-                assert_eq!(changed, self.0 != "nope");
-            }
-        }
-        impl OriginalPath for Media {
-            fn path(&self) -> &Path {
-                "".as_ref()
-            }
-        }
-
         let stems = &["bfoo1", "foo2a", "fioo3", "fuu4", "nope"];
         let expected = &["foo1", "foo2", "foo3", "foo4", "nope"];
         let mut medias = stems
             .iter()
             .map(|&s| Media(s.to_owned()))
             .collect::<Vec<_>>();
-        apply_rules([&["b"], &["a"], &["i"]], &[("u", "o")], &mut medias).unwrap();
+        let res = apply_rules(
+            [&["b"], &["a"], &["i"]],
+            &[("u", "o")],
+            &mut medias,
+            |m, changed| assert_eq!(changed, m.0 != "nope"),
+        );
+        assert_eq!(res.unwrap(), 0);
         assert_eq!(
             medias.iter().map(|m| &m.0).collect::<Vec<_>>(),
             expected.to_vec()
@@ -229,16 +221,20 @@ mod tests {
     #[test]
     fn cleared() {
         let mut medias = vec![
-            MediaAlways("file".to_owned()),
-            MediaAlways("batch".to_owned()),
-            MediaAlways("collection".to_owned()),
-            MediaAlways("refine".to_owned()),
-            MediaAlways("foobar".to_owned()),
+            Media("file".to_owned()),
+            Media("batch".to_owned()),
+            Media("collection".to_owned()),
+            Media("refine".to_owned()),
+            Media("foobar".to_owned()),
         ];
 
-        let warnings =
-            apply_rules([&["e"], &["b"], &["c.*i"]], &[("on", "")], &mut medias).unwrap();
-        assert_eq!(warnings, 4);
-        assert_eq!(medias, vec![MediaAlways("foo".to_owned())]);
+        let res = apply_rules(
+            [&["e"], &["b"], &["c.*i"]],
+            &[("on", "")],
+            &mut medias,
+            |_, changed| assert!(changed),
+        );
+        assert_eq!(res.unwrap(), 4);
+        assert_eq!(medias, vec![Media("foo".to_owned())]);
     }
 }
