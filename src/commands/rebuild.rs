@@ -74,9 +74,7 @@ impl Refine for Rebuild {
         } else {
             // step: strip sequence numbers.
             medias.iter_mut().for_each(|m| {
-                if let Some(Sequence { len, .. }) = utils::extract_sequence(&m.new_name) {
-                    m.new_name.truncate(m.new_name.len() - len); // sequence numbers are always at the end.
-                }
+                m.new_name.truncate(utils::real_length(&m.new_name)); // sequence numbers are always at the end.
             });
 
             // step: apply strip rules.
