@@ -28,11 +28,16 @@ impl NamingRules {
     /// Strip and replace parts of filenames based on the given rules.
     ///
     /// Return the number of warnings generated.
-    pub fn apply(&self, medias: &mut Vec<impl NewNameMut + OriginalPath>) -> Result<usize> {
+    pub fn apply<M: NewNameMut + OriginalPath>(
+        &self,
+        medias: &mut Vec<M>,
+        mark_changed: impl Fn(&mut M, bool),
+    ) -> Result<usize> {
         apply_rules(
             [&self.strip_before, &self.strip_after, &self.strip_exact],
             &self.replace,
             medias,
+            mark_changed,
         )
     }
 }

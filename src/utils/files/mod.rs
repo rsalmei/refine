@@ -19,7 +19,6 @@ pub trait NewName {
 
 pub trait NewNameMut {
     fn new_name_mut(&mut self) -> &mut String;
-    fn mark_changed(&mut self, _changed: bool) {}
 }
 
 pub trait OriginalPath {
