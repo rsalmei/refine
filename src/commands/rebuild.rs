@@ -65,13 +65,13 @@ impl Refine for Rebuild {
                 m.new_name.clone_from(force);
             });
         } else {
+            // step: apply naming rules, keeping all files.
+            warnings += self.naming_rules.apply(&mut medias, |_, _| {})?;
+
             // step: strip sequence numbers.
             medias.iter_mut().for_each(|m| {
                 m.new_name.truncate(utils::real_length(&m.new_name)); // sequence numbers are always at the end.
             });
-
-            // step: apply naming rules, keeping all files.
-            warnings += self.naming_rules.apply(&mut medias)?;
 
             // step: smart detect.
             if !self.no_smart_detect {

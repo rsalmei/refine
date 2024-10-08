@@ -184,8 +184,8 @@ The `rebuild` command is a great achievement, if I say so myself. It will smartl
 1. if forced option is used:
     1. overwrite all the files with the forced name
 2. otherwise:
-    1. remove any sequence numbers like file-1, file copy, file-3 copy 2, etc.
-    2. strip parts of the filenames, either before, after, or exactly a certain string
+    1. apply naming rules to strip or replace parts of the filenames
+    2. remove any sequence numbers like file-1, file copy, file-3 copy 2, etc.
     3. remove spaces and underscores, and smartly detect misspelled names
     4. group the resulting names, and smartly choose the most likely correct name among the group
     5. sort the group content according to the files' created dates
@@ -253,12 +253,11 @@ Example:
 
 The `rename` command will let you batch rename files like no other tool, seriously! You can quickly strip common prefixes, suffixes, and exact parts of the filenames, as well as apply any regex replacements you want. By default, in case a filename ends up clashing with other files in the same directory, that whole directory will be disallowed to make any changes. The list of clashes will be nicely formatted and printed, so you can manually check them. And you can optionally allow changes to other files in the same directory, removing only the clashes, if you find it safe.
 
-1. strip parts of the filenames, either before, after, or exactly a certain string
-2. apply the regex replacement rules
-3. remove all changes from the whole directory where clashes are detected
+1. apply naming rules to strip or replace parts of the filenames
+2. remove all changes from the whole directory where clashes are detected
     - optionally removes only the clashes, allowing other changes
-4. print the resulting changes to the filenames and directories, and ask for confirmation
-5. if the user confirms, apply the changes
+3. print the resulting changes to the filenames and directories, and ask for confirmation
+4. if the user confirms, apply the changes
 
 <details><summary>refine rename --help</summary>
 
