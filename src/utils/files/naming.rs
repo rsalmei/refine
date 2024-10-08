@@ -42,10 +42,11 @@ impl NamingRules {
     }
 }
 
-fn apply_rules(
+fn apply_rules<M: NewNameMut + OriginalPath>(
     strip_rules: [&[impl AsRef<str>]; 3],
     replace_rules: &[(impl AsRef<str>, impl AsRef<str>)],
-    medias: &mut Vec<impl NewNameMut + OriginalPath>,
+    medias: &mut Vec<M>,
+    mark_changed: impl Fn(&mut M, bool),
 ) -> Result<usize> {
     const BOUND: &str = r"[-_\.\s]";
     let before = |rule| format!("(?i)^.*{rule}{BOUND}*");
@@ -95,7 +96,7 @@ fn apply_rules(
             false
         } else {
             *m.new_name_mut() = name;
-            m.mark_changed(changed);
+            mark_changed(m, changed);
             true
         }
     });
