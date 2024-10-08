@@ -159,7 +159,7 @@ impl Refine for Rebuild {
 }
 
 impl_new_name!(Media);
-impl_new_name_mut!(Media {});
+impl_new_name_mut!(Media);
 impl_original_path!(Media);
 
 impl Media {

@@ -50,14 +50,10 @@ macro_rules! impl_new_name {
 
 #[macro_export]
 macro_rules! impl_new_name_mut {
-    ($t:ty { $($m:tt)* }) => {
+    ($t:ty) => {
         impl $crate::utils::NewNameMut for $t {
             fn new_name_mut(&mut self) -> &mut String {
                 &mut self.new_name
-            }
-            #[allow(unused_variables)]
-            fn mark_changed(&mut self, changed: bool) {
-                $($m)*
             }
         }
     };

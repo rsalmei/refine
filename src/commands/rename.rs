@@ -41,7 +41,7 @@ impl Refine for Rename {
 
         // step: apply naming rules.
         let total = medias.len();
-        let mut warnings = self.naming_rules.apply(&mut medias)?;
+        let mut warnings = self.naming_rules.apply(&mut medias, |_, _| {})?;
 
         // step: re-include extension in the names.
         medias
@@ -144,7 +144,7 @@ impl Refine for Rename {
 }
 
 impl_new_name!(Media);
-impl_new_name_mut!(Media {});
+impl_new_name_mut!(Media);
 impl_original_path!(Media);
 
 impl TryFrom<PathBuf> for Media {
