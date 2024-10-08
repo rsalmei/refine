@@ -101,7 +101,7 @@ where
 
 fn words(path: &Path) -> Result<Box<[String]>> {
     let (mut name, _) = utils::filename_parts(path)?;
-    name = &name[..utils::real_length(name)];
+    name = &name[..utils::sequence(name).real_len];
     let mut words = name
         .split(&[' ', '.', '-', '_'])
         .filter(|s| !s.is_empty())

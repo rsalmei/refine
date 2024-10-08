@@ -70,7 +70,7 @@ impl Refine for Rebuild {
 
             // step: strip sequence numbers.
             medias.iter_mut().for_each(|m| {
-                m.new_name.truncate(utils::real_length(&m.new_name)); // sequence numbers are always at the end.
+                m.new_name.truncate(utils::sequence(&m.new_name).real_len); // sequence numbers are always at the end.
             });
 
             // step: smart detect.

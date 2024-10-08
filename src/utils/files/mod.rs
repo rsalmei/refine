@@ -11,6 +11,7 @@ use std::path::{Path, PathBuf};
 pub struct Sequence {
     pub len: usize,
     pub seq: usize,
+    pub real_len: usize,
 }
 
 pub trait NewName {

@@ -29,24 +29,22 @@ pub fn filename_parts(path: &Path) -> Result<(&str, &str)> {
 }
 
 /// Extract the sequence number from a file stem.
-pub fn sequence(stem: &str) -> Option<Sequence> {
-    static RE_SEQ: LazyLock<Regex> =
+pub fn sequence(stem: &str) -> Sequence {
+    static RE: LazyLock<Regex> =
         LazyLock::new(|| Regex::new(r"(?:[- ](\d+)| copy (\d+)| \((\d+)\))$").unwrap());
 
-    if stem.ends_with(" copy") {
-        return Some(Sequence { len: 5, seq: 2 }); // macOS first "Keep both files" when moving has no sequence.
+    let (len, seq) = if let Some((full, [seq])) = RE.captures(stem).map(|caps| caps.extract()) {
+        (full.len(), seq.parse().unwrap()) // regex checked.
+    } else if stem.ends_with(" copy") {
+        (5, 2) // macOS first "Keep both files" when moving has no sequence (see also the test).
+    } else {
+        (0, 1)
+    };
+    Sequence {
+        len,
+        seq,
+        real_len: stem.len() - len,
     }
-    let (full, [seq]) = RE_SEQ.captures(stem).map(|caps| caps.extract())?;
-    Some(Sequence {
-        len: full.len(),
-        seq: seq.parse().unwrap_or(1),
-    })
-}
-
-/// Determine the real length of a file stem without the sequence number.
-pub fn real_length(stem: &str) -> usize {
-    let len = stem.len();
-    sequence(stem).map_or(len, |seq| len - seq.len)
 }
 
 #[cfg(test)]
@@ -74,29 +72,30 @@ mod tests {
     #[test]
     fn extract_sequence() {
         #[track_caller]
-        fn case(stem: &str, expected: impl Into<Option<Sequence>>, real: usize) {
-            let seq = expected.into();
-            assert_eq!(sequence(stem), seq.into());
-            assert_eq!(real_length(stem), real);
+        fn case(stem: &str, len: usize, seq: usize, real_len: usize) {
+            assert_eq!(sequence(stem), Sequence { len, seq, real_len });
         }
 
-        case("foo", None, 3);
-        case("foo123", None, 6);
-        case("foo-bar", None, 7);
-        case("foo-bar123", None, 10);
-        case("foo-123 bar", None, 11);
-        case("foo - bar", None, 9);
-        case("foo(bar)", None, 8);
-        case("foo (bar)", None, 9);
+        // no sequence is found.
+        case("foo", 0, 1, 3);
+        case("foo123", 0, 1, 6);
+        case("foo-bar", 0, 1, 7);
+        case("foo-bar123", 0, 1, 10);
+        case("foo-123 bar", 0, 1, 11);
+        case("foo - bar", 0, 1, 9);
+        case("foo(bar)", 0, 1, 8);
+        case("foo (bar)", 0, 1, 9);
 
-        case("foo-123", Sequence { len: 4, seq: 123 }, 3); // the sequence style used here.
-        case("foo2 123", Sequence { len: 4, seq: 123 }, 4); // macOS "Keep both files" when copying.
-        case("foo-bar copy", Sequence { len: 5, seq: 2 }, 7); // macOS first "Keep both files" when moving.
-        case("foo copy 123", Sequence { len: 9, seq: 123 }, 3); // macOS from second onward when moving.
-        case("foobar (123)", Sequence { len: 6, seq: 123 }, 6); // Windows.
+        // sequence is found.
+        case("foo-123", 4, 123, 3); // the sequence style used here.
+        case("foo2 123", 4, 123, 4); // macOS "Keep both files" when copying.
+        case("foo-bar copy", 5, 2, 7); // macOS first "Keep both files" when moving.
+        case("foo copy 123", 9, 123, 3); // macOS from second onward when moving.
+        case("foobar (123)", 6, 123, 6); // Windows.
 
-        case("f-o-o 1", Sequence { len: 2, seq: 1 }, 5); // macOS won't generate "1", but we'll accept it.
-        case("foo copy 1", Sequence { len: 7, seq: 1 }, 3); // macOS won't generate "1", but we'll accept it.
-        case("foo (1)", Sequence { len: 4, seq: 1 }, 3); // Windows won't generate "1", but we'll accept it.
+        // edge cases.
+        case("f-o-o 1", 2, 1, 5); // macOS won't generate "1", but we'll accept it.
+        case("foo copy 1", 7, 1, 3); // macOS won't generate "1", but we'll accept it.
+        case("foo (1)", 4, 1, 3); // Windows won't generate "1", but we'll accept it.
     }
 }
