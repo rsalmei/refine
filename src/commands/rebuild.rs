@@ -18,13 +18,13 @@ use std::time::SystemTime;
 pub struct Rebuild {
     #[command(flatten)]
     naming_rules: NamingRules,
-    /// Disables smart detection of similar filenames (e.g. "foo bar.mp4", "FooBar.mp4" and "foo__bar.mp4").
+    /// Disable smart detection of similar filenames (e.g. "foo bar.mp4", "FooBar.mp4" and "foo__bar.mp4").
     #[arg(short = 's', long)]
     no_smart_detect: bool,
-    /// Easily overwrite filenames (use the Global options to filter them).
+    /// Force to overwrite filenames (use the Global options to filter files).
     #[arg(short = 'f', long, value_name = "STR", conflicts_with_all = ["strip_before", "strip_after", "strip_exact", "no_smart_detect", "partial"], value_parser = NonEmptyStringValueParser::new())]
     force: Option<String>,
-    /// Assume some paths are not available, so only touch files actually modified by the given rules.
+    /// Assume not all paths are available, so only touch files actually modified by the given rules.
     #[arg(short = 'p', long)]
     partial: bool,
     /// Skip the confirmation prompt, useful for automation.

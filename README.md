@@ -201,13 +201,15 @@ Rebuild the filenames of media collections intelligently
 Usage: refine rebuild [OPTIONS] [PATHS]...
 
 Options:
-  -b, --strip-before <STR|REGEX>  Remove from the start of the filename to this str; blanks are automatically removed
-  -a, --strip-after <STR|REGEX>   Remove from this str to the end of the filename; blanks are automatically removed
-  -e, --strip-exact <STR|REGEX>   Remove all occurrences of this str in the filename; blanks are automatically removed
-  -s, --no-smart-detect           Detect and fix similar filenames (e.g. "foo bar.mp4" and "foo__bar.mp4")
-  -f, --force <STR>               Easily overwrite filenames (use the Global options to filter them)
-  -y, --yes                       Skip the confirmation prompt, useful for automation
-  -h, --help                      Print help
+  -b, --strip-before <STR|REGEX>    Strip from the start of the filename; blanks nearby are automatically removed
+  -a, --strip-after <STR|REGEX>     Strip to the end of the filename; blanks nearby are automatically removed
+  -e, --strip-exact <STR|REGEX>     Strip all occurrences in the filename; blanks nearby are automatically removed
+  -r, --replace <STR|REGEX=STR|$N>  Replace all occurrences in the filename with another; blanks are not touched
+  -s, --no-smart-detect             Disable smart detection of similar filenames (e.g. "foo bar.mp4", "FooBar.mp4" and "foo__bar.mp4")
+  -f, --force <STR>                 Force to overwrite filenames (use the Global options to filter files)
+  -p, --partial                     Assume not all paths are available, so only touch files actually modified by the given rules
+  -y, --yes                         Skip the confirmation prompt, useful for automation
+  -h, --help                        Print help
 ```
 
 </details>
@@ -266,13 +268,13 @@ Rename files in batch, according to the given rules
 Usage: refine rename [OPTIONS] [PATHS]...
 
 Options:
-  -b, --strip-before <STR|REGEX>   Remove from the start of the name to this str; blanks are automatically removed
-  -a, --strip-after <STR|REGEX>    Remove from this str to the end of the name; blanks are automatically removed
-  -e, --strip-exact <STR|REGEX>    Remove all occurrences of this str in the name; blanks are automatically removed
-  -r, --replace <{STR|REGEX}=STR>  Replace all occurrences of one str with another; applied in order and after the strip rules
-  -c, --clashes                    Allow changes in directories where clashes are detected
-  -y, --yes                        Skip the confirmation prompt, useful for automation
-  -h, --help                       Print help
+  -b, --strip-before <STR|REGEX>    Strip from the start of the filename; blanks nearby are automatically removed
+  -a, --strip-after <STR|REGEX>     Strip to the end of the filename; blanks nearby are automatically removed
+  -e, --strip-exact <STR|REGEX>     Strip all occurrences in the filename; blanks nearby are automatically removed
+  -r, --replace <STR|REGEX=STR|$N>  Replace all occurrences in the filename with another; blanks are not touched
+  -c, --clashes                     Allow changes in directories where clashes are detected
+  -y, --yes                         Skip the confirmation prompt, useful for automation
+  -h, --help                        Print help
 ```
 
 </details>

@@ -10,17 +10,17 @@ use std::iter;
 /// A set of rules that allows the user to customize filenames.
 #[derive(Debug, Args)]
 pub struct NamingRules {
-    /// Remove from the start to this STR; blanks nearby are automatically removed.
+    /// Strip from the start of the filename; blanks nearby are automatically removed.
     #[arg(short = 'b', long, value_name = "STR|REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     strip_before: Vec<String>,
-    /// Remove from this STR to the end; blanks nearby are automatically removed.
+    /// Strip to the end of the filename; blanks nearby are automatically removed.
     #[arg(short = 'a', long, value_name = "STR|REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     strip_after: Vec<String>,
-    /// Remove all occurrences of this STR; blanks nearby are automatically removed.
+    /// Strip all occurrences in the filename; blanks nearby are automatically removed.
     #[arg(short = 'e', long, value_name = "STR|REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     strip_exact: Vec<String>,
-    /// Replace all occurrences of this STR with another; blanks are not touched.
-    #[arg(short = 'r', long, value_name = "{STR|REGEX}=STR", allow_hyphen_values = true, value_parser = utils::parse_key_value::<String, String>)]
+    /// Replace all occurrences in the filename with another; blanks are not touched.
+    #[arg(short = 'r', long, value_name = "STR|REGEX=STR|$N", allow_hyphen_values = true, value_parser = utils::parse_key_value::<String, String>)]
     replace: Vec<(String, String)>,
 }
 
