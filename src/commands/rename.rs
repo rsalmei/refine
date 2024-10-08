@@ -1,11 +1,9 @@
 use crate::commands::Refine;
 use crate::entries::EntryKind;
-use anyhow::{Context, Result};
-use clap::builder::NonEmptyStringValueParser;
+use crate::utils::NamingRules;
 use crate::{impl_new_name, impl_new_name_mut, impl_original_path, utils};
+use anyhow::Result;
 use clap::Args;
-use regex::Regex;
-use std::borrow::Cow;
 use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::fmt::Write;
@@ -13,18 +11,8 @@ use std::path::{Path, PathBuf};
 
 #[derive(Debug, Args)]
 pub struct Rename {
-    /// Remove from the start of the name to this str; blanks are automatically removed.
-    #[arg(short = 'b', long, value_name = "STR|REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    strip_before: Vec<String>,
-    /// Remove from this str to the end of the name; blanks are automatically removed.
-    #[arg(short = 'a', long, value_name = "STR|REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    strip_after: Vec<String>,
-    /// Remove all occurrences of this str in the name; blanks are automatically removed.
-    #[arg(short = 'e', long, value_name = "STR|REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    strip_exact: Vec<String>,
-    ///  Replace all occurrences of one str with another; applied in order after the strip rules.
-    #[arg(short = 'r', long, value_name = "{STR|REGEX}=STR", allow_hyphen_values = true, value_parser = utils::parse_key_value::<String, String>)]
-    replace: Vec<(String, String)>,
+    #[command(flatten)]
+    naming_rules: NamingRules,
     /// Allow changes in directories where clashes are detected.
     #[arg(short = 'c', long)]
     clashes: bool,
@@ -51,26 +39,9 @@ impl Refine for Rename {
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         let kind = |p: &Path| if p.is_dir() { "/" } else { "" };
 
-        // step: apply strip rules.
-        utils::strip_filenames(
-            &mut medias,
-            [&self.strip_before, &self.strip_after, &self.strip_exact],
-        )?;
-
-        // step: apply replacement rules.
-        for (k, v) in &self.replace {
-            let re = Regex::new(&format!("(?i){k}"))
-                .with_context(|| format!("compiling regex: {k:?}"))?;
-            medias.iter_mut().for_each(|m| {
-                if let Cow::Owned(s) = re.replace_all(&m.new_name, v) {
-                    m.new_name = s;
-                }
-            })
-        }
-
-        // step: remove medias where the rules cleared the name.
+        // step: apply naming rules.
         let total = medias.len();
-        let mut warnings = utils::remove_cleared(&mut medias);
+        let mut warnings = self.naming_rules.apply(&mut medias)?;
 
         // step: re-include extension in the names.
         medias

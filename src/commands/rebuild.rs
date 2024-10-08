@@ -1,6 +1,6 @@
 use crate::commands::Refine;
 use crate::entries::{Entries, EntryKind};
-use crate::utils::{self, Sequence};
+use crate::utils::{self, NamingRules, Sequence};
 use crate::{impl_new_name, impl_new_name_mut, impl_original_path};
 use anyhow::Result;
 use clap::builder::NonEmptyStringValueParser;
@@ -16,16 +16,9 @@ use std::time::SystemTime;
 
 #[derive(Debug, Args)]
 pub struct Rebuild {
-    /// Remove from the start of the filename to this str; blanks are automatically removed.
-    #[arg(short = 'b', long, value_name = "STR|REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    strip_before: Vec<String>,
-    /// Remove from this str to the end of the filename; blanks are automatically removed.
-    #[arg(short = 'a', long, value_name = "STR|REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    strip_after: Vec<String>,
-    /// Remove all occurrences of this str in the filename; blanks are automatically removed.
-    #[arg(short = 'e', long, value_name = "STR|REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    strip_exact: Vec<String>,
-    /// Detect and fix similar filenames (e.g. "foo bar.mp4" and "foo__bar.mp4").
+    #[command(flatten)]
+    naming_rules: NamingRules,
+    /// Disables smart detection of similar filenames (e.g. "foo bar.mp4", "FooBar.mp4" and "foo__bar.mp4").
     #[arg(short = 's', long)]
     no_smart_detect: bool,
     /// Easily overwrite filenames (use the Global options to filter them).
@@ -77,14 +70,8 @@ impl Refine for Rebuild {
                 m.new_name.truncate(utils::real_length(&m.new_name)); // sequence numbers are always at the end.
             });
 
-            // step: apply strip rules.
-            utils::strip_filenames(
-                &mut medias,
-                [&self.strip_before, &self.strip_after, &self.strip_exact],
-            )?;
-
-            // step: remove medias where the rules cleared the name.
-            warnings += utils::remove_cleared(&mut medias);
+            // step: apply naming rules, keeping all files.
+            warnings += self.naming_rules.apply(&mut medias)?;
 
             // step: smart detect.
             if !self.no_smart_detect {
