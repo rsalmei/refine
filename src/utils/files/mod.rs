@@ -9,8 +9,7 @@ use std::path::{Path, PathBuf};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Sequence {
-    pub len: usize,
-    pub seq: usize,
+    pub num: usize,
     pub real_len: usize,
 }
 

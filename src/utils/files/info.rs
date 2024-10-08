@@ -33,7 +33,7 @@ pub fn sequence(stem: &str) -> Sequence {
     static RE: LazyLock<Regex> =
         LazyLock::new(|| Regex::new(r"(?:[- ](\d+)| copy (\d+)| \((\d+)\))$").unwrap());
 
-    let (len, seq) = if let Some((full, [seq])) = RE.captures(stem).map(|caps| caps.extract()) {
+    let (len, num) = if let Some((full, [seq])) = RE.captures(stem).map(|caps| caps.extract()) {
         (full.len(), seq.parse().unwrap()) // regex checked.
     } else if stem.ends_with(" copy") {
         (5, 2) // macOS first "Keep both files" when moving has no sequence (see also the test).
@@ -41,8 +41,7 @@ pub fn sequence(stem: &str) -> Sequence {
         (0, 1)
     };
     Sequence {
-        len,
-        seq,
+        num,
         real_len: stem.len() - len,
     }
 }
@@ -72,30 +71,30 @@ mod tests {
     #[test]
     fn extract_sequence() {
         #[track_caller]
-        fn case(stem: &str, len: usize, seq: usize, real_len: usize) {
-            assert_eq!(sequence(stem), Sequence { len, seq, real_len });
+        fn case(stem: &str, num: usize, real_len: usize) {
+            assert_eq!(sequence(stem), Sequence { num, real_len });
         }
 
         // no sequence is found.
-        case("foo", 0, 1, 3);
-        case("foo123", 0, 1, 6);
-        case("foo-bar", 0, 1, 7);
-        case("foo-bar123", 0, 1, 10);
-        case("foo-123 bar", 0, 1, 11);
-        case("foo - bar", 0, 1, 9);
-        case("foo(bar)", 0, 1, 8);
-        case("foo (bar)", 0, 1, 9);
+        case("foo", 1, 3);
+        case("foo123", 1, 6);
+        case("foo-bar", 1, 7);
+        case("foo-bar123", 1, 10);
+        case("foo-123 bar", 1, 11);
+        case("foo - bar", 1, 9);
+        case("foo(bar)", 1, 8);
+        case("foo (bar)", 1, 9);
 
         // sequence is found.
-        case("foo-123", 4, 123, 3); // the sequence style used here.
-        case("foo2 123", 4, 123, 4); // macOS "Keep both files" when copying.
-        case("foo-bar copy", 5, 2, 7); // macOS first "Keep both files" when moving.
-        case("foo copy 123", 9, 123, 3); // macOS from second onward when moving.
-        case("foobar (123)", 6, 123, 6); // Windows.
+        case("foo-123", 123, 3); // the sequence style used here.
+        case("foo2 123", 123, 4); // macOS "Keep both files" when copying.
+        case("foo-bar copy", 2, 7); // macOS first "Keep both files" when moving.
+        case("foo copy 123", 123, 3); // macOS from second onward when moving.
+        case("foobar (123)", 123, 6); // Windows.
 
         // edge cases.
-        case("f-o-o 1", 2, 1, 5); // macOS won't generate "1", but we'll accept it.
-        case("foo copy 1", 7, 1, 3); // macOS won't generate "1", but we'll accept it.
-        case("foo (1)", 4, 1, 3); // Windows won't generate "1", but we'll accept it.
+        case("f-o-o 1", 1, 5); // macOS won't generate "1", but we'll accept it.
+        case("foo copy 1", 1, 3); // macOS won't generate "1", but we'll accept it.
+        case("foo (1)", 1, 3); // Windows won't generate "1", but we'll accept it.
     }
 }
