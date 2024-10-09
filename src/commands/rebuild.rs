@@ -98,7 +98,14 @@ impl Refine for Rebuild {
         medias
             .chunk_by_mut(|m, n| m.group() == n.group())
             .for_each(|g| {
-                g.sort_by_key(|m| m.created);
+                g.sort_unstable_by(|m, n| {
+                    // unfortunately, certain file systems have low resolution creation time (HFS+ for example).
+                    m.created.cmp(&n.created).then_with(|| {
+                        let ms = m.path.file_stem().unwrap().to_str().unwrap();
+                        let ns = n.path.file_stem().unwrap().to_str().unwrap();
+                        utils::sequence(ms).num.cmp(&utils::sequence(ns).num)
+                    })
+                });
                 let base = name_picker(g); // this used to have a .replace(' ', "_")... I don't remember why.
                 g.iter_mut().enumerate().for_each(|(i, m)| {
                     m.new_name.clear(); // because of the force and smart options.
