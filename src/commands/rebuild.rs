@@ -67,12 +67,12 @@ impl Refine for Rebuild {
                 m.new_name.clone_from(force);
             });
         } else if self.partial {
-            // step: apply naming rules, and mark unchanged filenames as not used.
+            // step: apply naming rules, and mark unchanged filenames.
             warnings += self.naming_rules.apply(&mut medias, |m, changed| {
                 m.used = changed;
             })?;
 
-            // step: strip sequence numbers from changed files, and save the maximum sequence from unchanged files.
+            // step: strip sequence numbers from changed files, and extract/store the highest sequence from unchanged files.
             medias.iter_mut().for_each(|m| {
                 let Sequence { num, real_len } = utils::sequence(&m.new_name);
                 m.new_name.truncate(real_len); // sequence numbers are always at the end.
