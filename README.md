@@ -161,7 +161,7 @@ For more information, see https://github.com/rsalmei/refine
 
 </details>
 
-### The `dupes` command
+## The `dupes` command
 
 The `dupes` command will analyze and report the possibly duplicated files, either by size or name. It will even load a sample from each file, to guarantee they are indeed duplicated. It is a small sample by default but can help reduce false positives a lot, and you can increase it if you want.
 
@@ -258,7 +258,7 @@ Example:
 ❯ refine list ~/Downloads /Volumes/External --by size --desc
 ```
 
-### The `rebuild` command
+## The `rebuild` command
 
 The `rebuild` command is a great achievement, if I say so myself. It will smartly rebuild the filenames of an entire collection when it is composed by user ids or streamer names, for instance. It will do so by removing sequence numbers, stripping parts of filenames you don't want, smartly detecting misspelled names by comparing with adjacent files, sorting the detected groups deterministically by creation date, regenerating the sequence numbers, and finally renaming all the files accordingly. It's awesome to quickly find your video or music library neatly sorted automatically... And the next time you run it, it will detect new files added since the last time, and include them in the correct group! Pretty cool, huh? And don't worry, you can review all the changes before applying them.
 
