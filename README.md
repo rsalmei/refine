@@ -20,18 +20,33 @@ Install `refine` with:
 cargo install refine
 ```
 
-That's it, and you can then just call it anywhere!
+And that's it, you're ready to go! You can now call it anywhere.
 
 ## What's new
+
+### New in 1.0
+
+Yes, it is time.
+After a complete overhaul of the code, it's time to release 1.0!
+<br>It's an accomplishment I'm proud of, which took over 70 commits and a month's work, resulting in most of the code being rewritten.
+It is more mature, stable, and well-structured now.
+
+The major motivation for this version is the rebuild Partial mode! We can now rebuild collections even when some paths are not available! This means that files not affected by the specified naming rules will stay the same, keeping their sequence numbers, while new files are appended after the highest sequence found. It is handy for collections on external drives or cloud storage which are not always connected, allowing you to, even on the go, rebuild new files without messing up previous ones.
+
+And this also includes:
+
+- rebuild: new `--replace` option to replace all occurrences of some string or regex in the filenames with another one.
+- new internal CLI options handling, which enables commands to modify them prior to their execution.
+    - the new rebuild partial mode is auto-enabled in case not all paths are currently available.
+
+<details><summary>(previous)</summary>
 
 ### New in 0.18
 
 - rebuild: new force implementation that is easier to use
     - it conflicts with any other options so must be used alone
-    - now it just overwrites filenames without exceptions -> best used with `-i` or on already organized collections
+    - now it just overwrites filenames without exceptions → best used with `-i` or on already organized collections
     - improved memory usage
-
-<details><summary>(previous)</summary>
 
 ### New in 0.17
 
@@ -44,7 +59,7 @@ That's it, and you can then just call it anywhere!
 - complete overhaul of the scan system, allowing directories to be extracted alongside files
 - new `join` command, already with directory support
 - new magic `-i` and `-x` options that filter both files and directories
-- new filter options for files, directories and extensions
+- new filter options for files, directories, and extensions
 - rename: include directory support
 
 ### New in 0.15
@@ -55,18 +70,18 @@ That's it, and you can then just call it anywhere!
 ### New in 0.14
 
 - rename: disallow by default changes in directories where clashes are detected
-    - new --clashes option to allow them
+    - new `--clashes` option to allow them
 
 ### New in 0.13
 
-- rebuild: new replace feature, finally!
-- rebuild, rename: make strip options also remove `.` and `_`, in addition to `-` and spaces
+- rename: new replace feature, finally!
+- global: make strip rules also remove `.` and `_`, in addition to `-` and spaces
 - global: include and exclude options do not check extensions
 - dupes: remove case option, so everything is case-insensitive now
 
 ### New in 0.12
 
-- global: new --dir-in and --dir-out options.
+- global: new `--dir-in` and `--dir-out` options.
 
 ### New in 0.11
 
@@ -75,7 +90,7 @@ That's it, and you can then just call it anywhere!
 
 ### New in 0.10
 
-- global: new --exclude option to exclude files
+- global: new `--exclude` option to exclude files
 
 ### New in 0.9
 
@@ -90,11 +105,11 @@ That's it, and you can then just call it anywhere!
 
 ### New in 0.7
 
-- global: new --include option to filter input files
-- rebuild: new --force option to easily rename new files
-- rebuild: new interactive mode by default, making --dry_run obsolete (removed), with new --yes option to bypass it (good for automation)
+- global: new `--include` option to filter input files
+- rebuild: new `--force` option to easily rename new files
+- rebuild: new interactive mode by default, making `--dry_run` obsolete (removed), with new `--yes` option to bypass it (good for automation)
 - rebuild: auto fix renaming errors
-- dupes: faster performance by ignoring groups with 1 file (thus avoiding loading samples)
+- dupes: faster performance by ignoring groups with one file (thus avoiding loading samples)
 - rebuild: smaller memory consumption by caching file extensions
 
 </details>
@@ -105,9 +120,9 @@ All commands will:
 
 1. recursively scan all the given paths (excluding hidden .folders)
     - can optionally perform only a shallow scan
-    - can optionally filter files based on two regexes (--include and --exclude)
-    - can optionally filter directories based on two regexes (--dir-in and --dir-ex)
-2. load the metadata the command requires to run (e.g. file size, creation date, etc.) for each file
+    - can optionally filter files based on two regexes (`--include` and `--exclude`)
+    - can optionally filter directories based on two regexes (`--dir-in` and `--dir-ex`)
+2. load the metadata the command requires to run (e.g., file size, creation date, etc.) for each file
 3. execute the command and print the results
 
 <details><summary>refine --help</summary>
@@ -119,10 +134,10 @@ Usage: refine [OPTIONS] [PATHS]... <COMMAND>
 
 Commands:
   dupes    Find possibly duplicated files by both size and filename
-  rebuild  Rebuild the filenames of media collections intelligently
-  list     List files from the given paths
-  rename   Rename files in batch, according to the given rules
   join     Join all files into the same directory
+  list     List files from the given paths
+  rebuild  Rebuild the filenames of media collections intelligently
+  rename   Rename files in batch, according to the given rules
   help     Print this message or the help of the given subcommand(s)
 
 Options:
@@ -148,7 +163,7 @@ For more information, see https://github.com/rsalmei/refine
 
 ### The `dupes` command
 
-The `dupes` command will analyze and report the possibly duplicated files, either by size or name. It will even load a sample from each file, in order to guarantee they are indeed duplicated. It is a small sample by default but can help reduce false positives a lot, and you can increase it if you want.
+The `dupes` command will analyze and report the possibly duplicated files, either by size or name. It will even load a sample from each file, to guarantee they are indeed duplicated. It is a small sample by default but can help reduce false positives a lot, and you can increase it if you want.
 
 1. group all the files by size
 2. for each group with the exact same value, load a sample of its files
@@ -175,112 +190,6 @@ Example:
 
 ```
 ❯ refine dupes ~/Downloads /Volumes/External --sample 20480
-```
-
-### The `rebuild` command
-
-The `rebuild` command is a great achievement, if I say so myself. It will smartly rebuild the filenames of an entire collection when it is composed by user ids or streamer names, for instance. It will do so by removing sequence numbers, stripping parts of filenames you don't want, smartly detecting misspelled names by comparing with adjacent files, sorting the detected groups deterministically by creation date, regenerating the sequence numbers, and finally renaming all the files accordingly. It's awesome to quickly find your video or music library neatly sorted automatically... And the next time you run it, it will detect new files added since the last time, and include them in the correct group! Pretty cool, huh? And don't worry, you can review all the changes before applying them.
-
-1. if forced option is used:
-    1. overwrite all the files with the forced name
-2. otherwise:
-    1. remove any sequence numbers like file-1, file copy, file-3 copy 2, etc.
-    2. strip parts of the filenames, either before, after, or exactly a certain string
-    3. remove spaces and underscores, and smartly detect misspelled names
-    4. group the resulting names, and smartly choose the most likely correct name among the group
-    5. sort the group content according to the files' created dates
-3. regenerate the sequence numbers for each group <-- Note that groups can contain files from different directories, and it will just work
-4. print the resulting changes to the filenames, and ask for confirmation
-5. if the user confirms, apply the changes
-
-<details><summary>refine rebuild --help</summary>
-
-```
-Rebuild the filenames of media collections intelligently
-
-Usage: refine rebuild [OPTIONS] [PATHS]...
-
-Options:
-  -b, --strip-before <STR|REGEX>  Remove from the start of the filename to this str; blanks are automatically removed
-  -a, --strip-after <STR|REGEX>   Remove from this str to the end of the filename; blanks are automatically removed
-  -e, --strip-exact <STR|REGEX>   Remove all occurrences of this str in the filename; blanks are automatically removed
-  -s, --no-smart-detect           Detect and fix similar filenames (e.g. "foo bar.mp4" and "foo__bar.mp4")
-  -f, --force <STR>               Easily overwrite filenames (use the Global options to filter them)
-  -y, --yes                       Skip the confirmation prompt, useful for automation
-  -h, --help                      Print help
-```
-
-</details>
-
-Example:
-
-```
-❯ refine rebuild ~/media /Volumes/External -a 720p -a Bluray -b xpto -e old
-```
-
-## The `list` command
-
-The `list` command will gather all the files in the given paths, sort them by name, size, or path, and display them in a friendly format.
-
-1. sort all files by either name, size, or path
-    - ascending by default, or optionally descending
-2. print the results
-
-<details><summary>refine list --help</summary>
-
-```
-List files from the given paths
-
-Usage: refine list [OPTIONS] [PATHS]...
-
-Options:
-  -b, --by <BY>  Sort by [default: name] [possible values: name, size, path]
-  -d, --desc     Use descending order
-  -h, --help     Print help
-```
-
-</details>
-
-Example:
-
-```
-❯ refine list ~/Downloads /Volumes/External --by size --desc
-```
-
-## The `rename` command
-
-The `rename` command will let you batch rename files like no other tool, seriously! You can quickly strip common prefixes, suffixes, and exact parts of the filenames, as well as apply any regex replacements you want. By default, in case a filename ends up clashing with other files in the same directory, that whole directory will be disallowed to make any changes. The list of clashes will be nicely formatted and printed, so you can manually check them. And you can optionally allow changes to other files in the same directory, removing only the clashes, if you find it safe.
-
-1. strip parts of the filenames, either before, after, or exactly a certain string
-2. apply the regex replacement rules
-3. remove all changes from the whole directory where clashes are detected
-    - optionally removes only the clashes, allowing other changes
-4. print the resulting changes to the filenames and directories, and ask for confirmation
-5. if the user confirms, apply the changes
-
-<details><summary>refine rename --help</summary>
-
-```
-Rename files in batch, according to the given rules
-
-Usage: refine rename [OPTIONS] [PATHS]...
-
-Options:
-  -b, --strip-before <STR|REGEX>   Remove from the start of the name to this str; blanks are automatically removed
-  -a, --strip-after <STR|REGEX>    Remove from this str to the end of the name; blanks are automatically removed
-  -e, --strip-exact <STR|REGEX>    Remove all occurrences of this str in the name; blanks are automatically removed
-  -r, --replace <{STR|REGEX}=STR>  Replace all occurrences of one str with another; applied in order and after the strip rules
-  -c, --clashes                    Allow changes in directories where clashes are detected
-  -y, --yes                        Skip the confirmation prompt, useful for automation
-  -h, --help                       Print help
-```
-
-</details>
-
-Example:
-
-```
-❯ refine rename ~/media /Volumes/External -b "^\d+_" -r '([^\.]*?)\.=$1 '
 ```
 
 ## The `join` command
@@ -320,33 +229,145 @@ Example:
 ❯ refine join ~/media/ /Volumes/External/ -i 'proj-01' -X 'ongoing' -t /Volumes/External/proj-01
 ```
 
+## The `list` command
+
+The `list` command will gather all the files in the given paths, sort them by name, size, or path, and display them in a friendly format.
+
+1. sort all files by either name, size, or path
+    - ascending by default, or optionally descending
+2. print the results
+
+<details><summary>refine list --help</summary>
+
+```
+List files from the given paths
+
+Usage: refine list [OPTIONS] [PATHS]...
+
+Options:
+  -b, --by <BY>  Sort by [default: name] [possible values: name, size, path]
+  -d, --desc     Use descending order
+  -h, --help     Print help
+```
+
+</details>
+
+Example:
+
+```
+❯ refine list ~/Downloads /Volumes/External --by size --desc
+```
+
+### The `rebuild` command
+
+The `rebuild` command is a great achievement, if I say so myself. It will smartly rebuild the filenames of an entire collection when it is composed by user ids or streamer names, for instance. It will do so by removing sequence numbers, stripping parts of filenames you don't want, smartly detecting misspelled names by comparing with adjacent files, sorting the detected groups deterministically by creation date, regenerating the sequence numbers, and finally renaming all the files accordingly. It's awesome to quickly find your video or music library neatly sorted automatically... And the next time you run it, it will detect new files added since the last time, and include them in the correct group! Pretty cool, huh? And don't worry, you can review all the changes before applying them.
+
+1. if forced mode is enabled:
+    1. overwrite all the filenames with the forced one
+2. else if partial mode is enabled:
+    1. apply naming rules to strip or replace parts of the filenames, marking modified files
+    2. strip sequence numbers from changed files, and extract/store the highest sequence from unchanged files
+3. otherwise:
+    1. apply naming rules to strip or replace parts of the filenames
+    2. strip sequence numbers from all files
+4. remove spaces and underscores, and smartly detect misspelled names
+5. group the resulting names, and smartly choose the most likely correct name among the group
+6. sort the group content according to the files' created dates
+7. regenerate the sequence numbers for each group ← Note that groups can contain files from different directories, and it will just work
+    1. if partial mode is enabled, retrieve the highest sequence found in the group
+8. print the resulting changes to the filenames, and ask for confirmation
+9. if the user confirms, apply the changes
+
+<details><summary>refine rebuild --help</summary>
+
+```
+Rebuild the filenames of media collections intelligently
+
+Usage: refine rebuild [OPTIONS] [PATHS]...
+
+Options:
+  -b, --strip-before <STR|REGEX>    Strip from the start of the filename; blanks nearby are automatically removed
+  -a, --strip-after <STR|REGEX>     Strip to the end of the filename; blanks nearby are automatically removed
+  -e, --strip-exact <STR|REGEX>     Strip all occurrences in the filename; blanks nearby are automatically removed
+  -r, --replace <STR|REGEX=STR|$N>  Replace all occurrences in the filename with another; blanks are not touched
+  -s, --no-smart-detect             Disable smart detection of similar filenames (e.g. "foo bar.mp4", "FooBar.mp4" and "foo__bar.mp4")
+  -f, --force <STR>                 Force to overwrite filenames (use the Global options to filter files)
+  -p, --partial                     Assume not all paths are available, so only touch files actually modified by the given rules
+  -y, --yes                         Skip the confirmation prompt, useful for automation
+  -h, --help                        Print help
+```
+
+</details>
+
+Example:
+
+```
+❯ refine rebuild ~/media /Volumes/External -a 720p -a Bluray -b xpto -e old
+```
+
+## The `rename` command
+
+The `rename` command will let you batch rename files like no other tool, seriously! You can quickly strip common prefixes, suffixes, and exact parts of the filenames, as well as apply any regex replacements you want. By default, in case a filename ends up clashing with other files in the same directory, that whole directory will be disallowed to make any changes. The list of clashes will be nicely formatted and printed, so you can manually check them. And you can optionally allow changes to other files in the same directory, removing only the clashes if you find it safe.
+
+1. apply naming rules to strip or replace parts of the filenames
+2. remove all changes from the whole directory where clashes are detected
+    - optionally removes only the clashes, allowing other changes
+3. print the resulting changes to the filenames and directories, and ask for confirmation
+4. if the user confirms, apply the changes
+
+<details><summary>refine rename --help</summary>
+
+```
+Rename files in batch, according to the given rules
+
+Usage: refine rename [OPTIONS] [PATHS]...
+
+Options:
+  -b, --strip-before <STR|REGEX>    Strip from the start of the filename; blanks nearby are automatically removed
+  -a, --strip-after <STR|REGEX>     Strip to the end of the filename; blanks nearby are automatically removed
+  -e, --strip-exact <STR|REGEX>     Strip all occurrences in the filename; blanks nearby are automatically removed
+  -r, --replace <STR|REGEX=STR|$N>  Replace all occurrences in the filename with another; blanks are not touched
+  -c, --clashes                     Allow changes in directories where clashes are detected
+  -y, --yes                         Skip the confirmation prompt, useful for automation
+  -h, --help                        Print help
+```
+
+</details>
+
+Example:
+
+```
+❯ refine rename ~/media /Volumes/External -b "^\d+_" -r '([^\.]*?)\.=$1 '
+```
+
 ## Changelog
 
 <details><summary>(click to expand)</summary>
 
-- 0.18.0 Aug 27, 2024: rebuild: new force implementation that is easier to use with improved memory usage
-- 0.17.1 Aug 15, 2024: fix shallow option
-- 0.17.0 Aug 05, 2024: dedup input paths, enables to select only files by filtering extensions, join: new clash resolve option
-- 0.16.0 Ago 01, 2024: scan with directory support, new `join` command, new magic filter options, new filter options, rename: include directory support
-- 0.15.0 Jul 18, 2024: nicer rename command output by parent directory, new threaded yes/no prompt that can be aborted with CTRL-C
-- 0.14.0 Jul 11, 2024: rename: disallow by default changes in directories where clashes are detected, including new --clashes option to allow them
-- 0.13.0 Jul 10, 2024: rebuild: new replace feature, rebuild, rename: make strip options remove `.` and `_`, global: include and exclude options do not check extensions, dupes: remove case option
-- 0.12.0 Jul 09, 2024: global: new --dir-in and --dir-out options
-- 0.11.0 Jul 08, 2024: new `rename` command, rebuild, rename: improve strip exact
-- 0.10.0 Jul 02, 2024: global: new --exclude
-- 0.9.0 Jul 01, 2024: global: support for CTRL-C
-- 0.8.0 Jun 30, 2024: new `list` command
-- 0.7.1 Jun 28, 2024: global: --include is now case-insensitive, rebuild: fix smart detect bug not grouping some files, rebuild: strip rules remove hyphens too
-- 0.7.0 Jun 27, 2024: global: new --include, rebuild: new --force, rebuild: new interactive mode, rebuild: new --yes, rebuild: auto fix rename errors, rebuild: smaller memory consumption, dupes: improved performance
-- 0.6.0 Jun 24, 2024: new `rebuild` command, general polishing overall
-- 0.5.0 Jun 20, 2024: support for shallow scan, verbose mode, dupes cmd ignores repetition systems
-- 0.4.0 Jun 17, 2024: include `dupes` command, support match case and changing sample size
-- 0.3.0 Nov 07, 2023: include dedup by both size and name
-- 0.2.2 Jun 04, 2022: use 2KB sample size
-- 0.2.1 Jun 04, 2022: improve error handling
-- 0.2.0 Jun 01, 2022: publish, use split crate `human-repr`
-- 0.1.1 May 27, 2022: samples the center of the files, which seems to fix false positives
-- 0.1.0 May 25, 2022: first release, detects duplicated files, simple sampling strategy (1KB from the start of the files)
+- 1.0.0 Oct 09, 2024: major overhaul, rebuild: new partial mode, rebuild: new replace feature, rebuild: auto-enable partial mode in case not all paths are available.
+- 0.18.0 Aug 27, 2024: rebuild: new force implementation that is easier to use with improved memory usage.
+- 0.17.1 Aug 15, 2024: fix `--shallow` option.
+- 0.17.0 Aug 05, 2024: dedup input paths, enables to select only files by filtering extensions, join: new clash resolve option.
+- 0.16.0 Ago 01, 2024: scan with directory support, new `join` command, new magic filter options, new filter options, rename: include directory support.
+- 0.15.0 Jul 18, 2024: nicer rename command output by parent directory, new threaded yes/no prompt that can be aborted with CTRL-C.
+- 0.14.0 Jul 11, 2024: rename: disallow by default changes in directories where clashes are detected, including new `--clashes` option to allow them.
+- 0.13.0 Jul 10, 2024: rename: new replace feature, global: make strip rules also remove `.` and `_`, global: include and exclude options do not check extensions, dupes: remove case option.
+- 0.12.0 Jul 09, 2024: global: new `--dir-in` and `--dir-out` options.
+- 0.11.0 Jul 08, 2024: new `rename` command, rebuild, rename: improve strip exact.
+- 0.10.0 Jul 02, 2024: global: new `--exclude`.
+- 0.9.0 Jul 01, 2024: global: support for CTRL-C.
+- 0.8.0 Jun 30, 2024: new `list` command.
+- 0.7.1 Jun 28, 2024: global: `--include` is now case-insensitive, rebuild: fix smart detect bug not grouping some files, rebuild: strip rules remove hyphens too.
+- 0.7.0 Jun 27, 2024: global: new `--include`, rebuild: new `--force`, rebuild: new interactive mode, rebuild: new `--yes`, rebuild: auto fix rename errors, rebuild: smaller memory consumption, dupes: improved performance.
+- 0.6.0 Jun 24, 2024: new `rebuild` command, general polishing overall.
+- 0.5.0 Jun 20, 2024: support for shallow scan, verbose mode, dupes cmd ignores repetition systems.
+- 0.4.0 Jun 17, 2024: include `dupes` command, support match case and changing sample size.
+- 0.3.0 Nov 07, 2023: include dedup by both size and name.
+- 0.2.2 Jun 04, 2022: use 2KB sample size.
+- 0.2.1 Jun 04, 2022: improve error handling.
+- 0.2.0 Jun 01, 2022: publish as `refine`, use split crate `human-repr`.
+- 0.1.1 May 27, 2022: samples the center of the files, which seems to fix false positives.
+- 0.1.0 May 25, 2022: first release, detects duplicated files, simple sampling strategy (1KB from the start of the files).
 
 </details>
 
@@ -360,7 +381,7 @@ directory for the full license text.
 Maintaining an open source project is hard and time-consuming, and I've put much ❤️ and effort into
 this.
 
-If you've appreciated my work, you can back me up with a donation! Thank you 😊
+If you've appreciated my work, you can back me up with a donation! Thank you. 😊
 
 [<img align="right" src="https://cdn.buymeacoffee.com/buttons/default-orange.png" width="217px" height="51x">](https://www.buymeacoffee.com/rsalmei)
 [<img align="right" alt="Donate with PayPal button" src="https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif">](https://www.paypal.com/donate?business=6SWSHEB5ZNS5N&no_recurring=0&item_name=I%27m+the+author+of+alive-progress%2C+clearly+and+about-time.+Thank+you+for+appreciating+my+work%21&currency_code=USD)

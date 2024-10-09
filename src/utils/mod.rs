@@ -1,14 +1,15 @@
 mod files;
+mod running;
 
 use anyhow::{anyhow, Context, Result};
 pub use files::*;
 use regex::Regex;
+pub use running::*;
 use std::collections::HashSet;
 use std::error::Error;
 use std::io::Write;
 use std::str::FromStr;
-use std::sync::atomic::AtomicBool;
-use std::sync::{atomic, mpsc, Arc, LazyLock, Mutex, OnceLock};
+use std::sync::{mpsc, LazyLock, Mutex, OnceLock};
 use std::time::Duration;
 use std::{io, thread};
 
@@ -61,15 +62,18 @@ pub fn intern(text: &str) -> &'static str {
 }
 
 /// Set an optional regex (case-insensitive).
-pub fn set_re(value: &Option<String>, var: &OnceLock<Regex>, param: &str) {
-    if let Some(s) = value {
-        match Regex::new(&format!("(?i){s}")).with_context(|| format!("compiling regex: {s:?}")) {
-            Ok(re) => var.set(re).unwrap(),
-            Err(err) => {
-                eprintln!("error: invalid --{param}: {err:?}");
-                std::process::exit(1);
+pub fn set_re(value: &Option<String>, var: &OnceLock<Regex>, param: &str) -> Result<()> {
+    match value {
+        None => Ok(()),
+        Some(s) => match Regex::new(&format!("(?i){s}"))
+            .with_context(|| format!("compiling regex: {s:?}"))
+        {
+            Ok(re) => {
+                var.set(re).unwrap();
+                Ok(())
             }
-        }
+            Err(err) => Err(anyhow!("error: invalid --{param}: {err:?}")),
+        },
     }
 }
 
@@ -83,31 +87,4 @@ where
         .find('=')
         .ok_or_else(|| anyhow!("invalid key=value: {s:?}"))?;
     Ok((s[..pos].parse()?, s[pos + 1..].parse()?))
-}
-
-/// The running flag, used to check if the user aborted.
-pub fn running_flag() -> &'static Arc<AtomicBool> {
-    static RUNNING: OnceLock<Arc<AtomicBool>> = OnceLock::new();
-    RUNNING.get_or_init(|| Arc::new(AtomicBool::new(true)))
-}
-
-/// Check whether the program should continue running.
-pub fn is_running() -> bool {
-    running_flag().load(atomic::Ordering::Relaxed)
-}
-
-/// Check whether the user asked to abort. It's the same as `!running()`, but return a Result.
-pub fn user_aborted() -> Result<()> {
-    match is_running() {
-        true => Ok(()),
-        false => Err(anyhow!("aborted")),
-    }
-}
-
-/// Return a static string, suitable for displaying, regarding the state of some computation
-/// that might have been aborted.
-pub fn aborted(cond: bool) -> &'static str {
-    (cond && !is_running())
-        .then_some(" (partial, aborted)")
-        .unwrap_or_default()
 }

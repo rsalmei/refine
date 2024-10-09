@@ -1,5 +1,6 @@
+use crate::commands::Refine;
 use crate::entries::EntryKind;
-use crate::{options, utils};
+use crate::utils;
 use anyhow::Result;
 use clap::Args;
 use human_repr::HumanCount;
@@ -24,44 +25,53 @@ pub struct Media {
     sample: Option<Option<Box<[u8]>>>, // only populated if needed, and double to remember when already tried.
 }
 
-options!(Dupes => EntryKind::File);
+impl Refine for Dupes {
+    type Media = Media;
+    const OPENING_LINE: &'static str = "Detecting duplicate files...";
+    const ENTRY_KIND: EntryKind = EntryKind::File;
 
-pub fn run(mut medias: Vec<Media>) -> Result<()> {
-    println!("=> Detecting duplicate files...\n");
+    fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
+        // step: detect duplicates by size.
+        println!("by size:");
+        let by_size = detect_duplicates(
+            &mut medias,
+            self.sample,
+            |m| &m.size,
+            |&size, acc| {
+                println!("\n{} x{}", size.human_count_bytes(), acc.len());
+                acc.iter().for_each(|&m| println!("{}", m.path.display()));
+            },
+        );
 
-    // step: detect duplicates by size.
-    println!("by size:");
-    let by_size = detect_duplicates(
-        &mut medias,
-        |m| &m.size,
-        |&size, acc| {
-            println!("\n{} x{}", size.human_count_bytes(), acc.len());
-            acc.iter().for_each(|&m| println!("{}", m.path.display()));
-        },
-    );
+        // step: detect duplicates by name.
+        println!("\nby name:");
+        let by_name = detect_duplicates(
+            &mut medias,
+            self.sample,
+            |m| &m.words,
+            |words, acc| {
+                println!("\n{:?} x{}", words, acc.len());
+                acc.iter()
+                    .for_each(|m| println!("{}: {}", m.size.human_count_bytes(), m.path.display()));
+            },
+        );
 
-    // step: detect duplicates by name.
-    println!("\nby name:");
-    let by_name = detect_duplicates(
-        &mut medias,
-        |m| &m.words,
-        |words, acc| {
-            println!("\n{:?} x{}", words, acc.len());
-            acc.iter()
-                .for_each(|m| println!("{}: {}", m.size.human_count_bytes(), m.path.display()));
-        },
-    );
-
-    // step: display receipt summary.
-    let total = medias.len();
-    println!("\ntotal files: {total}{}", utils::aborted(by_size == 0));
-    println!("  by size: {by_size} dupes{}", utils::aborted(by_name == 0));
-    println!("  by name: {by_name} dupes{}", utils::aborted(true));
-    Ok(())
+        // step: display receipt summary.
+        let total = medias.len();
+        println!("\ntotal files: {total}{}", utils::aborted(by_size == 0));
+        println!("  by size: {by_size} dupes{}", utils::aborted(by_name == 0));
+        println!("  by name: {by_name} dupes{}", utils::aborted(true));
+        Ok(())
+    }
 }
 
 /// Sort the files by groups, and apply some algorithm on each.
-fn detect_duplicates<G, FG, FS>(medias: &mut [Media], grouping: FG, show: FS) -> usize
+fn detect_duplicates<G, FG, FS>(
+    medias: &mut [Media],
+    sample: usize,
+    grouping: FG,
+    show: FS,
+) -> usize
 where
     G: PartialEq + Ord,
     FG: Fn(&Media) -> &G,
@@ -74,7 +84,7 @@ where
         .filter(|g| g.len() > 1)
         .flat_map(|g| {
             g.iter_mut().for_each(|m| {
-                m.cache_sample(); // warm up samples.
+                m.cache_sample(sample); // warm up samples for groups with at least 2 files.
             });
             let mut split = HashMap::with_capacity(g.len());
             g.iter()
@@ -90,8 +100,8 @@ where
 }
 
 fn words(path: &Path) -> Result<Box<[String]>> {
-    let (name, _) = utils::filename_parts(path)?;
-    let name = utils::strip_sequence(name);
+    let (mut name, _) = utils::filename_parts(path)?;
+    name = &name[..utils::sequence(name).real_len];
     let mut words = name
         .split(&[' ', '.', '-', '_'])
         .filter(|s| !s.is_empty())
@@ -104,11 +114,11 @@ fn words(path: &Path) -> Result<Box<[String]>> {
 }
 
 impl Media {
-    fn cache_sample(&mut self) {
+    fn cache_sample(&mut self, sample: usize) {
         if self.sample.is_none() {
             let grab_sample = || {
                 let mut file = File::open(&self.path)?;
-                let mut buf = vec![0; opt().sample];
+                let mut buf = vec![0; sample];
                 let mut read = 0;
                 while read < buf.len() {
                     let n = file.read(&mut buf[read..])?;
