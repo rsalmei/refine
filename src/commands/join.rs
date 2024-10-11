@@ -9,8 +9,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
-// TODO: consider the target folder might not be empty, so clashes must also be resolved.
-
 #[derive(Debug, Args)]
 pub struct Join {
     /// The target directory; will be created if it doesn't exist.
@@ -57,7 +55,15 @@ pub enum Clashes {
 pub struct Media {
     path: PathBuf,
     new_name: Option<String>,
-    skip: bool,
+    skip: Skip,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum Skip {
+    Yes,
+    No,
+    Target,
+}
 
 #[derive(Debug)]
 struct Shared {
@@ -82,9 +88,25 @@ impl Refine for Join {
             force: self.force,
         };
         SHARED.set(shared).unwrap();
+        let total = medias.len();
 
-        // step: detect clashes, files with the same name in different directories, and apply a sequential number.
+        // step: read the target directory, which might not be empty, to detect outer clashes (not in medias).
+        let mut target_names = Vec::new();
+        if let Ok(target) = SHARED.get().unwrap().target.as_ref() {
+            if let Ok(in_target) = fs::read_dir(target).map(|rd| rd.flatten()) {
+                let in_target = in_target.collect::<Vec<_>>();
+                target_names.extend(in_target.iter().flat_map(|e| e.file_name().into_string()));
+                medias.extend(in_target.iter().map(|entry| Media {
+                    path: entry.path(),
+                    new_name: None,
+                    skip: Skip::Target,
+                }))
+            }
+        }
+
+        // step: detect clashes (files with the same name in different directories), and resolve them.
         medias.sort_unstable_by(|m, n| {
+            // put files already in place first.
             (m.path.file_name(), !m.is_in_place()).cmp(&(n.path.file_name(), !n.is_in_place()))
         });
         let mut clashes = 0;
@@ -92,19 +114,31 @@ impl Refine for Join {
             .chunk_by_mut(|m, n| m.path.file_name() == n.path.file_name())
             .filter(|g| g.len() > 1)
             .for_each(|g| {
-                clashes += g.len();
+                clashes += g.len() - 1; // one is (or will be) in target, the others are clashes.
                 let path = g[0].path.to_owned();
                 let (name, ext) = utils::filename_parts(&path).unwrap(); // files were already checked.
                 let dot = if ext.is_empty() { "" } else { "." };
-                match self.clash {
-                    ClashResolve::Sequence => (1..).zip(g).skip(1).for_each(|(i, m)| {
-                        m.new_name = Some(format!("{name}-{i}{dot}{ext}"));
+                match self.clashes {
+                    Clashes::Sequence => {
+                        let mut seq = 2..;
+                        g.iter_mut().skip(1).for_each(|m| {
+                            let new_name = (&mut seq)
+                                .map(|i| format!("{name}-{i}{dot}{ext}"))
+                                .find(|s| target_names.iter().all(|t| s != t))
+                                .unwrap();
+                            m.new_name = Some(new_name);
+                        })
+                    }
+                    Clashes::Parent | Clashes::ParentAfter => g.iter_mut().for_each(|m| {
+                        let par = m.path.parent().unwrap_or(Path::new("/"));
+                        let par = par.file_name().unwrap().to_str().unwrap();
+                        if let Clashes::Parent = self.clashes {
+                            m.new_name = Some(format!("{par}-{name}{dot}{ext}"));
+                        } else {
+                            m.new_name = Some(format!("{name}-{par}{dot}{ext}"));
+                        }
                     }),
-                    ClashResolve::Parent => g.iter_mut().for_each(|m| {
-                        let par = m.path.parent().unwrap().to_str().unwrap();
-                        m.new_name = Some(format!("{par}-{name}{dot}{ext}"));
-                    }),
-                    ClashResolve::Skip => g.iter_mut().for_each(|m| m.skip = true),
+                    Clashes::Skip => g.iter_mut().for_each(|m| m.skip = Skip::Yes),
                 }
             });
 
@@ -112,16 +146,17 @@ impl Refine for Join {
         medias.sort_unstable_by(|m, n| m.path.cmp(&n.path));
         let mut in_place = 0;
         medias.retain(|m| match (m.skip, m.is_in_place()) {
-            (false, false) => true,
-            (false, true) => {
+            (Skip::No, false) => true,
+            (Skip::No, true) => {
                 in_place += 1;
                 println!("already in place: {}{}", m.path.display(), kind(&m.path));
                 false
             }
-            (true, _) => {
+            (Skip::Yes, _) => {
                 println!("clash skipped: {}{}", m.path.display(), kind(&m.path));
                 false
             }
+            (Skip::Target, _) => false,
         });
 
         // step: display the results.
@@ -131,10 +166,10 @@ impl Refine for Join {
         });
 
         // step: display receipt summary.
-        if !medias.is_empty() || in_place > 0 {
+        if !medias.is_empty() || in_place > 0 || clashes > 0 {
             println!();
         }
-        println!("total files: {}", medias.len() + clashes + in_place);
+        println!("total files: {total}");
         println!("  clashes: {clashes}");
         println!("  in place: {in_place}");
         if medias.is_empty() {
@@ -237,7 +272,7 @@ impl TryFrom<PathBuf> for Media {
         Ok(Media {
             path,
             new_name: None,
-            skip: false,
+            skip: Skip::No,
         })
     }
 }
