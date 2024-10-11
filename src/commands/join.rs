@@ -20,8 +20,8 @@ pub struct Join {
     #[arg(short = 's', long, value_enum, default_value_t = Strategy::Move)]
     strategy: Strategy,
     /// Specify how to resolve clashes.
-    #[arg(short = 'c', long, value_enum, default_value_t = ClashResolve::Sequence)]
-    clash: ClashResolve,
+    #[arg(short = 'c', long, value_enum, default_value_t = Clashes::Sequence)]
+    clashes: Clashes,
     /// Force joining already in place files and directories, i.e., in subdirectories of the target.
     #[arg(short = 'f', long)]
     force: bool,
@@ -40,9 +40,14 @@ pub enum Strategy {
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
-pub enum ClashResolve {
+pub enum Clashes {
+    #[value(aliases = ["s", "seq"])]
     Sequence,
+    #[value(aliases = ["p", "par", "pb", "parent-before"])]
     Parent,
+    #[value(aliases = ["pa"])]
+    ParentAfter,
+    #[value(aliases = ["sk"])]
     Skip,
 }
 
