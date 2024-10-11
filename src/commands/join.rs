@@ -15,7 +15,7 @@ use std::sync::OnceLock;
 pub struct Join {
     /// The target directory; will be created if it doesn't exist.
     #[arg(short = 't', long, value_name = "PATH", default_value = ".")]
-    to: PathBuf,
+    target: PathBuf,
     /// The strategy to use to join.
     #[arg(short = 'b', long, value_enum, default_value_t = By::Move)]
     by: By,
