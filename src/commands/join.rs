@@ -174,12 +174,13 @@ impl Refine for Join {
         if !self.no_remove {
             dirs.into_iter().for_each(|dir| {
                 if let Ok(rd) = fs::read_dir(&dir) {
+                    const DS_STORE: &str = ".DS_Store";
                     if rd // .DS_Store might exist on macOS, but should be removed if it is the only file in there.
-                        .map(|r| r.is_ok_and(|d| d.file_name() == ".DS_Store").then_some(()))
+                        .map(|r| r.is_ok_and(|d| d.file_name() == DS_STORE).then_some(()))
                         .collect::<Option<Vec<_>>>()
-                        .is_some_and(|v| !v.is_empty())
+                        .is_some_and(|v| !v.is_empty()) // an empty iterator is collected into Some([]).
                     {
-                        let dstore = dir.join(".DS_Store");
+                        let dstore = dir.join(DS_STORE);
                         if let Err(err) = fs::remove_file(&dstore) {
                             eprintln!("error: {err}: {dstore:?}");
                         }
