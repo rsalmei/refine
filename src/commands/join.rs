@@ -17,8 +17,8 @@ pub struct Join {
     #[arg(short = 't', long, value_name = "PATH", default_value = ".")]
     to: PathBuf,
     /// The strategy to use to join.
-    #[arg(short = 's', long, value_enum, default_value_t = Strategy::Move)]
-    strategy: Strategy,
+    #[arg(short = 'b', long, value_enum, default_value_t = By::Move)]
+    by: By,
     /// Specify how to resolve clashes.
     #[arg(short = 'c', long, value_enum, default_value_t = Clashes::Sequence)]
     clashes: Clashes,
@@ -34,8 +34,10 @@ pub struct Join {
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
-pub enum Strategy {
+pub enum By {
+    #[value(aliases = ["m", "mv"])]
     Move,
+    #[value(aliases = ["c", "cp"])]
     Copy,
 }
 
