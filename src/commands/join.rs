@@ -58,10 +58,15 @@ pub struct Media {
     path: PathBuf,
     new_name: Option<String>,
     skip: bool,
+
+#[derive(Debug)]
+struct Shared {
+    /// Tells whether the target path exists or not.
+    target: Result<PathBuf, PathBuf>,
+    force: bool,
 }
 
-static TARGET: OnceLock<Result<PathBuf, PathBuf>> = OnceLock::new();
-static FORCE: OnceLock<bool> = OnceLock::new();
+static SHARED: OnceLock<Shared> = OnceLock::new();
 
 impl Refine for Join {
     type Media = Media;
@@ -69,9 +74,14 @@ impl Refine for Join {
     const ENTRY_KIND: EntryKind = EntryKind::Either;
 
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
-        FORCE.set(self.force).unwrap();
-        let target = self.to.canonicalize().map_err(|_| self.to.to_owned());
-        TARGET.set(target).unwrap();
+        let shared = Shared {
+            target: self
+                .target
+                .canonicalize()
+                .map_err(|_| self.target.to_owned()),
+            force: self.force,
+        };
+        SHARED.set(shared).unwrap();
 
         // step: detect clashes, files with the same name in different directories, and apply a sequential number.
         medias.sort_unstable_by(|m, n| {
@@ -130,8 +140,8 @@ impl Refine for Join {
         if medias.is_empty() {
             return Ok(());
         }
-        let target = TARGET.get().unwrap().as_ref().unwrap_or_else(|x| x);
-        println!("\njoin [by {:?}] to: {}", self.strategy, target.display());
+        let target = SHARED.get().unwrap().target.as_ref().unwrap_or_else(|x| x);
+        println!("\njoin [by {:?}] to: {}", self.by, target.display());
         if !self.yes {
             utils::prompt_yes_no("apply changes?")?;
         }
@@ -147,14 +157,14 @@ impl Refine for Join {
 
         // step: apply changes, if the user agrees.
         fs::create_dir_all(target).with_context(|| format!("creating {target:?}"))?;
-        match self.strategy {
-            Strategy::Move => utils::rename_move_consuming(&mut medias),
-            Strategy::Copy => utils::copy_consuming(&mut medias),
+        match self.by {
+            By::Move => utils::rename_move_consuming(&mut medias),
+            By::Copy => utils::copy_consuming(&mut medias),
         };
 
         // step: recover from CrossDevice errors.
         if !medias.is_empty() {
-            if let Strategy::Move = self.strategy {
+            if let By::Move = self.by {
                 println!("attempting to fix {} errors", medias.len());
                 utils::cross_move_consuming(&mut medias);
             }
@@ -181,10 +191,10 @@ impl Refine for Join {
             });
         }
 
-        match (medias.is_empty(), self.strategy) {
+        match (medias.is_empty(), self.by) {
             (true, _) => println!("done"),
-            (false, Strategy::Move) => println!("still {} errors, giving up", medias.len()),
-            (false, Strategy::Copy) => println!("found {} errors", medias.len()),
+            (false, By::Move) => println!("still {} errors, giving up", medias.len()),
+            (false, By::Copy) => println!("found {} errors", medias.len()),
         }
         Ok(())
     }
@@ -192,12 +202,13 @@ impl Refine for Join {
 
 impl Media {
     fn is_in_place(&self) -> bool {
-        if TARGET.get().unwrap().is_err() {
+        let shared = SHARED.get().unwrap();
+        if shared.target.is_err() {
             return false;
         }
 
-        let target = TARGET.get().unwrap().as_ref().unwrap();
-        if *FORCE.get().unwrap() {
+        let target = shared.target.as_ref().unwrap();
+        if shared.force {
             return self.path.parent().unwrap() == target;
         }
 
@@ -213,7 +224,7 @@ impl_original_path!(Media);
 impl utils::NewPath for Media {
     fn new_path(&self) -> PathBuf {
         let name = self.new_name.as_ref().map(|s| s.as_ref());
-        let path = TARGET.get().unwrap().as_ref().unwrap_or_else(|x| x);
+        let path = SHARED.get().unwrap().target.as_ref().unwrap_or_else(|x| x);
         path.join(name.unwrap_or_else(|| self.path.file_name().unwrap()))
     }
 }
