@@ -1,6 +1,6 @@
 use crate::commands::Refine;
 use crate::entries::EntryKind;
-use crate::utils::NamingRules;
+use crate::utils::{kind, NamingRules};
 use crate::{impl_new_name, impl_new_name_mut, impl_original_path, utils};
 use anyhow::Result;
 use clap::Args;
@@ -37,8 +37,6 @@ impl Refine for Rename {
     const ENTRY_KIND: EntryKind = EntryKind::Both;
 
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
-        let kind = |p: &Path| if p.is_dir() { "/" } else { "" };
-
         // step: apply naming rules.
         let total = medias.len();
         let mut warnings = self.naming_rules.apply(&mut medias, |_, _| {})?;

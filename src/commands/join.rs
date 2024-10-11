@@ -1,5 +1,6 @@
 use crate::commands::Refine;
 use crate::entries::EntryKind;
+use crate::utils::kind;
 use crate::{impl_original_path, utils};
 use anyhow::{Context, Result};
 use clap::{Args, ValueEnum};
@@ -64,7 +65,6 @@ impl Refine for Join {
         FORCE.set(self.force).unwrap();
         let target = self.to.canonicalize().map_err(|_| self.to.to_owned());
         TARGET.set(target).unwrap();
-        let kind = |p: &Path| if p.is_dir() { "/" } else { "" };
 
         // step: detect clashes, files with the same name in different directories, and apply a sequential number.
         medias.sort_unstable_by(|m, n| {

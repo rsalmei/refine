@@ -46,6 +46,16 @@ pub fn sequence(stem: &str) -> Sequence {
     }
 }
 
+/// Return the kind of path, handy for display purposes.
+///
+/// Beware this function touches the filesystem, checking it every time it is called.
+pub fn kind(p: &Path) -> &str {
+    match p.is_dir() {
+        true => "/",
+        false => "",
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
