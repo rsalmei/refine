@@ -19,8 +19,11 @@ pub struct List {
 
 #[derive(Debug, Copy, Clone, ValueEnum)]
 pub enum By {
+    #[value(alias = "n")]
     Name,
+    #[value(alias = "s")]
     Size,
+    #[value(alias = "p")]
     Path,
 }
 
