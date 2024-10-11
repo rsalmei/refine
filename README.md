@@ -24,6 +24,13 @@ And that's it, you're ready to go! You can now call it anywhere.
 
 ## What's new
 
+### New in 1.1
+
+Revamped join command!
+It now supports non-empty target folders, and will resolve clashes accordingly.
+
+Also, several enum CLI arguments now support aliases, and I've fixed join command still moving files even when copy was requested.
+
 ### New in 1.0
 
 Yes, it is time.
@@ -60,7 +67,7 @@ And this also includes:
 - new `join` command, already with directory support
 - new magic `-i` and `-x` options that filter both files and directories
 - new filter options for files, directories, and extensions
-- rename: include directory support
+- rename: include full directory support
 
 ### New in 0.15
 
@@ -344,23 +351,24 @@ Example:
 
 <details><summary>(click to expand)</summary>
 
-- 1.0.0 Oct 09, 2024: major overhaul, rebuild: new partial mode, rebuild: new replace feature, rebuild: auto-enable partial mode in case not all paths are available.
+- 1.1.0 Oct 10, 2024: join: support not empty target folders and resolve clashes accordingly; include support for aliases in several enum CLI arguments; fix join by copy still moving files.
+- 1.0.0 Oct 09, 2024: major overhaul; rebuild: new partial mode, new replace feature, auto-enable partial mode in case not all paths are available.
 - 0.18.0 Aug 27, 2024: rebuild: new force implementation that is easier to use with improved memory usage.
-- 0.17.1 Aug 15, 2024: fix `--shallow` option.
-- 0.17.0 Aug 05, 2024: dedup input paths, enables to select only files by filtering extensions, join: new clash resolve option.
-- 0.16.0 Ago 01, 2024: scan with directory support, new `join` command, new magic filter options, new filter options, rename: include directory support.
-- 0.15.0 Jul 18, 2024: nicer rename command output by parent directory, new threaded yes/no prompt that can be aborted with CTRL-C.
+- 0.17.1 Aug 15, 2024: global: fix `--shallow` option.
+- 0.17.0 Aug 05, 2024: global: dedup input paths, enables to select only files by filtering extensions; join: new clash resolve option.
+- 0.16.0 Ago 01, 2024: global: scan with directory support, new `join` command, new magic filter options, new filter options; rename: include full directory support.
+- 0.15.0 Jul 18, 2024: rename: nicer command output by parent directory; new threaded yes/no prompt that can be aborted with CTRL-C.
 - 0.14.0 Jul 11, 2024: rename: disallow by default changes in directories where clashes are detected, including new `--clashes` option to allow them.
-- 0.13.0 Jul 10, 2024: rename: new replace feature, global: make strip rules also remove `.` and `_`, global: include and exclude options do not check extensions, dupes: remove case option.
+- 0.13.0 Jul 10, 2024: rename: new replace feature; global: make strip rules also remove `.` and `_`, `--include` and `--exclude` options do not check file extensions; dupes: remove case sensitivity option.
 - 0.12.0 Jul 09, 2024: global: new `--dir-in` and `--dir-out` options.
-- 0.11.0 Jul 08, 2024: new `rename` command, rebuild, rename: improve strip exact.
+- 0.11.0 Jul 08, 2024: global: new `rename` command; rebuild, rename: improve strip exact.
 - 0.10.0 Jul 02, 2024: global: new `--exclude`.
 - 0.9.0 Jul 01, 2024: global: support for CTRL-C.
 - 0.8.0 Jun 30, 2024: new `list` command.
-- 0.7.1 Jun 28, 2024: global: `--include` is now case-insensitive, rebuild: fix smart detect bug not grouping some files, rebuild: strip rules remove hyphens too.
-- 0.7.0 Jun 27, 2024: global: new `--include`, rebuild: new `--force`, rebuild: new interactive mode, rebuild: new `--yes`, rebuild: auto fix rename errors, rebuild: smaller memory consumption, dupes: improved performance.
-- 0.6.0 Jun 24, 2024: new `rebuild` command, general polishing overall.
-- 0.5.0 Jun 20, 2024: support for shallow scan, verbose mode, dupes cmd ignores repetition systems.
+- 0.7.1 Jun 28, 2024: global: `--include` is now case-insensitive; rebuild: fix smart detect not grouping some files, strip rules remove hyphens too.
+- 0.7.0 Jun 27, 2024: global: new `--include`; rebuild: new `--force`, new interactive mode, new `--yes`, auto fix rename errors, smaller memory consumption; dupes: improved performance.
+- 0.6.0 Jun 24, 2024: global: new `rebuild` command, general polishing overall.
+- 0.5.0 Jun 20, 2024: support for shallow scan, verbose mode; dupes: ignores repetition systems.
 - 0.4.0 Jun 17, 2024: include `dupes` command, support match case and changing sample size.
 - 0.3.0 Nov 07, 2023: include dedup by both size and name.
 - 0.2.2 Jun 04, 2022: use 2KB sample size.
