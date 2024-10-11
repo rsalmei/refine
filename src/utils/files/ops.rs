@@ -77,7 +77,10 @@ fn copy_path(p: &Path, q: &Path, remove_dir: bool, n: usize) -> io::Result<()> {
     } else if n == 0 {
         fs::copy(p, q).and_then(|_| {
             verbose(b".");
-            fs::remove_file(p)
+            if remove_dir {
+                fs::remove_file(p)?
+            }
+            Ok(())
         })
     } else {
         fs::copy(p, q).map(|_| ()) // this is called recursively by the is_dir case above.
