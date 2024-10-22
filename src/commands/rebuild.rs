@@ -54,7 +54,7 @@ impl Refine for Rebuild {
     const ENTRY_KIND: EntryKind = EntryKind::File;
 
     fn adjust(&mut self, entries: &Entries) {
-        if entries.missing && !self.partial && self.force.is_none() {
+        if entries.missing_dirs() && !self.partial && self.force.is_none() {
             self.partial = true;
             eprintln!("warning: one or more paths are not available => enabling partial mode\n");
         }

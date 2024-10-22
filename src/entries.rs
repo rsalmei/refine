@@ -57,32 +57,32 @@ enum RecurseMode {
 
 #[derive(Debug)]
 pub struct Entries {
-    /// Used to check if any given path on the CLI is missing.
-    pub missing: bool,
-    paths: Vec<PathBuf>,
+    /// Used to check if any given input directory on the CLI was missing.
+    missing_dirs: bool,
+    dirs: Vec<PathBuf>,
     shallow: bool,
 }
 
 impl Entries {
-    pub(super) fn new(mut paths: Vec<PathBuf>, filters: Filters) -> Result<Entries> {
+    pub(super) fn new(mut dirs: Vec<PathBuf>, filters: Filters) -> Result<Entries> {
         parse_input_regexes(&filters)?;
 
-        let prev = paths.len();
-        paths.sort_unstable();
-        paths.dedup();
-        if prev != paths.len() {
-            eprintln!("warning: {} duplicated path(s) ignored", prev - paths.len());
+        let prev = dirs.len();
+        dirs.sort_unstable();
+        dirs.dedup();
+        if prev != dirs.len() {
+            eprintln!("warning: {} duplicated path(s) ignored", prev - dirs.len());
         }
 
-        let prev = paths.len();
-        paths.retain(|p| p.is_dir());
-        if paths.is_empty() {
+        let prev = dirs.len();
+        dirs.retain(|p| p.is_dir());
+        if dirs.is_empty() {
             return Err(anyhow!("no valid paths given"));
         }
 
         Ok(Entries {
-            missing: prev != paths.len(), // use paths before moving it below.
-            paths,
+            missing_dirs: prev != dirs.len(), // use paths before moving it below.
+            dirs,
             shallow: filters.shallow,
         })
     }
@@ -92,9 +92,13 @@ impl Entries {
             true => RecurseMode::Shallow,
             false => RecurseMode::Recurse(kind),
         };
-        self.paths
+        self.dirs
             .iter()
             .flat_map(move |p| entries(p.to_owned(), rm))
+    }
+
+    pub fn missing_dirs(&self) -> bool {
+        self.missing_dirs
     }
 }
 
