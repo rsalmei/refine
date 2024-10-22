@@ -51,7 +51,7 @@ impl Command {
 fn run<R: Refine>(mut cmd: R, entries: Entries) -> Result<()> {
     println!("=> {}\n", R::OPENING_LINE);
     cmd.adjust(&entries);
-    cmd.refine(gen_medias(entries.read(R::ENTRY_KIND)))
+    cmd.refine(gen_medias(entries.fetch(R::ENTRY_KIND)))
 }
 
 fn gen_medias<T>(paths: impl Iterator<Item = PathBuf>) -> Vec<T>

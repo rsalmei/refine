@@ -64,7 +64,7 @@ pub struct Entries {
 }
 
 impl Entries {
-    pub fn new(mut paths: Vec<PathBuf>, filters: Filters) -> Result<Entries> {
+    pub(super) fn new(mut paths: Vec<PathBuf>, filters: Filters) -> Result<Entries> {
         parse_input_regexes(&filters)?;
 
         let prev = paths.len();
@@ -87,7 +87,7 @@ impl Entries {
         })
     }
 
-    pub fn read(&self, kind: EntryKind) -> impl Iterator<Item = PathBuf> + '_ {
+    pub(super) fn fetch(&self, kind: EntryKind) -> impl Iterator<Item = PathBuf> + '_ {
         let rm = match self.shallow {
             true => RecurseMode::Shallow,
             false => RecurseMode::Recurse(kind),
