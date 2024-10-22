@@ -33,31 +33,28 @@ impl NamingRules {
         medias: &mut Vec<M>,
         mark_changed: impl Fn(&mut M, bool),
     ) -> Result<usize> {
-        apply_rules(
+        let rules = Rules::compile(
             [&self.strip_before, &self.strip_after, &self.strip_exact],
             &self.replace,
-            medias,
-            mark_changed,
-        )
+        )?;
+        rules.apply(medias, mark_changed)
     }
 }
 
-fn apply_rules<M: NewNameMut + OriginalPath>(
-    strip_rules: [&[impl AsRef<str>]; 3],
-    replace_rules: &[(impl AsRef<str>, impl AsRef<str>)],
-    medias: &mut Vec<M>,
-    mark_changed: impl Fn(&mut M, bool),
-) -> Result<usize> {
-    const BOUND: &str = r"[-_\.\s]";
-    let before = |rule| format!("(?i)^.*{rule}{BOUND}*");
-    let after = |rule| format!("(?i){BOUND}*{rule}.*$");
-    let exactly = |rule| format!(r"(?i){BOUND}+{rule}$|^{rule}{BOUND}+|{BOUND}+{rule}|{rule}");
-    let replace = |rule| format!(r"(?i){rule}");
+#[derive(Debug)]
+struct Rules<'r>(Vec<(Regex, &'r str)>);
 
-    // pre-compile all rules into regexes.
-    let regs = {
-        let num = strip_rules.iter().map(|g| g.len()).sum::<usize>() + replace_rules.len();
-        let mut regs = Vec::with_capacity(num);
+impl<'r> Rules<'r> {
+    fn compile(
+        strip_rules: [&[impl AsRef<str> + Sized]; 3],
+        replace_rules: &'r [(impl AsRef<str> + Sized, impl AsRef<str> + Sized)],
+    ) -> Result<Rules<'r>> {
+        const BOUND: &str = r"[-_\.\s]";
+        let before = |rule| format!("(?i)^.*{rule}{BOUND}*");
+        let after = |rule| format!("(?i){BOUND}*{rule}.*$");
+        let exactly = |rule| format!(r"(?i){BOUND}+{rule}$|^{rule}{BOUND}+|{BOUND}+{rule}|{rule}");
+        let replace = |rule| format!(r"(?i){rule}");
+
         let rules = strip_rules
             .into_iter()
             .map(|g| g.iter().map(|r| (r.as_ref(), "")).collect::<Vec<_>>())
@@ -68,39 +65,46 @@ fn apply_rules<M: NewNameMut + OriginalPath>(
                     .collect(),
             ))
             .zip([before, after, exactly, replace])
-            .flat_map(|(g, f)| g.into_iter().map(move |(k, v)| (k, v, f)));
-        for (rule, to, f) in rules {
-            let re = Regex::new(&f(rule)).with_context(|| format!("compiling regex: {rule:?}"))?;
-            regs.push((re, to));
-        }
-        regs
-    };
+            .flat_map(|(g, f)| g.into_iter().map(move |(k, v)| (k, v, f)))
+            .map(|(rule, to, f)| {
+                Regex::new(&f(rule))
+                    .with_context(|| format!("compiling regex: {rule:?}"))
+                    .map(|re| (re, to))
+            })
+            .collect::<Result<_>>()?;
+        Ok(Rules(rules))
+    }
 
-    // this is just so that warnings are printed in a consistent order.
-    medias.sort_unstable_by(|m, n| m.path().cmp(n.path()));
+    fn apply<M: NewNameMut + OriginalPath>(
+        &self,
+        medias: &mut Vec<M>,
+        mark_changed: impl Fn(&mut M, bool),
+    ) -> Result<usize> {
+        // this is just so that warnings are printed in a consistent order.
+        medias.sort_unstable_by(|m, n| m.path().cmp(n.path()));
 
-    // apply all rules in order.
-    let total = medias.len();
-    medias.retain_mut(|m| {
-        let mut changed = false;
-        let mut name = std::mem::take(m.new_name_mut());
-        regs.iter().for_each(|(re, to)| {
-            if let Cow::Owned(x) = re.replace_all(&name, *to) {
-                changed = true;
-                name = x
+        // apply all rules in order.
+        let total = medias.len();
+        medias.retain_mut(|m| {
+            let mut changed = false;
+            let mut name = std::mem::take(m.new_name_mut());
+            self.0.iter().for_each(|(re, to)| {
+                if let Cow::Owned(x) = re.replace_all(&name, *to) {
+                    changed = true;
+                    name = x
+                }
+            });
+
+            if name.is_empty() {
+                eprintln!("warning: rules cleared name: {}", m.path().display());
+                return false;
             }
-        });
-
-        if name.is_empty() {
-            eprintln!("warning: rules cleared name: {}", m.path().display());
-            false
-        } else {
             *m.new_name_mut() = name;
             mark_changed(m, changed);
             true
-        }
-    });
-    Ok(total - medias.len())
+        });
+        Ok(total - medias.len())
+    }
 }
 
 #[cfg(test)]
