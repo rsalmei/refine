@@ -132,11 +132,10 @@ mod tests {
     #[test]
     fn strip_rules() {
         #[track_caller]
-        fn case(rules: [&[&str]; 3], stem: &str, new_name: &str) {
+        fn case(strip_rules: [&[&str]; 3], stem: &str, new_name: &str) {
             let mut medias = vec![Media(stem.to_owned())];
-            let res = apply_rules(rules, NO_REPLACE, &mut medias, |_, changed| {
-                assert!(changed)
-            });
+            let rules = Rules::compile(strip_rules, NO_REPLACE).unwrap();
+            let res = rules.apply(&mut medias, |_, changed| assert!(changed));
             assert_eq!(res.unwrap(), 0);
             assert_eq!(medias[0].0, new_name);
         }
@@ -189,9 +188,10 @@ mod tests {
     #[test]
     fn replace_rules() {
         #[track_caller]
-        fn case(rules: &[(&str, &str)], stem: &str, new_name: &str) {
+        fn case(replace_rules: &[(&str, &str)], stem: &str, new_name: &str) {
             let mut medias = vec![Media(stem.to_owned())];
-            let res = apply_rules(NO_STRIP, rules, &mut medias, |_, changed| assert!(changed));
+            let rules = Rules::compile(NO_STRIP, replace_rules).unwrap();
+            let res = rules.apply(&mut medias, |_, changed| assert!(changed));
             assert_eq!(res.unwrap(), 0);
             assert_eq!(medias[0].0, new_name);
         }
@@ -209,12 +209,8 @@ mod tests {
             .iter()
             .map(|&s| Media(s.to_owned()))
             .collect::<Vec<_>>();
-        let res = apply_rules(
-            [&["b"], &["a"], &["i"]],
-            &[("u", "o")],
-            &mut medias,
-            |m, changed| assert_eq!(changed, m.0 != "nope"),
-        );
+        let rules = Rules::compile([&["b"], &["a"], &["i"]], &[("u", "o")]).unwrap();
+        let res = rules.apply(&mut medias, |m, changed| assert_eq!(changed, m.0 != "nope"));
         assert_eq!(res.unwrap(), 0);
         assert_eq!(
             medias.iter().map(|m| &m.0).collect::<Vec<_>>(),
@@ -231,13 +227,8 @@ mod tests {
             Media("refine".to_owned()),
             Media("foobar".to_owned()),
         ];
-
-        let res = apply_rules(
-            [&["e"], &["b"], &["c.*i"]],
-            &[("on", "")],
-            &mut medias,
-            |_, changed| assert!(changed),
-        );
+        let rules = Rules::compile([&["e"], &["b"], &["c.*i"]], &[("on", "")]).unwrap();
+        let res = rules.apply(&mut medias, |_, changed| assert!(changed));
         assert_eq!(res.unwrap(), 4);
         assert_eq!(medias, vec![Media("foo".to_owned())]);
     }
