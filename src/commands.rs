@@ -24,7 +24,7 @@ pub enum Command {
     Rename(rename::Rename),
 }
 
-/// The common interface for commands.
+/// The common interface for Refine commands.
 ///
 /// Implemented for each command's options, conferring its functionality.
 pub trait Refine {
