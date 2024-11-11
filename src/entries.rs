@@ -57,10 +57,10 @@ enum RecurseMode {
 
 #[derive(Debug)]
 pub struct Entries {
-    /// Used to check if any given input directory on the CLI was missing.
-    missing_dirs: bool,
     dirs: Vec<PathBuf>,
     shallow: bool,
+    /// Used to determine whether there were missing directories in the input.
+    missing_dirs: bool,
 }
 
 impl Entries {
@@ -81,7 +81,7 @@ impl Entries {
         }
 
         Ok(Entries {
-            missing_dirs: prev != dirs.len(), // use paths before moving it below.
+            missing_dirs: prev != dirs.len(), // use dirs before moving it below.
             dirs,
             shallow: filters.shallow,
         })
