@@ -1,5 +1,5 @@
 use crate::commands::Refine;
-use crate::entries::{Entries, EntryKind};
+use crate::entries::{Entries, EntrySet};
 use crate::utils::{self, NamingRules, Sequence};
 use crate::{impl_new_name, impl_new_name_mut, impl_original_path};
 use anyhow::Result;
@@ -51,7 +51,7 @@ pub struct Media {
 impl Refine for Rebuild {
     type Media = Media;
     const OPENING_LINE: &'static str = "Rebuilding files...";
-    const ENTRY_KIND: EntryKind = EntryKind::File;
+    const ENTRY_SET: EntrySet = EntrySet::Files;
 
     fn adjust(&mut self, entries: &Entries) {
         if entries.missing_dirs() && !self.partial && self.force.is_none() {

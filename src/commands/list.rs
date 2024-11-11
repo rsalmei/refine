@@ -1,5 +1,5 @@
 use crate::commands::Refine;
-use crate::entries::EntryKind;
+use crate::entries::EntrySet;
 use anyhow::Result;
 use clap::{Args, ValueEnum};
 use human_repr::HumanCount;
@@ -36,7 +36,7 @@ pub struct Media {
 impl Refine for List {
     type Media = Media;
     const OPENING_LINE: &'static str = "Listing files...";
-    const ENTRY_KIND: EntryKind = EntryKind::File;
+    const ENTRY_SET: EntrySet = EntrySet::Files;
 
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         // step: sort the files by name, size, or path.

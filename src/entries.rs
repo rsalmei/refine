@@ -38,11 +38,11 @@ pub struct Filters {
     pub shallow: bool,
 }
 
-/// Denotes which kind of entries will be output.
+/// Denotes which kind of entries will be collected.
 #[derive(Debug, Copy, Clone)]
-pub enum EntryKind {
+pub enum EntrySet {
     /// Only files.
-    File,
+    Files,
     /// Either directories or files, in this order.
     Either,
     /// Both directories and files, in this order.
@@ -51,7 +51,7 @@ pub enum EntryKind {
 
 #[derive(Debug, Copy, Clone)]
 enum RecurseMode {
-    Recurse(EntryKind),
+    Recurse(EntrySet),
     Shallow,
 }
 
@@ -87,7 +87,7 @@ impl Entries {
         })
     }
 
-    pub(super) fn fetch(&self, kind: EntryKind) -> impl Iterator<Item = PathBuf> + '_ {
+    pub(super) fn fetch(&self, kind: EntrySet) -> impl Iterator<Item = PathBuf> + '_ {
         let rm = match self.shallow {
             true => RecurseMode::Shallow,
             false => RecurseMode::Recurse(kind),
@@ -153,11 +153,11 @@ fn entries(dir: PathBuf, rm: RecurseMode) -> Box<dyn Iterator<Item = PathBuf>> {
             .flatten()
             .flat_map(move |de| {
                 let path = de.path();
-                use {EntryKind::*, RecurseMode::*};
+                use {EntrySet::*, RecurseMode::*};
                 match (path.is_dir(), is_included(&path), rm) {
                     (false, Some(true), _) => Box::new(iter::once(path)),
                     (true, Some(false), Recurse(_)) => entries(path, rm),
-                    (true, Some(true), Recurse(File)) => entries(path, rm),
+                    (true, Some(true), Recurse(Files)) => entries(path, rm),
                     (true, Some(true), Recurse(Either)) => Box::new(iter::once(path)),
                     (true, Some(true), Recurse(Both)) => {
                         Box::new(iter::once(path.to_owned()).chain(entries(path, rm)))

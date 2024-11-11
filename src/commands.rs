@@ -4,7 +4,7 @@ mod list;
 mod rebuild;
 mod rename;
 
-use crate::entries::{Entries, EntryKind};
+use crate::entries::{Entries, EntrySet};
 use anyhow::Result;
 use clap::Subcommand;
 use std::fmt;
@@ -30,7 +30,7 @@ pub enum Command {
 pub trait Refine {
     type Media: TryFrom<PathBuf, Error: fmt::Display>;
     const OPENING_LINE: &'static str;
-    const ENTRY_KIND: EntryKind;
+    const ENTRY_SET: EntrySet;
 
     fn adjust(&mut self, _entries: &Entries) {}
     fn refine(&self, medias: Vec<Self::Media>) -> Result<()>;
@@ -51,7 +51,7 @@ impl Command {
 fn run<R: Refine>(mut cmd: R, entries: Entries) -> Result<()> {
     println!("=> {}\n", R::OPENING_LINE);
     cmd.adjust(&entries);
-    cmd.refine(gen_medias(entries.fetch(R::ENTRY_KIND)))
+    cmd.refine(gen_medias(entries.fetch(R::ENTRY_SET)))
 }
 
 fn gen_medias<T>(paths: impl Iterator<Item = PathBuf>) -> Vec<T>
