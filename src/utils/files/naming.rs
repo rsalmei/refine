@@ -28,16 +28,12 @@ impl NamingRules {
     /// Strip and replace parts of filenames based on the given rules.
     ///
     /// Return the number of warnings generated.
-    pub fn apply<M: NewNameMut + OriginalPath>(
-        &self,
-        medias: &mut Vec<M>,
-        mark_changed: impl Fn(&mut M, bool),
-    ) -> Result<usize> {
+    pub fn apply<M: NewNameMut + OriginalPath>(&self, medias: &mut Vec<M>) -> Result<usize> {
         let rules = Rules::compile(
             [&self.strip_before, &self.strip_after, &self.strip_exact],
             &self.replace,
         )?;
-        rules.apply(medias, mark_changed)
+        rules.apply(medias)
     }
 }
 
@@ -75,11 +71,7 @@ impl<'r> Rules<'r> {
         Ok(Rules(rules))
     }
 
-    fn apply<M: NewNameMut + OriginalPath>(
-        &self,
-        medias: &mut Vec<M>,
-        mark_changed: impl Fn(&mut M, bool),
-    ) -> Result<usize> {
+    fn apply<M: NewNameMut + OriginalPath>(&self, medias: &mut Vec<M>) -> Result<usize> {
         // this is just so that warnings are printed in a consistent order.
         medias.sort_unstable_by(|m, n| m.path().cmp(n.path()));
 
@@ -100,7 +92,6 @@ impl<'r> Rules<'r> {
                 return false;
             }
             *m.new_name_mut() = name;
-            mark_changed(m, changed);
             true
         });
         Ok(total - medias.len())
