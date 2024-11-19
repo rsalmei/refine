@@ -81,21 +81,21 @@ mod tests {
     #[test]
     fn extract_sequence() {
         #[track_caller]
-        fn case(stem: &str, seq: usize, actual_len: usize) {
+        fn case(stem: &str, seq: impl Into<Option<usize>>, true_len: usize) {
             let s = Sequence::from(stem);
-            assert_eq!(s.num, seq);
-            assert_eq!(s.actual_len, actual_len);
+            assert_eq!(s.num, seq.into());
+            assert_eq!(s.true_len, true_len);
         }
 
         // no sequence is found.
-        case("foo", 1, 3);
-        case("foo123", 1, 6);
-        case("foo-bar", 1, 7);
-        case("foo-bar123", 1, 10);
-        case("foo-123 bar", 1, 11);
-        case("foo - bar", 1, 9);
-        case("foo(bar)", 1, 8);
-        case("foo (bar)", 1, 9);
+        case("foo", None, 3);
+        case("foo123", None, 6);
+        case("foo-bar", None, 7);
+        case("foo-bar123", None, 10);
+        case("foo-123 bar", None, 11);
+        case("foo - bar", None, 9);
+        case("foo(bar)", None, 8);
+        case("foo (bar)", None, 9);
 
         // sequence is found, standard.
         case("foo-45678", 45678, 3); // the sequence style used here.
