@@ -22,7 +22,7 @@ pub struct Rebuild {
     #[arg(short = 's', long)]
     no_smart_detect: bool,
     /// Force to overwrite filenames (use the Global options to filter files).
-    #[arg(short = 'f', long, value_name = "STR", conflicts_with_all = ["strip_before", "strip_after", "strip_exact", "no_smart_detect", "partial"], value_parser = NonEmptyStringValueParser::new())]
+    #[arg(short = 'f', long, value_name = "STR", conflicts_with_all = ["strip_before", "strip_after", "strip_exact", "replace", "no_smart_detect", "partial"], value_parser = NonEmptyStringValueParser::new())]
     force: Option<String>,
     /// Assume not all paths are available, so only touch files actually modified by the given rules.
     #[arg(short = 'p', long)]
@@ -74,7 +74,6 @@ impl Refine for Rebuild {
 
             // step: strip sequence numbers from changed files, and extract/store the highest sequence from unchanged files.
             medias.iter_mut().for_each(|m| {
-                let Sequence { num, real_len } = utils::sequence(&m.new_name);
                 m.new_name.truncate(real_len); // sequence numbers are always at the end.
                 if !m.used {
                     match partial_seq.get_mut(&m.new_name) {
@@ -84,6 +83,7 @@ impl Refine for Rebuild {
                         Some(x) => *x = (*x).max(num),
                     }
                 }
+                let seq = Sequence::from(&m.new_name);
             });
         } else {
             // step: apply naming rules.
@@ -91,7 +91,7 @@ impl Refine for Rebuild {
 
             // step: strip sequence numbers.
             medias.iter_mut().for_each(|m| {
-                m.new_name.truncate(utils::sequence(&m.new_name).real_len); // sequence numbers are always at the end.
+                m.new_name.truncate(Sequence::from(&m.new_name).actual_len); // sequence numbers are always at the end.
             });
         };
 
