@@ -24,6 +24,10 @@ And that's it, you're ready to go! You can now call it anywhere.
 
 ## What's new
 
+### New in 1.2
+
+Here is a much improved partial mode in Rebuild command, which can alter groups of filenames while preserving sequences, and even detect and fix gaps in sequences caused by deleted files.
+
 ### New in 1.1
 
 Revamped join command!
@@ -351,6 +355,7 @@ Example:
 
 <details><summary>(click to expand)</summary>
 
+- 1.2.0 Nov 19, 2024: rebuild: much improved partial mode which can alter groups of filenames while preserving sequences, and even detect and fix gaps in sequences caused by deleted files.
 - 1.1.0 Oct 10, 2024: join: support not empty target folders and resolve clashes accordingly; include support for aliases in several enum CLI arguments; fix join by copy still moving files.
 - 1.0.0 Oct 09, 2024: major overhaul; rebuild: new partial mode, new replace feature, auto-enable partial mode in case not all paths are available.
 - 0.18.0 Aug 27, 2024: rebuild: new force implementation that is easier to use with improved memory usage.

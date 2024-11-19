@@ -7,8 +7,6 @@ use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
 use regex::Regex;
 use std::borrow::Cow;
-use std::collections::{HashMap, HashSet};
-use std::fmt::Write;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::LazyLock;
@@ -22,7 +20,7 @@ pub struct Rebuild {
     #[arg(short = 's', long)]
     no_smart_detect: bool,
     /// Force to overwrite filenames (use the Global options to filter files).
-    #[arg(short = 'f', long, value_name = "STR", conflicts_with_all = ["strip_before", "strip_after", "strip_exact", "no_smart_detect", "partial"], value_parser = NonEmptyStringValueParser::new())]
+    #[arg(short = 'f', long, value_name = "STR", conflicts_with_all = ["strip_before", "strip_after", "strip_exact", "replace", "no_smart_detect", "partial"], value_parser = NonEmptyStringValueParser::new())]
     force: Option<String>,
     /// Assume not all paths are available, so only touch files actually modified by the given rules.
     #[arg(short = 'p', long)]
@@ -40,8 +38,8 @@ pub struct Media {
     new_name: String,
     /// The smart group (if enabled and new_name has spaces or _).
     smart_group: Option<String>,
-    /// Marks if the file should be used in partial mode.
-    used: bool,
+    /// The sequence number, which will be kept in partial mode and disambiguate `created` in all modes.
+    seq: Option<usize>,
     /// A cached version of the file extension.
     ext: &'static str,
     /// The creation time of the file.
@@ -61,39 +59,24 @@ impl Refine for Rebuild {
     }
 
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
-        let (total, mut warnings, mut partial_seq) = (medias.len(), 0, HashMap::new());
+        let (total, mut warnings) = (medias.len(), 0);
+
+        // step: apply naming rules.
+        warnings += self.naming_rules.apply(&mut medias)?;
+
+        // step: extract and strip sequence numbers.
+        medias.iter_mut().for_each(|m| {
+            let seq = Sequence::from(&m.new_name);
+            m.seq = seq.num;
+            m.new_name.truncate(seq.true_len); // sequence numbers are always at the end.
+        });
+
+        // step: reset names if forcing a new one.
         if let Some(force) = &self.force {
             medias.iter_mut().for_each(|m| {
                 m.new_name.clone_from(force);
             });
-        } else if self.partial {
-            // step: apply naming rules, and mark unchanged filenames.
-            warnings += self.naming_rules.apply(&mut medias, |m, changed| {
-                m.used = changed;
-            })?;
-
-            // step: strip sequence numbers from changed files, and extract/store the highest sequence from unchanged files.
-            medias.iter_mut().for_each(|m| {
-                let Sequence { num, real_len } = utils::sequence(&m.new_name);
-                m.new_name.truncate(real_len); // sequence numbers are always at the end.
-                if !m.used {
-                    match partial_seq.get_mut(&m.new_name) {
-                        None => {
-                            partial_seq.insert(m.new_name.clone(), num);
-                        }
-                        Some(x) => *x = (*x).max(num),
-                    }
-                }
-            });
-        } else {
-            // step: apply naming rules.
-            warnings += self.naming_rules.apply(&mut medias, |_, _| {})?;
-
-            // step: strip sequence numbers.
-            medias.iter_mut().for_each(|m| {
-                m.new_name.truncate(utils::sequence(&m.new_name).real_len); // sequence numbers are always at the end.
-            });
-        };
+        }
 
         // step: smart detect on full media set (including unchanged files in partial mode).
         if !self.no_smart_detect {
@@ -106,47 +89,49 @@ impl Refine for Rebuild {
             });
         }
 
-        // step: generate new names before computing the changes.
-        let name_picker = if self.no_smart_detect || self.force.is_some() {
-            |g: &[Media]| g[0].new_name.clone() // must return owned value because new_name mustn't be borrowed to be modified.
+        // helper closures to pick names and sequences, vary according to the current mode.
+        let name_idx = if self.no_smart_detect || self.force.is_some() {
+            |_g: &[Media]| 0 // all the names are exactly the same.
         } else {
             |g: &[Media]| {
-                let nn = g.iter().map(|m| &m.new_name).collect::<HashSet<_>>();
-                nn.iter().map(|&x| (x.len(), x)).max().unwrap().1.to_owned()
+                g.iter()
+                    .enumerate()
+                    .max_by_key(|&(_, m)| m.new_name.len()) // find the longer one.
+                    .unwrap()
+                    .0
             }
         };
-        let seq_picker: &dyn Fn(&str) -> usize = if self.partial {
-            &|name| partial_seq.get(name).map_or(0, |&x| x)
+        let p_seq = if self.partial {
+            |m: &Media| m.seq.unwrap_or(usize::MAX) // files with sequences come first, no sequence last.
         } else {
-            &|_| 0
+            |_: &Media| 0 // completely ignore previous sequences.
         };
-        medias.sort_unstable_by(|m, n| m.group().cmp(n.group()));
+
+        // step: generate new names.
+        medias.sort_unstable_by(|m, n| {
+            // unfortunately, some file systems have low resolution creation time, HFS+ for example, so seq is used to disambiguate `created`.
+            (m.group(), p_seq(m), m.created, m.seq).cmp(&(n.group(), p_seq(n), n.created, n.seq))
+        });
         medias
             .chunk_by_mut(|m, n| m.group() == n.group())
             .for_each(|g| {
-                g.sort_unstable_by(|m, n| {
-                    // unfortunately, certain file systems have low resolution creation time (HFS+ for example).
-                    m.created.cmp(&n.created).then_with(|| {
-                        let ms = m.path.file_stem().unwrap().to_str().unwrap();
-                        let ns = n.path.file_stem().unwrap().to_str().unwrap();
-                        utils::sequence(ms).num.cmp(&utils::sequence(ns).num)
-                    })
-                });
-                let base = name_picker(g); // this used to have a .replace(' ', "_")... I don't remember why.
-                let seq = seq_picker(&base);
-                g.iter_mut().filter(|m| m.used).zip(1..).for_each(|(m, i)| {
-                    m.new_name.clear(); // because of the force and smart options.
-                    write!(m.new_name, "{base}-{}", i + seq).unwrap();
-                    if !m.ext.is_empty() {
-                        write!(m.new_name, ".{}", m.ext).unwrap();
-                    }
+                let base = g[name_idx(g)].new_name.to_owned(); // must be owned because `g` will be modified below.
+                let mut seq = g[0].seq.unwrap_or(1); // the minimum found for this group will be the first.
+                g.iter_mut().for_each(|m| {
+                    let (dot, ext) = if m.ext.is_empty() {
+                        ("", "")
+                    } else {
+                        (".", m.ext)
+                    };
+                    m.new_name = format!("{base}-{seq}{dot}{ext}");
+                    seq += 1; // fixes gaps even in partial mode.
                 });
             });
 
         utils::user_aborted()?;
 
         // step: settle changes, and display the results.
-        medias.retain(|m| m.used && m.new_name != m.path.file_name().unwrap().to_str().unwrap());
+        medias.retain(|m| m.new_name != m.path.file_name().unwrap().to_str().unwrap());
         medias
             .iter()
             .for_each(|m| println!("{} --> {}", m.path.display(), m.new_name));
@@ -211,7 +196,7 @@ impl TryFrom<PathBuf> for Media {
             new_name: name.trim().to_lowercase(),
             ext: utils::intern(ext),
             created: fs::metadata(&path)?.created()?,
-            used: true,
+            seq: None, // can't be set here, since naming rules must run before it.
             smart_group: None,
             path,
         })

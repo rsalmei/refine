@@ -1,6 +1,6 @@
 use crate::commands::Refine;
 use crate::entries::EntrySet;
-use crate::utils;
+use crate::utils::{self, Sequence};
 use anyhow::Result;
 use clap::Args;
 use human_repr::HumanCount;
@@ -101,7 +101,7 @@ where
 
 fn words(path: &Path) -> Result<Box<[String]>> {
     let (mut name, _) = utils::filename_parts(path)?;
-    name = &name[..utils::sequence(name).real_len];
+    name = &name[..Sequence::from(name).true_len];
     let mut words = name
         .split(&[' ', '.', '-', '_'])
         .filter(|s| !s.is_empty())
