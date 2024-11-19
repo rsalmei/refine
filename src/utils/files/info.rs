@@ -28,21 +28,21 @@ pub fn filename_parts(path: &Path) -> Result<(&str, &str)> {
     }
 }
 
-/// Extract the sequence number from a file stem.
-pub fn sequence(stem: &str) -> Sequence {
-    static RE: LazyLock<Regex> =
-        LazyLock::new(|| Regex::new(r"(?:[- ](\d+)| copy (\d+)| \((\d+)\))$").unwrap());
+impl<S: AsRef<str>> From<S> for Sequence {
+    fn from(stem: S) -> Self {
+        static RE: LazyLock<Regex> =
+            LazyLock::new(|| Regex::new(r"(?:[- ]+(\d+)| copy (\d+)| \((\d+)\))$").unwrap());
 
-    let (len, num) = if let Some((full, [seq])) = RE.captures(stem).map(|caps| caps.extract()) {
-        (full.len(), seq.parse().unwrap()) // regex checked.
-    } else if stem.ends_with(" copy") {
-        (5, 2) // macOS first "Keep both files" when moving has no sequence (see also the test).
-    } else {
-        (0, 1)
-    };
-    Sequence {
-        num,
-        real_len: stem.len() - len,
+        let stem = stem.as_ref();
+        let (len, num) = if let Some((full, [seq])) = RE.captures(stem).map(|caps| caps.extract()) {
+            (full.len(), seq.parse().unwrap()) // regex checked.
+        } else if stem.ends_with(" copy") {
+            (5, 2) // macOS first "Keep both files" when moving has no sequence (see also the test).
+        } else {
+            (0, 1)
+        };
+        let actual_len = stem.len() - len;
+        Sequence { num, actual_len }
     }
 }
 

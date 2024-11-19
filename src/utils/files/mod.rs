@@ -7,10 +7,10 @@ pub use naming::*;
 pub use ops::*;
 use std::path::{Path, PathBuf};
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct Sequence {
     pub num: usize,
-    pub real_len: usize,
+    pub actual_len: usize,
 }
 
 pub trait NewName {
