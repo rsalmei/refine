@@ -38,7 +38,7 @@ pub struct Media {
     new_name: String,
     /// The smart group (if enabled and new_name has spaces or _).
     smart_group: Option<String>,
-    /// The current sequence number, which will be kept in partial mode.
+    /// The sequence number, which will be kept in partial mode and disambiguate `created` in all modes.
     seq: Option<usize>,
     /// A cached version of the file extension.
     ext: &'static str,
@@ -64,23 +64,19 @@ impl Refine for Rebuild {
         // step: apply naming rules.
         warnings += self.naming_rules.apply(&mut medias)?;
 
+        // step: extract and strip sequence numbers.
+        medias.iter_mut().for_each(|m| {
+            let seq = Sequence::from(&m.new_name);
+            m.seq = seq.num;
+            m.new_name.truncate(seq.true_len); // sequence numbers are always at the end.
+        });
+
+        // step: reset names if forcing a new one.
         if let Some(force) = &self.force {
             medias.iter_mut().for_each(|m| {
                 m.new_name.clone_from(force);
             });
-        } else if self.partial {
-            // step: extract sequence numbers so they are reused.
-            medias.iter_mut().for_each(|m| {
-                let seq = Sequence::from(&m.new_name);
-                m.seq = Some(seq.num); // only set in partial mode, meaning this must be kept.
-                m.new_name.truncate(seq.actual_len); // sequence numbers are always at the end.
-            });
-        } else {
-            // step: strip sequence numbers.
-            medias.iter_mut().for_each(|m| {
-                m.new_name.truncate(Sequence::from(&m.new_name).actual_len); // sequence numbers are always at the end.
-            });
-        };
+        }
 
         // step: smart detect on full media set (including unchanged files in partial mode).
         if !self.no_smart_detect {
@@ -93,7 +89,7 @@ impl Refine for Rebuild {
             });
         }
 
-        // helper closure to pick names, varies according to the current mode.
+        // helper closures to pick names and sequences, vary according to the current mode.
         let name_idx = if self.no_smart_detect || self.force.is_some() {
             |_g: &[Media]| 0 // all the names are exactly the same.
         } else {
@@ -105,11 +101,16 @@ impl Refine for Rebuild {
                     .0
             }
         };
+        let p_seq = if self.partial {
+            |m: &Media| m.seq.unwrap_or(usize::MAX) // files with sequences come first, no sequence last.
+        } else {
+            |_: &Media| 0 // completely ignore previous sequences.
+        };
 
         // step: generate new names.
-        let sort_seq = |m: &Media| m.seq.unwrap_or(usize::MAX);
         medias.sort_unstable_by(|m, n| {
-            (m.group(), sort_seq(m), m.created).cmp(&(n.group(), sort_seq(n), m.created))
+            // unfortunately, some file systems have low resolution creation time, HFS+ for example, so seq is used to disambiguate `created`.
+            (m.group(), p_seq(m), m.created, m.seq).cmp(&(n.group(), p_seq(n), n.created, n.seq))
         });
         medias
             .chunk_by_mut(|m, n| m.group() == n.group())
@@ -123,7 +124,7 @@ impl Refine for Rebuild {
                         (".", m.ext)
                     };
                     m.new_name = format!("{base}-{seq}{dot}{ext}");
-                    seq += 1;
+                    seq += 1; // fixes gaps even in partial mode.
                 });
             });
 
@@ -195,7 +196,7 @@ impl TryFrom<PathBuf> for Media {
             new_name: name.trim().to_lowercase(),
             ext: utils::intern(ext),
             created: fs::metadata(&path)?.created()?,
-            seq: None,
+            seq: None, // can't be set here, since naming rules must run before it.
             smart_group: None,
             path,
         })
