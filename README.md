@@ -1,5 +1,10 @@
 # refine
 
+[![Crates.io](https://img.shields.io/crates/v/refine.svg)](https://crates.io/crates/refine)
+[![dependency status](https://deps.rs/repo/github/rsalmei/refine/status.svg)](https://deps.rs/repo/github/rsalmei/refine)
+![Crates.io](https://img.shields.io/crates/d/refine)
+![GitHub Sponsors](https://img.shields.io/github/sponsors/rsalmei)
+
 ### Refine your file collection using Rust!
 
 ## What it does
