@@ -360,6 +360,7 @@ Example:
 
 <details><summary>(click to expand)</summary>
 
+- 1.2.1 Nov 19, 2024: just require newer regex, so deps badge won't show "maybe insecure".
 - 1.2.0 Nov 19, 2024: rebuild: much improved partial mode which can alter groups of filenames while preserving sequences, and even detect and fix gaps in sequences caused by deleted files.
 - 1.1.0 Oct 10, 2024: join: support not empty target folders and resolve clashes accordingly; include support for aliases in several enum CLI arguments; fix join by copy still moving files.
 - 1.0.0 Oct 09, 2024: major overhaul; rebuild: new partial mode, new replace feature, auto-enable partial mode in case not all paths are available.
