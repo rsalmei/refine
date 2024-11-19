@@ -35,14 +35,14 @@ impl<S: AsRef<str>> From<S> for Sequence {
 
         let stem = stem.as_ref();
         let (len, num) = if let Some((full, [seq])) = RE.captures(stem).map(|caps| caps.extract()) {
-            (full.len(), seq.parse().unwrap()) // regex checked.
+            (full.len(), seq.parse().ok()) // regex checked.
         } else if stem.ends_with(" copy") {
-            (5, 2) // macOS first "Keep both files" when moving has no sequence (see also the test).
+            (5, Some(2)) // macOS first "Keep both files" when moving has no sequence (see also the test).
         } else {
-            (0, 1)
+            (0, None)
         };
-        let actual_len = stem.len() - len;
-        Sequence { num, actual_len }
+        let true_len = stem.len() - len;
+        Sequence { num, true_len }
     }
 }
 

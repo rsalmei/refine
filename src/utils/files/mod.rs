@@ -9,8 +9,8 @@ use std::path::{Path, PathBuf};
 
 #[derive(Debug)]
 pub struct Sequence {
-    pub num: usize,
-    pub actual_len: usize,
+    pub num: Option<usize>,
+    pub true_len: usize,
 }
 
 pub trait NewName {
