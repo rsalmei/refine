@@ -36,8 +36,8 @@ pub struct Media {
     path: PathBuf,
     /// The new generated filename.
     new_name: String,
-    /// The smart group (if enabled and new_name has spaces or _).
-    smart_group: Option<String>,
+    /// The resulting smart match (if enabled and new_name has spaces or _).
+    smart_match: Option<String>,
     /// The sequence number, which will be kept in partial mode and disambiguate `created` in all modes.
     seq: Option<usize>,
     /// A cached version of the file extension.
@@ -78,13 +78,13 @@ impl Refine for Rebuild {
             });
         }
 
-        // step: smart detect on full media set (including unchanged files in partial mode).
-        if !self.no_smart_detect {
+        // step: smart matching on full media set (including unchanged files in partial mode).
+        if !self.simple_match {
             static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[\s_]+").unwrap());
 
             medias.iter_mut().for_each(|m| {
                 if let Cow::Owned(x) = RE.replace_all(&m.new_name, "") {
-                    m.smart_group = Some(x);
+                    m.smart_match = Some(x);
                 }
             });
         }
@@ -182,8 +182,9 @@ impl_new_name_mut!(Media);
 impl_original_path!(Media);
 
 impl Media {
+    /// The group name will either be the smart match or the new name.
     fn group(&self) -> &str {
-        self.smart_group.as_deref().unwrap_or(&self.new_name)
+        self.smart_match.as_deref().unwrap_or(&self.new_name)
     }
 }
 
@@ -197,7 +198,7 @@ impl TryFrom<PathBuf> for Media {
             ext: utils::intern(ext),
             created: fs::metadata(&path)?.created()?,
             seq: None, // can't be set here, since naming rules must run before it.
-            smart_group: None,
+            smart_match: None,
             path,
         })
     }
