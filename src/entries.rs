@@ -103,10 +103,10 @@ impl Entries {
 }
 
 macro_rules! re_input {
-    ($($re:ident, $name:ident);+ $(;)?) => {
+    ($($re:ident, $param:ident);+ $(;)?) => {
         $( static $re: OnceLock<Regex> = OnceLock::new(); )+
         fn parse_input_regexes(filters: &Filters) -> Result<()> {
-            $( utils::set_re(&filters.$name, &$re, stringify!($name))?; )+
+            $( utils::set_regex(&$re, &filters.$param, stringify!($param))?; )+
             Ok(())
         }
     };
