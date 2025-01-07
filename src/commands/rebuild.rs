@@ -102,7 +102,7 @@ impl Refine for Rebuild {
             }
         };
         let p_seq = if self.partial {
-            |m: &Media| m.seq.unwrap_or(usize::MAX) // files with sequences come first, no sequence last.
+            |m: &Media| m.seq.unwrap_or(usize::MAX) // files with a sequence first, no sequence last.
         } else {
             |_: &Media| 0 // completely ignore previous sequences.
         };
