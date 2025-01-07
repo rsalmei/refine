@@ -59,10 +59,10 @@ impl Refine for Rebuild {
     }
 
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
-        let (total, mut warnings) = (medias.len(), 0);
+        let total = medias.len();
 
         // step: apply naming rules.
-        warnings += self.naming_rules.apply(&mut medias)?;
+        let warnings = self.naming_rules.apply(&mut medias)?;
 
         // step: extract and strip sequence numbers.
         medias.iter_mut().for_each(|m| {
