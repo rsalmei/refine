@@ -16,11 +16,11 @@ use std::time::SystemTime;
 pub struct Rebuild {
     #[command(flatten)]
     naming_rules: NamingRules,
-    /// Disable smart detection of similar filenames (e.g. "foo bar.mp4", "FooBar.mp4" and "foo__bar.mp4").
+    /// Disable smart matching (e.g. "foo bar.mp4", "FooBar.mp4" and "foo__bar.mp4" are considered different).
     #[arg(short = 's', long)]
-    no_smart_detect: bool,
+    simple_match: bool,
     /// Force to overwrite filenames (use the Global options to filter files).
-    #[arg(short = 'f', long, value_name = "STR", conflicts_with_all = ["strip_before", "strip_after", "strip_exact", "replace", "no_smart_detect", "partial"], value_parser = NonEmptyStringValueParser::new())]
+    #[arg(short = 'f', long, value_name = "STR", conflicts_with_all = ["strip_before", "strip_after", "strip_exact", "replace", "simple_match", "partial"], value_parser = NonEmptyStringValueParser::new())]
     force: Option<String>,
     /// Assume not all paths are available, so only touch files actually modified by the given rules.
     #[arg(short = 'p', long)]
@@ -90,7 +90,7 @@ impl Refine for Rebuild {
         }
 
         // helper closures to pick names and sequences, vary according to the current mode.
-        let name_idx = if self.no_smart_detect || self.force.is_some() {
+        let name_idx = if self.simple_match || self.force.is_some() {
             |_g: &[Media]| 0 // all the names are exactly the same.
         } else {
             |g: &[Media]| {
