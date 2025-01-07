@@ -61,9 +61,9 @@ pub fn intern(text: &str) -> &'static str {
     }
 }
 
-/// Set an optional regex (case-insensitive).
-pub fn set_re(value: &Option<String>, var: &OnceLock<Regex>, param: &str) -> Result<()> {
-    match value {
+// Set an optional regular expression into a OnceLock (case-insensitive).
+pub fn set_regex(var: &OnceLock<Regex>, val: &Option<String>, param: &str) -> Result<()> {
+    match val {
         None => Ok(()),
         Some(s) => match Regex::new(&format!("(?i){s}"))
             .with_context(|| format!("compiling regex: {s:?}"))
