@@ -27,10 +27,11 @@ pub fn aborted(cond: bool) -> &'static str {
 
 /// Install a Ctrl-C handler. It must be called only once.
 pub fn install_ctrl_c_handler() {
-    if let Err(err) = ctrlc::set_handler(move || {
+    let handler = || {
         eprintln!("aborting...");
         RUNNING_FLAG.store(false, atomic::Ordering::Relaxed);
-    }) {
+    };
+    if let Err(err) = ctrlc::set_handler(handler) {
         eprintln!("error: set Ctrl-C handler: {err:?}");
     }
 }
