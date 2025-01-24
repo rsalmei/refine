@@ -23,9 +23,9 @@ pub struct Join {
     /// Force joining already in place files and directories, i.e., in subdirectories of the target.
     #[arg(short = 'f', long)]
     force: bool,
-    /// Do not remove the empty parent directories after joining.
-    #[arg(short = 'n', long)]
-    no_remove: bool,
+    /// Do not remove empty parent directories after joining.
+    #[arg(short = 'p', long)]
+    keep_parents: bool,
     /// Skip the confirmation prompt, useful for automation.
     #[arg(short = 'y', long)]
     yes: bool,
@@ -182,7 +182,7 @@ impl Refine for Join {
         }
 
         // step: grab the files' parent directories before the consuming operations.
-        let dirs = match self.no_remove {
+        let dirs = match self.keep_parents {
             true => HashSet::new(),
             false => medias
                 .iter()
@@ -206,7 +206,7 @@ impl Refine for Join {
         }
 
         // step: remove the empty parent directories.
-        if !self.no_remove {
+        if !self.keep_parents {
             dirs.into_iter().for_each(|dir| {
                 if let Ok(rd) = fs::read_dir(&dir) {
                     const DS_STORE: &str = ".DS_Store";
