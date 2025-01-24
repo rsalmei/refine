@@ -1,5 +1,5 @@
-use crate::commands::Refine;
-use crate::entries::{Entries, EntrySet};
+use super::Refine;
+use crate::entries::{Expected, Fetcher};
 use crate::utils::{self, NamingRules, Sequence};
 use crate::{impl_new_name, impl_new_name_mut, impl_original_path};
 use anyhow::Result;
@@ -16,7 +16,7 @@ use std::time::SystemTime;
 pub struct Rebuild {
     #[command(flatten)]
     naming_rules: NamingRules,
-    /// Disable smart matching (e.g. "foo bar.mp4", "FooBar.mp4" and "foo__bar.mp4" are considered different).
+    /// Disable smart matching, so "foo bar.mp4", "FooBar.mp4" and "foo__bar.mp4" are different.
     #[arg(short = 's', long)]
     simple_match: bool,
     /// Force to overwrite filenames (use the Global options to filter files).
@@ -49,10 +49,10 @@ pub struct Media {
 impl Refine for Rebuild {
     type Media = Media;
     const OPENING_LINE: &'static str = "Rebuilding files...";
-    const ENTRY_SET: EntrySet = EntrySet::Files;
+    const EXPECTED: Expected = Expected::Files;
 
-    fn adjust(&mut self, entries: &Entries) {
-        if entries.missing_dirs() && !self.partial && self.force.is_none() {
+    fn adjust(&mut self, fetcher: &Fetcher) {
+        if fetcher.missing_dirs() && !self.partial && self.force.is_none() {
             self.partial = true;
             eprintln!("warning: one or more paths are not available => enabling partial mode\n");
         }
@@ -91,7 +91,7 @@ impl Refine for Rebuild {
 
         // helper closures to pick names and sequences, vary according to the current mode.
         let name_idx = if self.simple_match || self.force.is_some() {
-            |_g: &[Media]| 0 // all the names are exactly the same.
+            |_g: &[Media]| 0 // all the names are exactly the same within a group.
         } else {
             |g: &[Media]| {
                 g.iter()

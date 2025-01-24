@@ -38,9 +38,9 @@ pub struct Filters {
     pub shallow: bool,
 }
 
-/// Denotes which kind of entries will be collected.
+/// Denotes which kind of entries should be collected.
 #[derive(Debug, Copy, Clone)]
-pub enum EntrySet {
+pub enum Expected {
     /// Only files.
     Files,
     /// Either directories or files, in this order.
@@ -51,20 +51,20 @@ pub enum EntrySet {
 
 #[derive(Debug, Copy, Clone)]
 enum RecurseMode {
-    Recurse(EntrySet),
+    Recurse(Expected),
     Shallow,
 }
 
 #[derive(Debug)]
-pub struct Entries {
+pub struct Fetcher {
     dirs: Vec<PathBuf>,
     shallow: bool,
     /// Used to determine whether there were missing directories in the input.
     missing_dirs: bool,
 }
 
-impl Entries {
-    pub(super) fn new(mut dirs: Vec<PathBuf>, filters: Filters) -> Result<Entries> {
+impl Fetcher {
+    pub(super) fn new(mut dirs: Vec<PathBuf>, filters: Filters) -> Result<Fetcher> {
         parse_input_regexes(&filters)?;
 
         let prev = dirs.len();
@@ -80,14 +80,14 @@ impl Entries {
             return Err(anyhow!("no valid paths given"));
         }
 
-        Ok(Entries {
+        Ok(Fetcher {
             missing_dirs: prev != dirs.len(), // use dirs before moving it below.
             dirs,
             shallow: filters.shallow,
         })
     }
 
-    pub(super) fn fetch(&self, kind: EntrySet) -> impl Iterator<Item = PathBuf> + '_ {
+    pub(super) fn fetch(&self, kind: Expected) -> impl Iterator<Item = PathBuf> + '_ {
         let rm = match self.shallow {
             true => RecurseMode::Shallow,
             false => RecurseMode::Recurse(kind),
@@ -153,7 +153,7 @@ fn entries(dir: PathBuf, rm: RecurseMode) -> Box<dyn Iterator<Item = PathBuf>> {
             .flatten()
             .flat_map(move |de| {
                 let path = de.path();
-                use {EntrySet::*, RecurseMode::*};
+                use {Expected::*, RecurseMode::*};
                 match (path.is_dir(), is_included(&path), rm) {
                     (false, Some(true), _) => Box::new(iter::once(path)),
                     (true, Some(false), Recurse(_)) => entries(path, rm),

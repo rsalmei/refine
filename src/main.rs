@@ -5,7 +5,7 @@ mod utils;
 use anyhow::Result;
 use clap::Parser;
 use commands::Command;
-use entries::{Entries, Filters};
+use entries::{Fetcher, Filters};
 use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
@@ -26,9 +26,9 @@ fn main() -> Result<()> {
     println!("Refine v{}", env!("CARGO_PKG_VERSION"));
     let args = Args::parse();
     let entries = {
-        // lists files from the given paths, or the current directory if no paths were given.
+        // lists files from the given paths, or the current directory if no paths are given.
         let dirs = args.dirs.is_empty().then(|| vec![".".into()]);
-        Entries::new(dirs.unwrap_or(args.dirs), args.filters)?
+        Fetcher::new(dirs.unwrap_or(args.dirs), args.filters)?
     };
     args.cmd.run(entries)
 }
