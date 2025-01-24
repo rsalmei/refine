@@ -12,9 +12,9 @@ pub struct List {
     /// Sort by.
     #[arg(short = 'b', long, value_enum, default_value_t = By::Name)]
     by: By,
-    /// Use descending order.
-    #[arg(short = 'd', long)]
-    desc: bool,
+    /// Reverse the default order (name:asc, size:desc, path:asc).
+    #[arg(short = 'r', long)]
+    rev: bool,
 }
 
 #[derive(Debug, Copy, Clone, ValueEnum)]
@@ -38,6 +38,13 @@ impl Refine for List {
     const OPENING_LINE: &'static str = "Listing files...";
     const EXPECTED: Expected = Expected::Files;
 
+    fn adjust(&mut self, _fetcher: &Fetcher) {
+        if !self.rev {
+            const ORDERING: [bool; 3] = [false, true, false];
+            self.rev = ORDERING[self.by as usize];
+        }
+    }
+
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         // step: sort the files by name, size, or path.
         let compare = match self.by {
@@ -45,9 +52,9 @@ impl Refine for List {
             By::Size => |m: &Media, n: &Media| m.size.cmp(&n.size),
             By::Path => |m: &Media, n: &Media| m.path.cmp(&n.path),
         };
-        let compare: &dyn Fn(&Media, &Media) -> Ordering = match self.desc {
-            true => &|m, n| compare(m, n).reverse(),
+        let compare: &dyn Fn(&Media, &Media) -> Ordering = match self.rev {
             false => &compare,
+            true => &|m, n| compare(m, n).reverse(),
         };
         medias.sort_unstable_by(compare);
 
