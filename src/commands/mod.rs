@@ -4,7 +4,7 @@ mod list;
 mod rebuild;
 mod rename;
 
-use crate::entries::{Entries, EntrySet};
+use crate::entries::{Expected, Fetcher};
 use anyhow::Result;
 use clap::Subcommand;
 use std::fmt;
@@ -30,14 +30,14 @@ pub enum Command {
 pub trait Refine {
     type Media: TryFrom<PathBuf, Error: fmt::Display>;
     const OPENING_LINE: &'static str;
-    const ENTRY_SET: EntrySet;
+    const EXPECTED: Expected;
 
-    fn adjust(&mut self, _entries: &Entries) {}
+    fn adjust(&mut self, _fetcher: &Fetcher) {}
     fn refine(&self, medias: Vec<Self::Media>) -> Result<()>;
 }
 
 impl Command {
-    pub fn run(self, entries: Entries) -> Result<()> {
+    pub fn run(self, entries: Fetcher) -> Result<()> {
         match self {
             Command::Dupes(cmd) => run(cmd, entries),
             Command::Rebuild(cmd) => run(cmd, entries),
@@ -48,10 +48,10 @@ impl Command {
     }
 }
 
-fn run<R: Refine>(mut cmd: R, entries: Entries) -> Result<()> {
+fn run<R: Refine>(mut cmd: R, entries: Fetcher) -> Result<()> {
     println!("=> {}\n", R::OPENING_LINE);
     cmd.adjust(&entries);
-    cmd.refine(gen_medias(entries.fetch(R::ENTRY_SET)))
+    cmd.refine(gen_medias(entries.fetch(R::EXPECTED)))
 }
 
 fn gen_medias<T>(paths: impl Iterator<Item = PathBuf>) -> Vec<T>
