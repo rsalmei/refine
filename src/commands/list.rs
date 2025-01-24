@@ -3,6 +3,7 @@ use crate::entries::{Expected, Fetcher};
 use anyhow::Result;
 use clap::{Args, ValueEnum};
 use human_repr::HumanCount;
+use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::fs;
 use std::path::PathBuf;
@@ -15,6 +16,9 @@ pub struct List {
     /// Reverse the default order (name:asc, size:desc, path:asc).
     #[arg(short = 'r', long)]
     rev: bool,
+    /// Show full file paths.
+    #[arg(short = 'p', long)]
+    paths: bool,
 }
 
 #[derive(Debug, Copy, Clone, ValueEnum)]
@@ -43,6 +47,9 @@ impl Refine for List {
             const ORDERING: [bool; 3] = [false, true, false];
             self.rev = ORDERING[self.by as usize];
         }
+        if let By::Path = self.by {
+            self.paths = true;
+        }
     }
 
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
@@ -59,11 +66,15 @@ impl Refine for List {
         medias.sort_unstable_by(compare);
 
         // step: display the results.
+        let show: fn(m: &Media) -> Cow<str> = match self.paths {
+            true => |m| m.path.to_string_lossy(),
+            false => |m| m.path.file_name().unwrap().to_string_lossy(),
+        };
         medias.iter().for_each(|m| {
             println!(
                 "{:>7} {}",
                 format!("{}", m.size.human_count_bytes()),
-                m.path.display()
+                show(m)
             )
         });
 
