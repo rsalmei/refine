@@ -1,5 +1,4 @@
-use super::Refine;
-use crate::entries::Expected;
+use super::{EntryKind, Refine};
 use crate::utils::{kind, NamingRules};
 use crate::{impl_new_name, impl_new_name_mut, impl_original_path, utils};
 use anyhow::Result;
@@ -34,7 +33,7 @@ pub struct Media {
 impl Refine for Rename {
     type Media = Media;
     const OPENING_LINE: &'static str = "Renaming files...";
-    const EXPECTED: Expected = Expected::Both;
+    const ENTRY_KIND: EntryKind = EntryKind::Both;
 
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         // step: apply naming rules.

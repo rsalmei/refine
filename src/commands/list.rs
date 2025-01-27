@@ -1,5 +1,4 @@
-use super::Refine;
-use crate::entries::{Expected, Fetcher};
+use super::{EntryKind, Fetcher, Refine};
 use anyhow::Result;
 use clap::{Args, ValueEnum};
 use human_repr::HumanCount;
@@ -40,7 +39,7 @@ pub struct Media {
 impl Refine for List {
     type Media = Media;
     const OPENING_LINE: &'static str = "Listing files...";
-    const EXPECTED: Expected = Expected::Files;
+    const ENTRY_KIND: EntryKind = EntryKind::Files;
 
     fn adjust(&mut self, _fetcher: &Fetcher) {
         if !self.rev {

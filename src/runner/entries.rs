@@ -1,3 +1,4 @@
+use crate::commands::EntryKind;
 use crate::utils;
 use anyhow::{anyhow, Result};
 use clap::builder::NonEmptyStringValueParser;
@@ -38,20 +39,9 @@ pub struct Filters {
     pub shallow: bool,
 }
 
-/// Denotes which kind of entries should be collected.
-#[derive(Debug, Copy, Clone)]
-pub enum Expected {
-    /// Only files.
-    Files,
-    /// Either directories or files, in this order.
-    Either,
-    /// Both directories and files, in this order.
-    Both,
-}
-
 #[derive(Debug, Copy, Clone)]
 enum RecurseMode {
-    Recurse(Expected),
+    Recurse(EntryKind),
     Shallow,
 }
 
@@ -60,7 +50,7 @@ pub struct Fetcher {
     dirs: Vec<PathBuf>,
     shallow: bool,
     /// Used to determine whether there were missing directories in the input.
-    missing_dirs: bool,
+    pub missing_dirs: bool,
 }
 
 impl Fetcher {
@@ -81,13 +71,13 @@ impl Fetcher {
         }
 
         Ok(Fetcher {
-            missing_dirs: prev != dirs.len(), // use dirs before moving it below.
+            missing_dirs: prev != dirs.len(),
             dirs,
             shallow: filters.shallow,
         })
     }
 
-    pub(super) fn fetch(&self, kind: Expected) -> impl Iterator<Item = PathBuf> + '_ {
+    pub(super) fn fetch(&self, kind: EntryKind) -> impl Iterator<Item = PathBuf> + '_ {
         let rm = match self.shallow {
             true => RecurseMode::Shallow,
             false => RecurseMode::Recurse(kind),
@@ -95,10 +85,6 @@ impl Fetcher {
         self.dirs
             .iter()
             .flat_map(move |p| entries(p.to_owned(), rm))
-    }
-
-    pub fn missing_dirs(&self) -> bool {
-        self.missing_dirs
     }
 }
 
@@ -153,7 +139,7 @@ fn entries(dir: PathBuf, rm: RecurseMode) -> Box<dyn Iterator<Item = PathBuf>> {
             .flatten()
             .flat_map(move |de| {
                 let path = de.path();
-                use {Expected::*, RecurseMode::*};
+                use {EntryKind::*, RecurseMode::*};
                 match (path.is_dir(), is_included(&path), rm) {
                     (false, Some(true), _) => Box::new(iter::once(path)),
                     (true, Some(false), Recurse(_)) => entries(path, rm),

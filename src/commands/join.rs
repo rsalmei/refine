@@ -1,5 +1,4 @@
-use super::Refine;
-use crate::entries::Expected;
+use super::{EntryKind, Refine};
 use crate::utils::kind;
 use crate::{impl_original_path, utils};
 use anyhow::{Context, Result};
@@ -77,7 +76,7 @@ static SHARED: OnceLock<Shared> = OnceLock::new();
 impl Refine for Join {
     type Media = Media;
     const OPENING_LINE: &'static str = "Joining files...";
-    const EXPECTED: Expected = Expected::Either;
+    const ENTRY_KIND: EntryKind = EntryKind::Either;
 
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         let shared = Shared {

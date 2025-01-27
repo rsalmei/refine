@@ -1,5 +1,4 @@
-use super::Refine;
-use crate::entries::{Expected, Fetcher};
+use super::{EntryKind, Fetcher, Refine};
 use crate::utils::{self, NamingRules, Sequence};
 use crate::{impl_new_name, impl_new_name_mut, impl_original_path};
 use anyhow::Result;
@@ -49,10 +48,10 @@ pub struct Media {
 impl Refine for Rebuild {
     type Media = Media;
     const OPENING_LINE: &'static str = "Rebuilding files...";
-    const EXPECTED: Expected = Expected::Files;
+    const ENTRY_KIND: EntryKind = EntryKind::Files;
 
     fn adjust(&mut self, fetcher: &Fetcher) {
-        if fetcher.missing_dirs() && !self.partial && self.force.is_none() {
+        if fetcher.missing_dirs && !self.partial && self.force.is_none() {
             self.partial = true;
             eprintln!("warning: one or more paths are not available => enabling partial mode\n");
         }
