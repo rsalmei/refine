@@ -1,4 +1,3 @@
-use super::{EntryKind, EntryKind::*};
 use crate::utils;
 use anyhow::{anyhow, Result};
 use clap::builder::NonEmptyStringValueParser;
@@ -45,6 +44,17 @@ pub struct Fetcher {
     shallow: bool,
     /// Used to determine whether there were missing directories in the input.
     pub missing_dirs: bool,
+}
+
+/// Denotes which kind of entries should be included.
+#[derive(Debug, Copy, Clone)]
+pub enum EntryKind {
+    /// Only files.
+    Files,
+    /// Either directories or files, in this order.
+    Either,
+    /// Both directories and files, in this order.
+    Both,
 }
 
 impl Fetcher {
@@ -130,6 +140,7 @@ fn entries(dir: PathBuf, kind: Option<EntryKind>) -> Box<dyn Iterator<Item = Pat
             .flatten()
             .flat_map(move |de| {
                 let path = de.path();
+                use EntryKind::*;
                 match (path.is_dir(), is_included(&path), kind) {
                     (false, Some(true), _) => Box::new(iter::once(path)),
                     (true, Some(false), Some(_)) => entries(path, kind),

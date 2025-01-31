@@ -1,4 +1,4 @@
-use crate::command::{EntryKind, Fetcher, Refine};
+use super::{EntryKind, Fetcher, Refine};
 use anyhow::Result;
 use clap::{Args, ValueEnum};
 use human_repr::HumanCount;

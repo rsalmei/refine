@@ -1,6 +1,6 @@
-use crate::command::{EntryKind, Refine};
-use crate::utils::{kind, NamingRules};
-use crate::{impl_new_name, impl_new_name_mut, impl_original_path, utils};
+use super::{EntryKind, Refine};
+use crate::utils::{self, kind, NamingRules};
+use crate::{impl_new_name, impl_new_name_mut, impl_original_path};
 use anyhow::Result;
 use clap::Args;
 use std::cmp::Reverse;

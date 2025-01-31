@@ -1,4 +1,4 @@
-use crate::command::{EntryKind, Fetcher, Refine};
+use super::{EntryKind, Fetcher, Refine};
 use crate::utils::{self, NamingRules, Sequence};
 use crate::{impl_new_name, impl_new_name_mut, impl_original_path};
 use anyhow::Result;

@@ -1,4 +1,4 @@
-use crate::command::{EntryKind, Refine};
+use super::{EntryKind, Refine};
 use crate::utils::{self, Sequence};
 use anyhow::Result;
 use clap::Args;

@@ -1,6 +1,6 @@
-use crate::command::{EntryKind, Refine};
-use crate::utils::kind;
-use crate::{impl_original_path, utils};
+use super::{EntryKind, Refine};
+use crate::impl_original_path;
+use crate::utils::{self, kind};
 use anyhow::{Context, Result};
 use clap::{Args, ValueEnum};
 use std::collections::HashSet;
