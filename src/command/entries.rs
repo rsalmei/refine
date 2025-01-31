@@ -1,4 +1,4 @@
-use crate::commands::EntryKind;
+use super::{EntryKind, EntryKind::*};
 use crate::utils;
 use anyhow::{anyhow, Result};
 use clap::builder::NonEmptyStringValueParser;
@@ -139,7 +139,7 @@ fn entries(dir: PathBuf, rm: RecurseMode) -> Box<dyn Iterator<Item = PathBuf>> {
             .flatten()
             .flat_map(move |de| {
                 let path = de.path();
-                use {EntryKind::*, RecurseMode::*};
+                use RecurseMode::*;
                 match (path.is_dir(), is_included(&path), rm) {
                     (false, Some(true), _) => Box::new(iter::once(path)),
                     (true, Some(false), Recurse(_)) => entries(path, rm),

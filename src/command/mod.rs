@@ -1,9 +1,11 @@
 mod entries;
+mod interface;
 
-use crate::commands::{dupes, join, list, rebuild, rename, Refine};
+use crate::commands::{dupes, join, list, rebuild, rename};
 use anyhow::Result;
 use clap::Subcommand;
 pub use entries::{Fetcher, Filters};
+pub use interface::{EntryKind, Refine};
 use std::fmt;
 use std::path::PathBuf;
 

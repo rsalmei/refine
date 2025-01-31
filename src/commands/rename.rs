@@ -1,4 +1,4 @@
-use super::{EntryKind, Refine};
+use crate::command::{EntryKind, Refine};
 use crate::utils::{kind, NamingRules};
 use crate::{impl_new_name, impl_new_name_mut, impl_original_path, utils};
 use anyhow::Result;

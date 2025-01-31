@@ -1,4 +1,4 @@
-use super::{EntryKind, Refine};
+use crate::command::{EntryKind, Refine};
 use crate::utils::kind;
 use crate::{impl_original_path, utils};
 use anyhow::{Context, Result};

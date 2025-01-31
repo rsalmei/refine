@@ -1,10 +1,10 @@
+mod command;
 mod commands;
-mod runner;
 mod utils;
 
 use anyhow::Result;
 use clap::Parser;
-use runner::{Command, Filters};
+use command::{Command, Filters};
 use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
