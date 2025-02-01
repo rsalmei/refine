@@ -5,7 +5,7 @@ mod utils;
 use anyhow::Result;
 use clap::Parser;
 use commands::Command;
-use entries::Filters;
+use entries::{Fetcher, Filters};
 use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
@@ -29,5 +29,6 @@ fn main() -> Result<()> {
         false => args.dirs,       // lists files from the given paths,
         true => vec![".".into()], // or the current directory if no paths are given.
     };
-    args.cmd.run(dirs, args.filters)
+    let fetcher = Fetcher::new(dirs, args.filters)?;
+    args.cmd.run(fetcher)
 }

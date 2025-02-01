@@ -4,7 +4,7 @@ mod list;
 mod rebuild;
 mod rename;
 
-use crate::entries::{EntryKind, Fetcher, Filters};
+use crate::entries::{EntryKind, Fetcher};
 use anyhow::Result;
 use clap::Subcommand;
 use std::fmt;
@@ -37,8 +37,7 @@ pub trait Refine {
 }
 
 impl Command {
-    pub fn run(self, dirs: Vec<PathBuf>, filters: Filters) -> Result<()> {
-        let fetcher = Fetcher::new(dirs, filters)?;
+    pub fn run(self, fetcher: Fetcher) -> Result<()> {
         match self {
             Command::Dupes(cmd) => run(cmd, fetcher),
             Command::Rebuild(cmd) => run(cmd, fetcher),
