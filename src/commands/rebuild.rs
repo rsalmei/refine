@@ -100,22 +100,22 @@ impl Refine for Rebuild {
                     .0
             }
         };
-        let p_seq = if self.partial {
-            |m: &Media| m.seq.unwrap_or(usize::MAX) // files with a sequence first, no sequence last.
-        } else {
-            |_: &Media| 0 // completely ignore previous sequences.
+        let p_seq = match self.partial {
+            true => |m: &Media| m.seq,    // retain previous sequences.
+            false => |_: &Media| Some(1), // completely ignore previous sequences.
         };
+        let s_seq = |m: &Media| m.seq.unwrap_or(usize::MAX); // files with a sequence first, no sequence last.
 
         // step: generate new names.
         medias.sort_unstable_by(|m, n| {
             // unfortunately, some file systems have low resolution creation time, HFS+ for example, so seq is used to disambiguate `created`.
-            (m.group(), p_seq(m), m.created, m.seq).cmp(&(n.group(), p_seq(n), n.created, n.seq))
+            (m.group(), s_seq(m), m.created, m.seq).cmp(&(n.group(), s_seq(n), n.created, n.seq))
         });
         medias
             .chunk_by_mut(|m, n| m.group() == n.group())
             .for_each(|g| {
                 let base = g[name_idx(g)].new_name.to_owned(); // must be owned because `g` will be modified below.
-                let mut seq = g[0].seq.unwrap_or(1); // the minimum found for this group will be the first.
+                let mut seq = p_seq(&g[0]).unwrap_or(1); // the minimum found for this group will be the first.
                 g.iter_mut().for_each(|m| {
                     let (dot, ext) = if m.ext.is_empty() {
                         ("", "")
