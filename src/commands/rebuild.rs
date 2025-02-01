@@ -53,7 +53,7 @@ impl Refine for Rebuild {
     fn adjust(&mut self, fetcher: &Fetcher) {
         if fetcher.missing_dirs && !self.partial && self.force.is_none() {
             self.partial = true;
-            eprintln!("Using partial mode: at least one path is not available.\n");
+            eprintln!("Enabling partial mode due to missing directories.\n");
         }
     }
 

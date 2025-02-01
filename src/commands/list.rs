@@ -10,7 +10,7 @@ use std::path::PathBuf;
 #[derive(Debug, Args)]
 pub struct List {
     /// Sort by.
-    #[arg(short = 'b', long, value_enum, default_value_t = By::Name)]
+    #[arg(short = 'b', long, value_name = "STR", value_enum, default_value_t = By::Name)]
     by: By,
     /// Reverse the default order (name:asc, size:desc, path:asc).
     #[arg(short = 'r', long)]

@@ -13,13 +13,13 @@ pub struct Join {
     /// The target directory; will be created if it doesn't exist.
     #[arg(short = 't', long, value_name = "PATH", default_value = ".")]
     target: PathBuf,
-    /// The strategy to use to join.
-    #[arg(short = 'b', long, value_enum, default_value_t = By::Move)]
+    /// The type of join to perform.
+    #[arg(short = 'b', long, value_name = "STR", value_enum, default_value_t = By::Move)]
     by: By,
-    /// Specify how to resolve clashes.
-    #[arg(short = 'c', long, value_enum, default_value_t = Clashes::Sequence)]
+    /// How to resolve clashes.
+    #[arg(short = 'c', long, value_name = "STR", value_enum, default_value_t = Clashes::Sequence)]
     clashes: Clashes,
-    /// Force joining already in place files and directories, i.e., in subdirectories of the target.
+    /// Force joining already in place files and directories, i.e. in subdirectories of the target.
     #[arg(short = 'f', long)]
     force: bool,
     /// Do not remove empty parent directories after joining files.
@@ -40,11 +40,11 @@ pub enum By {
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
 pub enum Clashes {
-    #[value(aliases = ["s", "seq"])]
+    #[value(aliases = ["seq"])]
     Sequence,
-    #[value(aliases = ["p", "par", "pb", "parent-before"])]
+    #[value(aliases = ["pn"])]
     ParentName,
-    #[value(aliases = ["pa"])]
+    #[value(aliases = ["np"])]
     NameParent,
     #[value(aliases = ["sk"])]
     Skip,

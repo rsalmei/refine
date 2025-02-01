@@ -14,9 +14,9 @@ use std::path::PathBuf;
 pub enum Command {
     /// Find possibly duplicated files by both size and filename.
     Dupes(dupes::Dupes),
-    /// Join all files into the same directory.
+    /// Join files into the same directory.
     Join(join::Join),
-    /// List files from the given paths.
+    /// List files from the given directories.
     List(list::List),
     /// Rebuild the filenames of media collections intelligently.
     Rebuild(rebuild::Rebuild),
