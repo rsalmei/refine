@@ -39,12 +39,6 @@ pub struct Filters {
     pub shallow: bool,
 }
 
-#[derive(Debug, Copy, Clone)]
-enum RecurseMode {
-    Recurse(EntryKind),
-    Shallow,
-}
-
 #[derive(Debug)]
 pub struct Fetcher {
     dirs: Vec<PathBuf>,
@@ -78,13 +72,10 @@ impl Fetcher {
     }
 
     pub(super) fn fetch(&self, kind: EntryKind) -> impl Iterator<Item = PathBuf> + '_ {
-        let rm = match self.shallow {
-            true => RecurseMode::Shallow,
-            false => RecurseMode::Recurse(kind),
-        };
+        let kind = (!self.shallow).then_some(kind);
         self.dirs
             .iter()
-            .flat_map(move |p| entries(p.to_owned(), rm))
+            .flat_map(move |p| entries(p.to_owned(), kind))
     }
 }
 
@@ -104,7 +95,7 @@ re_input!(
     RE_EIN, ext_in; RE_EEX, ext_ex; // extension include and exclude.
 );
 
-fn entries(dir: PathBuf, rm: RecurseMode) -> Box<dyn Iterator<Item = PathBuf>> {
+fn entries(dir: PathBuf, kind: Option<EntryKind>) -> Box<dyn Iterator<Item = PathBuf>> {
     fn is_included(path: &Path) -> Option<bool> {
         fn is_match(s: &str, re_in: Option<&Regex>, re_ex: Option<&Regex>) -> bool {
             re_ex.map_or(true, |re_ex| !re_ex.is_match(s))
@@ -139,14 +130,13 @@ fn entries(dir: PathBuf, rm: RecurseMode) -> Box<dyn Iterator<Item = PathBuf>> {
             .flatten()
             .flat_map(move |de| {
                 let path = de.path();
-                use RecurseMode::*;
-                match (path.is_dir(), is_included(&path), rm) {
+                match (path.is_dir(), is_included(&path), kind) {
                     (false, Some(true), _) => Box::new(iter::once(path)),
-                    (true, Some(false), Recurse(_)) => entries(path, rm),
-                    (true, Some(true), Recurse(Files)) => entries(path, rm),
-                    (true, Some(true), Recurse(Either)) => Box::new(iter::once(path)),
-                    (true, Some(true), Recurse(Both)) => {
-                        Box::new(iter::once(path.to_owned()).chain(entries(path, rm)))
+                    (true, Some(false), Some(_)) => entries(path, kind),
+                    (true, Some(true), Some(Files)) => entries(path, kind),
+                    (true, Some(true), Some(Either)) => Box::new(iter::once(path)),
+                    (true, Some(true), Some(Both)) => {
+                        Box::new(iter::once(path.to_owned()).chain(entries(path, kind)))
                     }
                     _ => Box::new(iter::empty()),
                 }
