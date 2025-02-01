@@ -38,9 +38,17 @@ pub struct Filters {
     pub shallow: bool,
 }
 
-/// Denotes which kind of entries will be collected.
+#[derive(Debug)]
+pub struct Fetcher {
+    dirs: Vec<PathBuf>,
+    shallow: bool,
+    /// Used to determine whether there were missing directories in the input.
+    pub missing_dirs: bool,
+}
+
+/// Denotes which kind of entries should be included.
 #[derive(Debug, Copy, Clone)]
-pub enum EntrySet {
+pub enum EntryKind {
     /// Only files.
     Files,
     /// Either directories or files, in this order.
@@ -49,56 +57,36 @@ pub enum EntrySet {
     Both,
 }
 
-#[derive(Debug, Copy, Clone)]
-enum RecurseMode {
-    Recurse(EntrySet),
-    Shallow,
-}
-
-#[derive(Debug)]
-pub struct Entries {
-    dirs: Vec<PathBuf>,
-    shallow: bool,
-    /// Used to determine whether there were missing directories in the input.
-    missing_dirs: bool,
-}
-
-impl Entries {
-    pub(super) fn new(mut dirs: Vec<PathBuf>, filters: Filters) -> Result<Entries> {
+impl Fetcher {
+    pub(super) fn new(mut dirs: Vec<PathBuf>, filters: Filters) -> Result<Fetcher> {
         parse_input_regexes(&filters)?;
 
-        let prev = dirs.len();
+        let n = dirs.len();
         dirs.sort_unstable();
         dirs.dedup();
-        if prev != dirs.len() {
-            eprintln!("warning: {} duplicated path(s) ignored", prev - dirs.len());
+        if n != dirs.len() {
+            eprintln!("warning: {} duplicated directories ignored", n - dirs.len());
         }
 
-        let prev = dirs.len();
-        dirs.retain(|p| p.is_dir());
+        let (dirs, errs) = dirs.into_iter().partition::<Vec<_>, _>(|p| p.is_dir());
+        errs.iter()
+            .for_each(|p| eprintln!("warning: directory not found: {}", p.display()));
         if dirs.is_empty() {
             return Err(anyhow!("no valid paths given"));
         }
 
-        Ok(Entries {
-            missing_dirs: prev != dirs.len(), // use dirs before moving it below.
+        Ok(Fetcher {
             dirs,
             shallow: filters.shallow,
+            missing_dirs: !errs.is_empty(),
         })
     }
 
-    pub(super) fn fetch(&self, kind: EntrySet) -> impl Iterator<Item = PathBuf> + '_ {
-        let rm = match self.shallow {
-            true => RecurseMode::Shallow,
-            false => RecurseMode::Recurse(kind),
-        };
+    pub(super) fn fetch(&self, kind: EntryKind) -> impl Iterator<Item = PathBuf> + '_ {
+        let kind = (!self.shallow).then_some(kind);
         self.dirs
             .iter()
-            .flat_map(move |p| entries(p.to_owned(), rm))
-    }
-
-    pub fn missing_dirs(&self) -> bool {
-        self.missing_dirs
+            .flat_map(move |p| entries(p.to_owned(), kind))
     }
 }
 
@@ -118,7 +106,7 @@ re_input!(
     RE_EIN, ext_in; RE_EEX, ext_ex; // extension include and exclude.
 );
 
-fn entries(dir: PathBuf, rm: RecurseMode) -> Box<dyn Iterator<Item = PathBuf>> {
+fn entries(dir: PathBuf, kind: Option<EntryKind>) -> Box<dyn Iterator<Item = PathBuf>> {
     fn is_included(path: &Path) -> Option<bool> {
         fn is_match(s: &str, re_in: Option<&Regex>, re_ex: Option<&Regex>) -> bool {
             re_ex.map_or(true, |re_ex| !re_ex.is_match(s))
@@ -153,14 +141,14 @@ fn entries(dir: PathBuf, rm: RecurseMode) -> Box<dyn Iterator<Item = PathBuf>> {
             .flatten()
             .flat_map(move |de| {
                 let path = de.path();
-                use {EntrySet::*, RecurseMode::*};
-                match (path.is_dir(), is_included(&path), rm) {
+                use EntryKind::*;
+                match (path.is_dir(), is_included(&path), kind) {
                     (false, Some(true), _) => Box::new(iter::once(path)),
-                    (true, Some(false), Recurse(_)) => entries(path, rm),
-                    (true, Some(true), Recurse(Files)) => entries(path, rm),
-                    (true, Some(true), Recurse(Either)) => Box::new(iter::once(path)),
-                    (true, Some(true), Recurse(Both)) => {
-                        Box::new(iter::once(path.to_owned()).chain(entries(path, rm)))
+                    (true, Some(false), Some(_)) => entries(path, kind),
+                    (true, Some(true), Some(Files)) => entries(path, kind),
+                    (true, Some(true), Some(Either)) => Box::new(iter::once(path)),
+                    (true, Some(true), Some(Both)) => {
+                        Box::new(iter::once(path.to_owned()).chain(entries(path, kind)))
                     }
                     _ => Box::new(iter::empty()),
                 }

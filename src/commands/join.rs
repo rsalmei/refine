@@ -1,7 +1,6 @@
-use crate::commands::Refine;
-use crate::entries::EntrySet;
-use crate::utils::kind;
-use crate::{impl_original_path, utils};
+use super::{EntryKind, Refine};
+use crate::impl_original_path;
+use crate::utils::{self, kind};
 use anyhow::{Context, Result};
 use clap::{Args, ValueEnum};
 use std::collections::HashSet;
@@ -14,18 +13,18 @@ pub struct Join {
     /// The target directory; will be created if it doesn't exist.
     #[arg(short = 't', long, value_name = "PATH", default_value = ".")]
     target: PathBuf,
-    /// The strategy to use to join.
-    #[arg(short = 'b', long, value_enum, default_value_t = By::Move)]
+    /// The type of join to perform.
+    #[arg(short = 'b', long, value_name = "STR", value_enum, default_value_t = By::Move)]
     by: By,
-    /// Specify how to resolve clashes.
-    #[arg(short = 'c', long, value_enum, default_value_t = Clashes::Sequence)]
+    /// How to resolve clashes.
+    #[arg(short = 'c', long, value_name = "STR", value_enum, default_value_t = Clashes::Sequence)]
     clashes: Clashes,
-    /// Force joining already in place files and directories, i.e., in subdirectories of the target.
+    /// Force joining already in place files and directories, i.e. in subdirectories of the target.
     #[arg(short = 'f', long)]
     force: bool,
-    /// Do not remove the empty parent directories after joining.
-    #[arg(short = 'n', long)]
-    no_remove: bool,
+    /// Do not remove empty parent directories after joining files.
+    #[arg(short = 'p', long)]
+    parents: bool,
     /// Skip the confirmation prompt, useful for automation.
     #[arg(short = 'y', long)]
     yes: bool,
@@ -41,12 +40,12 @@ pub enum By {
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
 pub enum Clashes {
-    #[value(aliases = ["s", "seq"])]
+    #[value(aliases = ["seq"])]
     Sequence,
-    #[value(aliases = ["p", "par", "pb", "parent-before"])]
-    Parent,
-    #[value(aliases = ["pa"])]
-    ParentAfter,
+    #[value(aliases = ["pn"])]
+    ParentName,
+    #[value(aliases = ["np"])]
+    NameParent,
     #[value(aliases = ["sk"])]
     Skip,
 }
@@ -77,7 +76,7 @@ static SHARED: OnceLock<Shared> = OnceLock::new();
 impl Refine for Join {
     type Media = Media;
     const OPENING_LINE: &'static str = "Joining files...";
-    const ENTRY_SET: EntrySet = EntrySet::Either;
+    const ENTRY_KIND: EntryKind = EntryKind::Either;
 
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         let shared = Shared {
@@ -129,10 +128,10 @@ impl Refine for Join {
                             m.new_name = Some(new_name);
                         })
                     }
-                    Clashes::Parent | Clashes::ParentAfter => g.iter_mut().for_each(|m| {
+                    Clashes::ParentName | Clashes::NameParent => g.iter_mut().for_each(|m| {
                         let par = m.path.parent().unwrap_or(Path::new("/"));
                         let par = par.file_name().unwrap().to_str().unwrap();
-                        if let Clashes::Parent = self.clashes {
+                        if let Clashes::ParentName = self.clashes {
                             m.new_name = Some(format!("{par}-{name}{dot}{ext}"));
                         } else {
                             m.new_name = Some(format!("{name}-{par}{dot}{ext}"));
@@ -182,7 +181,7 @@ impl Refine for Join {
         }
 
         // step: grab the files' parent directories before the consuming operations.
-        let dirs = match self.no_remove {
+        let dirs = match self.parents {
             true => HashSet::new(),
             false => medias
                 .iter()
@@ -206,7 +205,7 @@ impl Refine for Join {
         }
 
         // step: remove the empty parent directories.
-        if !self.no_remove {
+        if !self.parents {
             dirs.into_iter().for_each(|dir| {
                 if let Ok(rd) = fs::read_dir(&dir) {
                     const DS_STORE: &str = ".DS_Store";

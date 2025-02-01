@@ -9,13 +9,15 @@
 
 ## What it does
 
-This tool will help you manage and organize your collections of files like no other! It will help you find duplicated files, rename filenames and directories with advanced regex rules, strip and replace parts of their names, join them together in a single directory, filter and extract copies of files and directories, apply sequence numbers to equivalent names, and even group and completely rebuild their names to organize them however you want, and make everything refined and easier to find.
+This tool will revolutionize the way you manage and organize your file collections! It offers a comprehensive set of features to help you find duplicated files based on both size and filename, seamlessly join them into a single directory with advanced conflict resolution, quickly list files from multiple directories sorted together by various criteria, effortlessly rename or strip filenames and directories using advanced regular expression rules, and even rebuild entire media collections by identifying groups of files with similar names and assigning a sequential number to each, allowing you to organize them in a way that makes sense to you.
 
-I've made this tool to be the fastest and easiest way to organize file collections. I use it a lot, and I hope it can help you too. It will scan several given paths at once and analyze all files and directories as a whole, performing some advanced operations on them. Enjoy!
+> Use it to _refine_ your photo, music, movie, porn, etc. collections, with advanced features in a simple and efficient way!
 
-It is blazingly fast, of course, like all Rust 🦀 software!
+I've made this tool to be the fastest and easiest way to organize media collections. I use it a lot, and I hope it can help you too. It will scan several given directories at once, and analyze all files and directories as a whole, performing some advanced operations on them.
 
-The name comes from "_refine your [photos | images | videos | movies | porn | music | etc.] collection_"!
+And yes, it is blazingly fast, like all Rust 🦀 software!
+
+Enjoy!
 
 ## How to use it
 
@@ -28,6 +30,14 @@ cargo install refine
 And that's it, you're ready to go! You can now call it anywhere.
 
 ## What's new
+
+### New in 1.3
+
+This version is mostly about polishing, with some improvements and bug fixes.
+
+We have a smarter list command, which hides full paths by default and uses descending order for size and ascending for name and path; join: change no_remove flag to parents (n -> p) and some clash options; rebuild: change simple_match flag to simple and fix full mode, which was not resetting sequences; general polishing.
+
+<details><summary>(previous)</summary>
 
 ### New in 1.2
 
@@ -42,20 +52,17 @@ Also, several enum CLI arguments now support aliases, and I've fixed join comman
 
 ### New in 1.0
 
-Yes, it is time.
-After a complete overhaul of the code, it's time to release 1.0!
+Yes, it is time. After a complete overhaul of the code, it's time to release 1.0!
 <br>It's an accomplishment I'm proud of, which took over 70 commits and a month's work, resulting in most of the code being rewritten.
 It is more mature, stable, and well-structured now.
 
-The major motivation for this version is the rebuild Partial mode! We can now rebuild collections even when some paths are not available! This means that files not affected by the specified naming rules will stay the same, keeping their sequence numbers, while new files are appended after the highest sequence found. It is handy for collections on external drives or cloud storage which are not always connected, allowing you to, even on the go, rebuild new files without messing up previous ones.
+The major motivation for this version is the rebuild Partial mode! We can now rebuild collections even when some directories are not available! This means that files not affected by the specified naming rules will stay the same, keeping their sequence numbers, while new files are appended after the highest sequence found. It is handy for collections on external drives or cloud storage which are not always connected, allowing you to, even on the go, rebuild new files without messing up previous ones.
 
 And this also includes:
 
 - rebuild: new `--replace` option to replace all occurrences of some string or regex in the filenames with another one.
 - new internal CLI options handling, which enables commands to modify them prior to their execution.
-    - the new rebuild partial mode is auto-enabled in case not all paths are currently available.
-
-<details><summary>(previous)</summary>
+    - the new rebuild partial mode is auto-enabled in case not all directories are currently available.
 
 ### New in 0.18
 
@@ -134,24 +141,23 @@ And this also includes:
 
 All commands will:
 
-1. recursively scan all the given paths (excluding hidden .folders)
-    - can optionally perform only a shallow scan
-    - can optionally filter files based on two regexes (`--include` and `--exclude`)
-    - can optionally filter directories based on two regexes (`--dir-in` and `--dir-ex`)
-2. load the metadata the command requires to run (e.g., file size, creation date, etc.) for each file
-3. execute the command and print the results
+1. scan all the given directories recursively (excluding hidden .folders)
+    - can optionally perform only a shallow scan, or even filter files and directories based on regular expressions
+2. load the metadata for each file, like size and creation date, required by some commands
+3. execute the command and either print the results or guide the user to perform the changes
+    - everything is always interactive, so you can review the changes before applying them
 
 <details><summary>refine --help</summary>
 
 ```
 Refine your file collection using Rust!
 
-Usage: refine [OPTIONS] [PATHS]... <COMMAND>
+Usage: refine [OPTIONS] [DIRS]... <COMMAND>
 
 Commands:
   dupes    Find possibly duplicated files by both size and filename
-  join     Join all files into the same directory
-  list     List files from the given paths
+  join     Join files into the same directory
+  list     List files from the given directories
   rebuild  Rebuild the filenames of media collections intelligently
   rename   Rename files in batch, according to the given rules
   help     Print this message or the help of the given subcommand(s)
@@ -170,14 +176,14 @@ Global:
       --ext-in <REGEX>   Include only these extensions
       --ext-ex <REGEX>   Exclude these extensions
   -w, --shallow          Do not recurse into subdirectories
-  [PATHS]...         Paths to scan
+  [DIRS]...          Directories to scan
 
 For more information, see https://github.com/rsalmei/refine
 ```
 
 </details>
 
-## The `dupes` command
+### The `dupes` command
 
 The `dupes` command will analyze and report the possibly duplicated files, either by size or name. It will even load a sample from each file, to guarantee they are indeed duplicated. It is a small sample by default but can help reduce false positives a lot, and you can increase it if you want.
 
@@ -193,7 +199,7 @@ The `dupes` command will analyze and report the possibly duplicated files, eithe
 ```
 Find possibly duplicated files by both size and filename
 
-Usage: refine dupes [OPTIONS] [PATHS]...
+Usage: refine dupes [OPTIONS] [DIRS]...
 
 Options:
   -s, --sample <BYTES>  Sample size in bytes (0 to disable) [default: 2048]
@@ -205,36 +211,36 @@ Options:
 Example:
 
 ```
-❯ refine dupes ~/Downloads /Volumes/External --sample 20480
+$ refine dupes ~/Downloads /Volumes/External --sample 20480
 ```
 
-## The `join` command
+### The `join` command
 
-The `join` command will let you join all the files and directories in the given paths into the same directory. You can filter files however you like, and choose how they will be joined, either moving or copying them. It will even remove the empty parent directories after joining!
+The `join` command will let you grab all files and directories in the given directories and join them into a single one. You can filter files however you like, and choose whether they will be joined by moving or copying. It will even remove the empty parent directories after a move joining!
 
 > Note: any deletions are only performed after files and directories have been successfully moved/copied. So, in case any errors occur, the files and directories partially moved/copied will be found in the target directory, so you should manually delete them before trying again.
 
-1. detect clashes, files with the same name in different directories, and apply a sequential number
+1. detect clashes, i.e. files with the same name in different directories, and apply the given clash strategy
 2. detect already in-place files
 3. print the resulting changes to the filenames and directories, and ask for confirmation
 4. if the user confirms, apply the changes
-5. remove any empty parent directories
+5. remove any empty parent directories when moving files
 
 <details><summary>refine join --help</summary>
 
 ```
-Join all files into the same directory
+Join files into the same directory
 
-Usage: refine join [OPTIONS] [PATHS]...
+Usage: refine join [OPTIONS] [DIRS]...
 
 Options:
-  -t, --to <PATH>            The target directory; will be created if it doesn't exist [default: .]
-  -s, --strategy <STRATEGY>  The strategy to use to join [default: move] [possible values: move, copy]
-  -c, --clash <CLASH>        Specify how to resolve clashes [default: sequence] [possible values: sequence, parent, skip]
-  -f, --force                Force joining already in place files and directories, i.e., in subdirectories of the target
-  -n, --no-remove            Do not remove the empty parent directories after joining
-  -y, --yes                  Skip the confirmation prompt, useful for automation
-  -h, --help                 Print help
+  -t, --target <PATH>  The target directory; will be created if it doesn't exist [default: .]
+  -b, --by <STR>       The type of join to perform [default: move] [possible values: move, copy]
+  -c, --clashes <STR>  How to resolve clashes [default: sequence] [possible values: sequence, parent-name, name-parent, skip]
+  -f, --force          Force joining already in place files and directories, i.e. in subdirectories of the target
+  -p, --parents        Do not remove empty parent directories after joining files
+  -y, --yes            Skip the confirmation prompt, useful for automation
+  -h, --help           Print help
 ```
 
 </details>
@@ -242,28 +248,29 @@ Options:
 Example:
 
 ```
-❯ refine join ~/media/ /Volumes/External/ -i 'proj-01' -X 'ongoing' -t /Volumes/External/proj-01
+$ refine join ~/media/ /Volumes/External/ -i 'proj-01' -X 'ongoing' -t /Volumes/External/proj-01
 ```
 
-## The `list` command
+### The `list` command
 
-The `list` command will gather all the files in the given paths, sort them by name, size, or path, and display them in a friendly format.
+The `list` command will gather all the files in the given directories, sort them by name, size, or path, and display them in a friendly format.
 
 1. sort all files by either name, size, or path
-    - ascending by default, or optionally descending
+    - ascending by default for name and path, descending for size, or optionally reverse
 2. print the results
 
 <details><summary>refine list --help</summary>
 
 ```
-List files from the given paths
+List files from the given directories
 
-Usage: refine list [OPTIONS] [PATHS]...
+Usage: refine list [OPTIONS] [DIRS]...
 
 Options:
-  -b, --by <BY>  Sort by [default: name] [possible values: name, size, path]
-  -d, --desc     Use descending order
-  -h, --help     Print help
+  -b, --by <STR>  Sort by [default: name] [possible values: name, size, path]
+  -r, --rev       Reverse the default order (name:asc, size:desc, path:asc)
+  -p, --paths     Show full file paths
+  -h, --help      Print help
 ```
 
 </details>
@@ -271,26 +278,25 @@ Options:
 Example:
 
 ```
-❯ refine list ~/Downloads /Volumes/External --by size --desc
+$ refine list ~/Downloads /Volumes/External --by size --desc
 ```
 
-## The `rebuild` command
+### The `rebuild` command
 
-The `rebuild` command is a great achievement, if I say so myself. It will smartly rebuild the filenames of an entire collection when it is composed by user ids or streamer names, for instance. It will do so by removing sequence numbers, stripping parts of filenames you don't want, smartly detecting misspelled names by comparing with adjacent files, sorting the detected groups deterministically by creation date, regenerating the sequence numbers, and finally renaming all the files accordingly. It's awesome to quickly find your video or music library neatly sorted automatically... And the next time you run it, it will detect new files added since the last time, and include them in the correct group! Pretty cool, huh? And don't worry, you can review all the changes before applying them.
+I’m really proud of the `rebuild` command. It smartly rebuilds all the filenames of entire media collections, e.g., musics by album/singer and videos by streamers and even photos from your camera. Sequence numbers are removed, filenames are stripped according to your needs, similar names are intelligently matched, groups are sorted deterministically by creation date, sequence numbers are regenerated, and files are finally renamed!
 
-1. if forced mode is enabled:
-    1. overwrite all the filenames with the forced one
-2. else if partial mode is enabled:
-    1. apply naming rules to strip or replace parts of the filenames, marking modified files
-    2. strip sequence numbers from changed files, and extract/store the highest sequence from unchanged files
-3. otherwise:
-    1. apply naming rules to strip or replace parts of the filenames
-    2. strip sequence numbers from all files
-4. remove spaces and underscores, and smartly detect misspelled names
-5. group the resulting names, and smartly choose the most likely correct name among the group
-6. sort the group content according to the files' created dates
-7. regenerate the sequence numbers for each group ← Note that groups can contain files from different directories, and it will just work
-    1. if partial mode is enabled, retrieve the highest sequence found in the group
+It's awesome to quickly find your collections neatly sorted automatically; it's like magic, getting all files cleaned up, sorted, and sequenced with a single command. And upon running it again, the tool will seem to recognize the new files that have been added, as it will regenerate everything but only display entries that need to be changed, as the rest are already correct! And in case you delete files, all the subsequent ones will be renamed accordingly! Quite impressive, don't you think?
+
+And don't worry as this tool is interactive, so you can review all changes before applying them.
+
+1. apply naming rules to strip or replace parts of the filenames
+2. extract and strip sequence numbers from names
+3. if force mode is enabled, set all names to the forced value
+4. if smart match is enabled, remove spaces and underscores from names
+5. group the files by their resulting names
+6. sort the groups according to the files' created dates
+7. regenerate sequence numbers for each group; if partial mode is enabled, continue from the highest sequence found in the group
+   > Note that these groups can contain files from different directories, and it will just work
 8. print the resulting changes to the filenames, and ask for confirmation
 9. if the user confirms, apply the changes
 
@@ -299,16 +305,16 @@ The `rebuild` command is a great achievement, if I say so myself. It will smartl
 ```
 Rebuild the filenames of media collections intelligently
 
-Usage: refine rebuild [OPTIONS] [PATHS]...
+Usage: refine rebuild [OPTIONS] [DIRS]...
 
 Options:
   -b, --strip-before <STR|REGEX>    Strip from the start of the filename; blanks nearby are automatically removed
   -a, --strip-after <STR|REGEX>     Strip to the end of the filename; blanks nearby are automatically removed
   -e, --strip-exact <STR|REGEX>     Strip all occurrences in the filename; blanks nearby are automatically removed
   -r, --replace <STR|REGEX=STR|$N>  Replace all occurrences in the filename with another; blanks are not touched
-  -s, --no-smart-detect             Disable smart detection of similar filenames (e.g. "foo bar.mp4", "FooBar.mp4" and "foo__bar.mp4")
+  -s, --simple                      Disable smart matching, so "foo bar.mp4", "FooBar.mp4" and "foo__bar.mp4" are different
   -f, --force <STR>                 Force to overwrite filenames (use the Global options to filter files)
-  -p, --partial                     Assume not all paths are available, so only touch files actually modified by the given rules
+  -p, --partial                     Assume not all directories are available, which retains current sequences (but fixes gaps)
   -y, --yes                         Skip the confirmation prompt, useful for automation
   -h, --help                        Print help
 ```
@@ -318,10 +324,10 @@ Options:
 Example:
 
 ```
-❯ refine rebuild ~/media /Volumes/External -a 720p -a Bluray -b xpto -e old
+$ refine rebuild ~/media /Volumes/External -a 720p -a Bluray -b xpto -e old
 ```
 
-## The `rename` command
+### The `rename` command
 
 The `rename` command will let you batch rename files like no other tool, seriously! You can quickly strip common prefixes, suffixes, and exact parts of the filenames, as well as apply any regex replacements you want. By default, in case a filename ends up clashing with other files in the same directory, that whole directory will be disallowed to make any changes. The list of clashes will be nicely formatted and printed, so you can manually check them. And you can optionally allow changes to other files in the same directory, removing only the clashes if you find it safe.
 
@@ -336,7 +342,7 @@ The `rename` command will let you batch rename files like no other tool, serious
 ```
 Rename files in batch, according to the given rules
 
-Usage: refine rename [OPTIONS] [PATHS]...
+Usage: refine rename [OPTIONS] [DIRS]...
 
 Options:
   -b, --strip-before <STR|REGEX>    Strip from the start of the filename; blanks nearby are automatically removed
@@ -353,20 +359,21 @@ Options:
 Example:
 
 ```
-❯ refine rename ~/media /Volumes/External -b "^\d+_" -r '([^\.]*?)\.=$1 '
+$ refine rename ~/media /Volumes/External -b "^\d+_" -r '([^\.]*?)\.=$1 '
 ```
 
 ## Changelog
 
 <details><summary>(click to expand)</summary>
 
+- 1.3.0 Jan 31, 2025: list: smarter list command, which hides full paths by default (with a flag for showing them if needed) and uses by default descending order for size and ascending for name and path (with a flag to reverse it if needed); join: change no_remove flag to parents (n -> p) and some clash options; rebuild: change simple_match flag to simple and fix full mode, which was not resetting sequences; general polishing.
 - 1.2.1 Nov 19, 2024: just require newer regex, so deps badge won't show "maybe insecure".
 - 1.2.0 Nov 19, 2024: rebuild: much improved partial mode which can alter groups of filenames while preserving sequences, and even detect and fix gaps in sequences caused by deleted files.
 - 1.1.0 Oct 10, 2024: join: support not empty target folders and resolve clashes accordingly; include support for aliases in several enum CLI arguments; fix join by copy still moving files.
-- 1.0.0 Oct 09, 2024: major overhaul; rebuild: new partial mode, new replace feature, auto-enable partial mode in case not all paths are available.
+- 1.0.0 Oct 09, 2024: major overhaul; rebuild: new partial mode, new replace feature, auto-enable partial mode in case not all directories are available.
 - 0.18.0 Aug 27, 2024: rebuild: new force implementation that is easier to use with improved memory usage.
 - 0.17.1 Aug 15, 2024: global: fix `--shallow` option.
-- 0.17.0 Aug 05, 2024: global: dedup input paths, enables to select only files by filtering extensions; join: new clash resolve option.
+- 0.17.0 Aug 05, 2024: global: dedup input directories, enables to select only files by filtering extensions; join: new clash resolve option.
 - 0.16.0 Ago 01, 2024: global: scan with directory support, new `join` command, new magic filter options, new filter options; rename: include full directory support.
 - 0.15.0 Jul 18, 2024: rename: nicer command output by parent directory; new threaded yes/no prompt that can be aborted with CTRL-C.
 - 0.14.0 Jul 11, 2024: rename: disallow by default changes in directories where clashes are detected, including new `--clashes` option to allow them.

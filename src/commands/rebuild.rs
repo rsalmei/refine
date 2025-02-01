@@ -1,5 +1,4 @@
-use crate::commands::Refine;
-use crate::entries::{Entries, EntrySet};
+use super::{EntryKind, Fetcher, Refine};
 use crate::utils::{self, NamingRules, Sequence};
 use crate::{impl_new_name, impl_new_name_mut, impl_original_path};
 use anyhow::Result;
@@ -16,13 +15,13 @@ use std::time::SystemTime;
 pub struct Rebuild {
     #[command(flatten)]
     naming_rules: NamingRules,
-    /// Disable smart matching (e.g. "foo bar.mp4", "FooBar.mp4" and "foo__bar.mp4" are considered different).
+    /// Disable smart matching, so "foo bar.mp4", "FooBar.mp4" and "foo__bar.mp4" are different.
     #[arg(short = 's', long)]
-    simple_match: bool,
+    simple: bool,
     /// Force to overwrite filenames (use the Global options to filter files).
-    #[arg(short = 'f', long, value_name = "STR", conflicts_with_all = ["strip_before", "strip_after", "strip_exact", "replace", "simple_match", "partial"], value_parser = NonEmptyStringValueParser::new())]
+    #[arg(short = 'f', long, value_name = "STR", conflicts_with_all = ["strip_before", "strip_after", "strip_exact", "replace", "simple", "partial"], value_parser = NonEmptyStringValueParser::new())]
     force: Option<String>,
-    /// Assume not all paths are available, so only touch files actually modified by the given rules.
+    /// Assume not all directories are available, which retains current sequences (but fixes gaps).
     #[arg(short = 'p', long)]
     partial: bool,
     /// Skip the confirmation prompt, useful for automation.
@@ -49,12 +48,12 @@ pub struct Media {
 impl Refine for Rebuild {
     type Media = Media;
     const OPENING_LINE: &'static str = "Rebuilding files...";
-    const ENTRY_SET: EntrySet = EntrySet::Files;
+    const ENTRY_KIND: EntryKind = EntryKind::Files;
 
-    fn adjust(&mut self, entries: &Entries) {
-        if entries.missing_dirs() && !self.partial && self.force.is_none() {
+    fn adjust(&mut self, fetcher: &Fetcher) {
+        if fetcher.missing_dirs && !self.partial && self.force.is_none() {
             self.partial = true;
-            eprintln!("warning: one or more paths are not available => enabling partial mode\n");
+            eprintln!("Enabling partial mode due to missing directories.\n");
         }
     }
 
@@ -79,7 +78,7 @@ impl Refine for Rebuild {
         }
 
         // step: smart matching on full media set (including unchanged files in partial mode).
-        if !self.simple_match {
+        if !self.simple {
             static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[\s_]+").unwrap());
 
             medias.iter_mut().for_each(|m| {
@@ -90,8 +89,8 @@ impl Refine for Rebuild {
         }
 
         // helper closures to pick names and sequences, vary according to the current mode.
-        let name_idx = if self.simple_match || self.force.is_some() {
-            |_g: &[Media]| 0 // all the names are exactly the same.
+        let name_idx = if self.simple || self.force.is_some() {
+            |_g: &[Media]| 0 // all the names are exactly the same within a group.
         } else {
             |g: &[Media]| {
                 g.iter()
@@ -101,22 +100,22 @@ impl Refine for Rebuild {
                     .0
             }
         };
-        let p_seq = if self.partial {
-            |m: &Media| m.seq.unwrap_or(usize::MAX) // files with a sequence first, no sequence last.
-        } else {
-            |_: &Media| 0 // completely ignore previous sequences.
+        let p_seq = match self.partial {
+            true => |m: &Media| m.seq,    // retain previous sequences.
+            false => |_: &Media| Some(1), // completely ignore previous sequences.
         };
+        let s_seq = |m: &Media| m.seq.unwrap_or(usize::MAX); // files with a sequence first, no sequence last.
 
         // step: generate new names.
         medias.sort_unstable_by(|m, n| {
             // unfortunately, some file systems have low resolution creation time, HFS+ for example, so seq is used to disambiguate `created`.
-            (m.group(), p_seq(m), m.created, m.seq).cmp(&(n.group(), p_seq(n), n.created, n.seq))
+            (m.group(), s_seq(m), m.created, m.seq).cmp(&(n.group(), s_seq(n), n.created, n.seq))
         });
         medias
             .chunk_by_mut(|m, n| m.group() == n.group())
             .for_each(|g| {
                 let base = g[name_idx(g)].new_name.to_owned(); // must be owned because `g` will be modified below.
-                let mut seq = g[0].seq.unwrap_or(1); // the minimum found for this group will be the first.
+                let mut seq = p_seq(&g[0]).unwrap_or(1); // the minimum found for this group will be the first.
                 g.iter_mut().for_each(|m| {
                     let (dot, ext) = if m.ext.is_empty() {
                         ("", "")

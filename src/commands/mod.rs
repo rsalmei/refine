@@ -4,7 +4,7 @@ mod list;
 mod rebuild;
 mod rename;
 
-use crate::entries::{Entries, EntrySet};
+use crate::entries::{EntryKind, Fetcher};
 use anyhow::Result;
 use clap::Subcommand;
 use std::fmt;
@@ -14,9 +14,9 @@ use std::path::PathBuf;
 pub enum Command {
     /// Find possibly duplicated files by both size and filename.
     Dupes(dupes::Dupes),
-    /// Join all files into the same directory.
+    /// Join files into the same directory.
     Join(join::Join),
-    /// List files from the given paths.
+    /// List files from the given directories.
     List(list::List),
     /// Rebuild the filenames of media collections intelligently.
     Rebuild(rebuild::Rebuild),
@@ -26,32 +26,32 @@ pub enum Command {
 
 /// The common interface for Refine commands.
 ///
-/// Implemented for each command's options, conferring its functionality.
+/// Implemented for each command's options to confer its specific functionality.
 pub trait Refine {
     type Media: TryFrom<PathBuf, Error: fmt::Display>;
     const OPENING_LINE: &'static str;
-    const ENTRY_SET: EntrySet;
+    const ENTRY_KIND: EntryKind;
 
-    fn adjust(&mut self, _entries: &Entries) {}
+    fn adjust(&mut self, _fetcher: &Fetcher) {}
     fn refine(&self, medias: Vec<Self::Media>) -> Result<()>;
 }
 
 impl Command {
-    pub fn run(self, entries: Entries) -> Result<()> {
+    pub fn run(self, fetcher: Fetcher) -> Result<()> {
         match self {
-            Command::Dupes(cmd) => run(cmd, entries),
-            Command::Rebuild(cmd) => run(cmd, entries),
-            Command::List(cmd) => run(cmd, entries),
-            Command::Rename(cmd) => run(cmd, entries),
-            Command::Join(cmd) => run(cmd, entries),
+            Command::Dupes(cmd) => run(cmd, fetcher),
+            Command::Rebuild(cmd) => run(cmd, fetcher),
+            Command::List(cmd) => run(cmd, fetcher),
+            Command::Rename(cmd) => run(cmd, fetcher),
+            Command::Join(cmd) => run(cmd, fetcher),
         }
     }
 }
 
-fn run<R: Refine>(mut cmd: R, entries: Entries) -> Result<()> {
+fn run<R: Refine>(mut cmd: R, fetcher: Fetcher) -> Result<()> {
     println!("=> {}\n", R::OPENING_LINE);
-    cmd.adjust(&entries);
-    cmd.refine(gen_medias(entries.fetch(R::ENTRY_SET)))
+    cmd.adjust(&fetcher);
+    cmd.refine(gen_medias(fetcher.fetch(R::ENTRY_KIND)))
 }
 
 fn gen_medias<T>(paths: impl Iterator<Item = PathBuf>) -> Vec<T>

@@ -1,7 +1,6 @@
-use crate::commands::Refine;
-use crate::entries::EntrySet;
-use crate::utils::{kind, NamingRules};
-use crate::{impl_new_name, impl_new_name_mut, impl_original_path, utils};
+use super::{EntryKind, Refine};
+use crate::utils::{self, kind, NamingRules};
+use crate::{impl_new_name, impl_new_name_mut, impl_original_path};
 use anyhow::Result;
 use clap::Args;
 use std::cmp::Reverse;
@@ -34,7 +33,7 @@ pub struct Media {
 impl Refine for Rename {
     type Media = Media;
     const OPENING_LINE: &'static str = "Renaming files...";
-    const ENTRY_SET: EntrySet = EntrySet::Both;
+    const ENTRY_KIND: EntryKind = EntryKind::Both;
 
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         // step: apply naming rules.

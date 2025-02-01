@@ -1,5 +1,4 @@
-use crate::commands::Refine;
-use crate::entries::EntrySet;
+use super::{EntryKind, Refine};
 use crate::utils::{self, Sequence};
 use anyhow::Result;
 use clap::Args;
@@ -28,7 +27,7 @@ pub struct Media {
 impl Refine for Dupes {
     type Media = Media;
     const OPENING_LINE: &'static str = "Detecting duplicate files...";
-    const ENTRY_SET: EntrySet = EntrySet::Files;
+    const ENTRY_KIND: EntryKind = EntryKind::Files;
 
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         // step: detect duplicates by size.
@@ -66,20 +65,15 @@ impl Refine for Dupes {
 }
 
 /// Sort the files by groups, and apply some algorithm on each.
-fn detect_duplicates<G, FG, FS>(
-    medias: &mut [Media],
-    sample: usize,
-    grouping: FG,
-    show: FS,
-) -> usize
+fn detect_duplicates<G, FG, FS>(medias: &mut [Media], sample: usize, group: FG, show: FS) -> usize
 where
     G: PartialEq + Ord,
     FG: Fn(&Media) -> &G,
     FS: Fn(&G, Vec<&Media>),
 {
-    medias.sort_unstable_by(|m1, m2| grouping(m1).cmp(grouping(m2)));
+    medias.sort_unstable_by(|m1, m2| group(m1).cmp(group(m2)));
     medias
-        .chunk_by_mut(|m, m2| grouping(m) == grouping(m2))
+        .chunk_by_mut(|m, m2| group(m) == group(m2))
         .filter(|_| utils::is_running())
         .filter(|g| g.len() > 1)
         .flat_map(|g| {
@@ -94,7 +88,7 @@ where
         })
         .map(|mut g| {
             g.sort_unstable_by(|m, n| m.path.cmp(&n.path));
-            show(grouping(g[0]), g)
+            show(group(g[0]), g)
         })
         .count()
 }
