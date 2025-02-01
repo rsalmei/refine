@@ -61,23 +61,24 @@ impl Fetcher {
     pub(super) fn new(mut dirs: Vec<PathBuf>, filters: Filters) -> Result<Fetcher> {
         parse_input_regexes(&filters)?;
 
-        let prev = dirs.len();
+        let n = dirs.len();
         dirs.sort_unstable();
         dirs.dedup();
-        if prev != dirs.len() {
-            eprintln!("warning: {} duplicated path(s) ignored", prev - dirs.len());
+        if n != dirs.len() {
+            eprintln!("warning: {} duplicated directories ignored", n - dirs.len());
         }
 
-        let prev = dirs.len();
-        dirs.retain(|p| p.is_dir());
+        let (dirs, errs) = dirs.into_iter().partition::<Vec<_>, _>(|p| p.is_dir());
+        errs.iter()
+            .for_each(|p| eprintln!("warning: directory not found: {}", p.display()));
         if dirs.is_empty() {
             return Err(anyhow!("no valid paths given"));
         }
 
         Ok(Fetcher {
-            missing_dirs: prev != dirs.len(),
             dirs,
             shallow: filters.shallow,
+            missing_dirs: !errs.is_empty(),
         })
     }
 
