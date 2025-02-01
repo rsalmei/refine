@@ -22,9 +22,9 @@ pub struct Join {
     /// Force joining already in place files and directories, i.e., in subdirectories of the target.
     #[arg(short = 'f', long)]
     force: bool,
-    /// Do not remove empty parent directories after joining.
+    /// Do not remove empty parent directories after joining files.
     #[arg(short = 'p', long)]
-    keep_parents: bool,
+    parents: bool,
     /// Skip the confirmation prompt, useful for automation.
     #[arg(short = 'y', long)]
     yes: bool,
@@ -43,9 +43,9 @@ pub enum Clashes {
     #[value(aliases = ["s", "seq"])]
     Sequence,
     #[value(aliases = ["p", "par", "pb", "parent-before"])]
-    Parent,
+    ParentName,
     #[value(aliases = ["pa"])]
-    ParentAfter,
+    NameParent,
     #[value(aliases = ["sk"])]
     Skip,
 }
@@ -128,10 +128,10 @@ impl Refine for Join {
                             m.new_name = Some(new_name);
                         })
                     }
-                    Clashes::Parent | Clashes::ParentAfter => g.iter_mut().for_each(|m| {
+                    Clashes::ParentName | Clashes::NameParent => g.iter_mut().for_each(|m| {
                         let par = m.path.parent().unwrap_or(Path::new("/"));
                         let par = par.file_name().unwrap().to_str().unwrap();
-                        if let Clashes::Parent = self.clashes {
+                        if let Clashes::ParentName = self.clashes {
                             m.new_name = Some(format!("{par}-{name}{dot}{ext}"));
                         } else {
                             m.new_name = Some(format!("{name}-{par}{dot}{ext}"));
@@ -181,7 +181,7 @@ impl Refine for Join {
         }
 
         // step: grab the files' parent directories before the consuming operations.
-        let dirs = match self.keep_parents {
+        let dirs = match self.parents {
             true => HashSet::new(),
             false => medias
                 .iter()
@@ -205,7 +205,7 @@ impl Refine for Join {
         }
 
         // step: remove the empty parent directories.
-        if !self.keep_parents {
+        if !self.parents {
             dirs.into_iter().for_each(|dir| {
                 if let Ok(rd) = fs::read_dir(&dir) {
                     const DS_STORE: &str = ".DS_Store";
