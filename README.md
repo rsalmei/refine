@@ -9,11 +9,13 @@
 
 ## What it does
 
-This tool will revolutionize the way you manage and organize your file collections! It offers a comprehensive set of features to help you find duplicated files based on both size and filename, seamlessly join them into a single directory with advanced conflict resolution, quickly list files from multiple directories sorted together by various criteria, effortlessly rename or strip filenames and directories using advanced regular expression rules, and even rebuild entire media collections by identifying groups of files with similar names and assigning a sequential number to each, allowing you to organize them in a way that makes sense to you.
+This tool will revolutionize the way you manage and organize your media collections! It can scan multiple root directories recursively and analyze all the files and directories found as a whole, performing some advanced operations on them.
 
-> Use it to _refine_ your photo, music, movie, porn, etc. collections, with advanced features in a simple and efficient way!
+It can help you reasonably find duplicated files based on both size and filename, seamlessly join them into a single directory with advanced conflict resolution, quickly list files from multiple directories sorted together by various criteria, effortlessly rename files and directories using advanced regular expressions, and even intelligently rebuild entire media collections by identifying groups with similar names and assigning sequence numbers to each, allowing you to organize them in a way that makes sense to you.
 
-I've made this tool to be the fastest and easiest way to organize media collections. I use it a lot, and I hope it can help you too. It will scan several given directories at once, and analyze all files and directories as a whole, performing some advanced operations on them.
+> Use it to _refine_ your photo, music, movie, porn, etc., collection in a simple and efficient way!
+
+I've made this tool to be the fastest and easiest way to organize media collections. I use it a lot, and I hope it can help you too.
 
 And yes, it is blazingly fast, like all Rust 🦀 software!
 
@@ -37,7 +39,7 @@ This version is mostly about polishing, with some improvements and bug fixes.
 
 We have a smarter list command, which hides full paths by default and uses descending order for size and ascending for name and path; join: change no_remove flag to parents (n -> p) and some clash options; rebuild: change simple_match flag to simple and fix full mode, which was not resetting sequences; general polishing.
 
-<details><summary>(previous)</summary>
+<details><summary>(older versions)</summary>
 
 ### New in 1.2
 
