@@ -17,11 +17,11 @@ pub struct Rebuild {
     naming_rules: NamingRules,
     /// Disable smart matching, so "foo bar.mp4", "FooBar.mp4" and "foo__bar.mp4" are different.
     #[arg(short = 's', long)]
-    simple_match: bool,
+    simple: bool,
     /// Force to overwrite filenames (use the Global options to filter files).
-    #[arg(short = 'f', long, value_name = "STR", conflicts_with_all = ["strip_before", "strip_after", "strip_exact", "replace", "simple_match", "partial"], value_parser = NonEmptyStringValueParser::new())]
+    #[arg(short = 'f', long, value_name = "STR", conflicts_with_all = ["strip_before", "strip_after", "strip_exact", "replace", "simple", "partial"], value_parser = NonEmptyStringValueParser::new())]
     force: Option<String>,
-    /// Assume not all paths are available, so only touch files actually modified by the given rules.
+    /// Assume not all directories are available, which retains current sequences (but fixes gaps).
     #[arg(short = 'p', long)]
     partial: bool,
     /// Skip the confirmation prompt, useful for automation.
@@ -53,7 +53,7 @@ impl Refine for Rebuild {
     fn adjust(&mut self, fetcher: &Fetcher) {
         if fetcher.missing_dirs && !self.partial && self.force.is_none() {
             self.partial = true;
-            eprintln!("warning: one or more paths are not available => enabling partial mode\n");
+            eprintln!("Using partial mode: at least one path is not available.\n");
         }
     }
 
@@ -78,7 +78,7 @@ impl Refine for Rebuild {
         }
 
         // step: smart matching on full media set (including unchanged files in partial mode).
-        if !self.simple_match {
+        if !self.simple {
             static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[\s_]+").unwrap());
 
             medias.iter_mut().for_each(|m| {
@@ -89,7 +89,7 @@ impl Refine for Rebuild {
         }
 
         // helper closures to pick names and sequences, vary according to the current mode.
-        let name_idx = if self.simple_match || self.force.is_some() {
+        let name_idx = if self.simple || self.force.is_some() {
             |_g: &[Media]| 0 // all the names are exactly the same within a group.
         } else {
             |g: &[Media]| {
