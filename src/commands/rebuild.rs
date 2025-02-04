@@ -104,7 +104,7 @@ impl Refine for Rebuild {
             true => |m: &Media| m.seq,    // retain previous sequences.
             false => |_: &Media| Some(1), // completely ignore previous sequences.
         };
-        let s_seq = |m: &Media| m.seq.unwrap_or(usize::MAX); // files with a sequence first, no sequence last.
+        let s_seq = |m: &Media| p_seq(m).unwrap_or(usize::MAX); // files with a sequence first, no sequence last.
 
         // step: generate new names.
         medias.sort_unstable_by(|m, n| {

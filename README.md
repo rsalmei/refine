@@ -368,6 +368,7 @@ $ refine rename ~/media /Volumes/External -b "^\d+_" -r '([^\.]*?)\.=$1 '
 
 <details><summary>(click to expand)</summary>
 
+- 1.3.1 Feb 04, 2025: rebuild: fix the last full mode change, to actually reset sequences.
 - 1.3.0 Jan 31, 2025: list: smarter list command, which hides full paths by default (with a flag for showing them if needed) and uses by default descending order for size and ascending for name and path (with a flag to reverse it if needed); join: change no_remove flag to parents (n -> p) and some clash options; rebuild: change simple_match flag to simple and fix full mode, which was not resetting sequences; general polishing.
 - 1.2.1 Nov 19, 2024: just require newer regex, so deps badge won't show "maybe insecure".
 - 1.2.0 Nov 19, 2024: rebuild: much improved partial mode which can alter groups of filenames while preserving sequences, and even detect and fix gaps in sequences caused by deleted files.
