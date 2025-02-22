@@ -1,17 +1,13 @@
-mod info;
+mod entries;
 mod naming;
 mod ops;
+mod sequence;
 
-pub use info::*;
+pub use entries::*;
 pub use naming::*;
 pub use ops::*;
+pub use sequence::*;
 use std::path::{Path, PathBuf};
-
-#[derive(Debug)]
-pub struct Sequence {
-    pub num: Option<usize>,
-    pub true_len: usize,
-}
 
 pub trait NewName {
     fn new_name(&self) -> &str;
@@ -27,7 +23,7 @@ pub trait OriginalPath {
 }
 
 pub trait NewPath {
-    /// The original path to the file.
+    /// The new path the file will be renamed to.
     fn new_path(&self) -> PathBuf;
 }
 
@@ -64,7 +60,7 @@ macro_rules! impl_original_path {
     ($t:ty) => {
         impl $crate::utils::OriginalPath for $t {
             fn path(&self) -> &std::path::Path {
-                &self.path
+                &self.entry
             }
         }
     };
