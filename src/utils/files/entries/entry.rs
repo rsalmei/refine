@@ -1,5 +1,5 @@
 use crate::utils::Sequence;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use std::cmp::Ordering;
 use std::fmt::{self, Display};
 use std::ops::Deref;
@@ -78,11 +78,11 @@ impl Entry {
     }
 
     pub fn display_path(&self) -> DisplayPath {
-        DisplayPath(self.into())
+        DisplayPath(self)
     }
 
     pub fn display_filename(&self) -> DisplayFilename {
-        DisplayFilename(self.into())
+        DisplayFilename(self)
     }
 }
 
@@ -94,7 +94,7 @@ pub struct DisplayPath<'a>(&'a Entry);
 #[derive(Debug)]
 pub struct DisplayFilename<'a>(&'a Entry);
 
-impl<'a> Display for DisplayPath<'a> {
+impl Display for DisplayPath<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let entry = self.0;
         let path = entry.path.display();
@@ -102,7 +102,7 @@ impl<'a> Display for DisplayPath<'a> {
     }
 }
 
-impl<'a> Display for DisplayFilename<'a> {
+impl Display for DisplayFilename<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let entry = self.0;
         let file = entry.path.file_name().unwrap().to_str().unwrap();
@@ -126,14 +126,6 @@ impl Deref for Entry {
 impl AsRef<Path> for Entry {
     fn as_ref(&self) -> &Path {
         self.deref()
-    }
-}
-
-impl TryFrom<&Path> for Entry {
-    type Error = anyhow::Error;
-
-    fn try_from(path: &Path) -> Result<Self> {
-        Entry::try_from(path.to_owned())
     }
 }
 
