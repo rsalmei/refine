@@ -1,23 +1,25 @@
 mod commands;
-mod entries;
 mod utils;
 
 use anyhow::Result;
 use clap::Parser;
 use commands::Command;
-use entries::{Fetcher, Filters};
 use std::path::PathBuf;
+use utils::{Entries, Filters};
 
 #[derive(Debug, Parser)]
 #[command(version, about, long_about = None, after_help = "For more information, see https://github.com/rsalmei/refine")]
 pub struct Args {
     /// Directories to scan.
     #[arg(global = true, help_heading = Some("Global"))]
-    pub dirs: Vec<PathBuf>,
+    dirs: Vec<PathBuf>,
+    /// Do not recurse into subdirectories.
+    #[arg(short = 'w', long, global = true, help_heading = Some("Global"))]
+    shallow: bool,
     #[command(subcommand)]
-    pub cmd: Command,
+    cmd: Command,
     #[command(flatten)]
-    pub filters: Filters,
+    filters: Filters,
 }
 
 fn main() -> Result<()> {
@@ -29,6 +31,6 @@ fn main() -> Result<()> {
         false => args.dirs,       // lists files from the given paths,
         true => vec![".".into()], // or the current directory if no paths are given.
     };
-    let fetcher = Fetcher::new(dirs, args.filters)?;
-    args.cmd.run(fetcher)
+    let entries = Entries::new(dirs, args.shallow, args.filters)?;
+    args.cmd.run(entries)
 }

@@ -1,4 +1,4 @@
-use super::{Entries, Entry, EntryKinds, Refine};
+use super::{Entry, EntryKinds, Refine, Warnings};
 use anyhow::Result;
 use clap::{Args, ValueEnum};
 use human_repr::HumanCount;
@@ -38,7 +38,7 @@ impl Refine for List {
     const OPENING_LINE: &'static str = "Listing files...";
     const REQUIRE: EntryKinds = EntryKinds::Files;
 
-    fn adjust(&mut self, _entries: &Entries) {
+    fn adjust(&mut self, _: &Warnings) {
         if !self.rev {
             const ORDERING: [bool; 3] = [false, true, false];
             self.rev = ORDERING[self.by as usize];

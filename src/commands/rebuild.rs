@@ -1,4 +1,4 @@
-use super::{Entries, Entry, EntryKinds, Refine};
+use super::{Entry, EntryKinds, Refine, Warnings};
 use crate::utils::{self, NamingRules, Sequence};
 use crate::{impl_new_name, impl_new_name_mut, impl_original_path};
 use anyhow::Result;
@@ -49,8 +49,8 @@ impl Refine for Rebuild {
     const OPENING_LINE: &'static str = "Rebuilding files...";
     const REQUIRE: EntryKinds = EntryKinds::Files;
 
-    fn adjust(&mut self, entries: &Entries) {
-        if entries.missing_dirs && !self.partial && self.force.is_none() {
+    fn adjust(&mut self, warnings: &Warnings) {
+        if warnings.missing && !self.partial && self.force.is_none() {
             self.partial = true;
             eprintln!("Enabling partial mode due to missing directories.\n");
         }
