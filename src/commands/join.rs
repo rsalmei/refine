@@ -1,6 +1,6 @@
 use super::{Entry, EntryKinds, Refine};
 use crate::impl_original_path;
-use crate::utils::{self, OriginalPath};
+use crate::utils::{self, Entries, OriginalPath};
 use anyhow::{Context, Result};
 use clap::{Args, ValueEnum};
 use std::collections::HashSet;
@@ -92,15 +92,14 @@ impl Refine for Join {
         // step: read the target directory, which might not be empty, to detect outer clashes (not in medias).
         let mut target_names = Vec::new();
         if let Ok(target) = SHARED.get().unwrap().target.as_ref() {
-            if let Ok(in_target) = fs::read_dir(target).map(|rd| rd.flatten()) {
-                let in_target = in_target.collect::<Vec<_>>();
-                target_names.extend(in_target.iter().flat_map(|de| de.file_name().into_string()));
-                medias.extend(in_target.iter().map(|de| Media {
-                    entry: de.path().try_into().unwrap(), // FIXME
-                    new_name: None,
-                    skip: Skip::Target,
-                }))
-            }
+            let entries = Entries::with_dir(target.to_owned())?;
+            let in_target = entries.fetch(Join::REQUIRE).collect::<Vec<_>>();
+            target_names.extend(in_target.iter().map(|e| e.display_filename().to_string()));
+            medias.extend(in_target.into_iter().map(|entry| Media {
+                entry,
+                new_name: None,
+                skip: Skip::Target,
+            }))
         }
 
         // step: detect clashes (files with the same name in different directories), and resolve them.

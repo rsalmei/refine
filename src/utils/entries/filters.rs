@@ -3,7 +3,7 @@ use clap::Args;
 use clap::builder::NonEmptyStringValueParser;
 use regex::Regex;
 
-#[derive(Debug, Args)]
+#[derive(Debug, Args, Default)]
 pub struct Filters {
     /// Include only these files and directories; checked without extension.
     #[arg(short = 'i', long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]

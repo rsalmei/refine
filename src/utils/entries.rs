@@ -41,6 +41,10 @@ pub enum EntryKinds {
 }
 
 impl Entries {
+    /// Reads all entries from a single directory, non-recursively.
+    pub fn with_dir(dir: PathBuf) -> Result<Self> {
+        Self::with_filters(vec![dir], Filters::default(), false)
+    }
 
     /// Reads entries from the given directories, with the given filtering rules and recursion.
     pub fn with_filters(dirs: Vec<PathBuf>, filters: Filters, shallow: bool) -> Result<Self> {
