@@ -7,7 +7,7 @@ use clap::builder::NonEmptyStringValueParser;
 use regex::Regex;
 use std::borrow::Cow;
 use std::fs;
-use std::sync::LazyLock;
+use std::sync::{LazyLock, OnceLock};
 use std::time::SystemTime;
 
 #[derive(Debug, Args)]
@@ -23,6 +23,9 @@ pub struct Rebuild {
     /// Assume not all directories are available, which retains current sequences (but fixes gaps).
     #[arg(short = 'p', long)]
     partial: bool,
+    /// Keep the original case of filenames, otherwise they are lowercased.
+    #[arg(short = 'c', long)]
+    case: bool,
     /// Skip the confirmation prompt, useful for automation.
     #[arg(short = 'y', long)]
     yes: bool,
@@ -44,12 +47,20 @@ pub struct Media {
     created: SystemTime,
 }
 
+static CASE_FN: OnceLock<fn(&str) -> String> = OnceLock::new();
+
 impl Refine for Rebuild {
     type Media = Media;
     const OPENING_LINE: &'static str = "Rebuilding files...";
     const REQUIRE: EntryKinds = EntryKinds::Files;
 
     fn adjust(&mut self, warnings: &Warnings) {
+        let f = match self.case {
+            false => str::to_lowercase,
+            true => str::to_owned,
+        };
+        CASE_FN.set(f).unwrap();
+
         if warnings.missing && !self.partial && self.force.is_none() {
             self.partial = true;
             eprintln!("Enabling partial mode due to missing directories.\n");
@@ -76,7 +87,7 @@ impl Refine for Rebuild {
             });
         }
 
-        // step: smart matching on full media set (including unchanged files in partial mode).
+        // step: prepare smart matching groups.
         if !self.simple {
             static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[\s_]+").unwrap());
 
@@ -87,10 +98,20 @@ impl Refine for Rebuild {
             });
         }
 
-        // helper closures to pick names and sequences, vary according to the current mode.
+        // helper closures to pick names and sequences.
         let name_idx = if self.simple || self.force.is_some() {
             |_g: &[Media]| 0 // all the names are exactly the same within a group.
+        } else if self.case {
+            // smart matching which chooses the name with the most uppercase characters.
+            |g: &[Media]| {
+                g.iter()
+                    .enumerate()
+                    .max_by_key(|&(_, m)| m.new_name.chars().filter(|c| c.is_uppercase()).count())
+                    .unwrap()
+                    .0
+            }
         } else {
+            // smart matching which chooses the longest name, i.e. the one with the most space and _ characters.
             |g: &[Media]| {
                 g.iter()
                     .enumerate()
@@ -115,7 +136,7 @@ impl Refine for Rebuild {
             .chunk_by_mut(|m, n| m.group() == n.group())
             .for_each(|g| {
                 total_names += 1;
-                let base = g[name_idx(g)].new_name.to_owned(); // must be owned because `g` will be modified below.
+                let base = g[name_idx(g)].new_name.clone(); // must be cloned because `g` will be modified below.
                 let mut seq = p_seq(&g[0]).unwrap_or(1); // the minimum found for this group will be the first.
                 g.iter_mut().for_each(|m| {
                     let (dot, ext) = match m.ext.is_empty() {
@@ -139,7 +160,7 @@ impl Refine for Rebuild {
         if !medias.is_empty() || warnings > 0 {
             println!();
         }
-        println!("total files: {total_files} ({total_names} unique names)");
+        println!("total files: {total_files} ({total_names} names)");
         println!("  changes: {}", medias.len());
         println!("  warnings: {warnings}");
         if medias.is_empty() {
@@ -193,7 +214,7 @@ impl TryFrom<Entry> for Media {
     fn try_from(entry: Entry) -> Result<Self> {
         let (name, ext) = entry.filename_parts();
         Ok(Media {
-            new_name: name.trim().to_lowercase(),
+            new_name: CASE_FN.get().unwrap()(name.trim()),
             ext: utils::intern(ext),
             created: entry.metadata()?.created()?,
             seq: None, // can't be set here, since naming rules must run before it.
