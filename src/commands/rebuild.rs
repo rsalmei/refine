@@ -54,7 +54,7 @@ impl Refine for Rebuild {
     const OPENING_LINE: &'static str = "Rebuilding files...";
     const REQUIRE: EntryKinds = EntryKinds::Files;
 
-    fn adjust(&mut self, warnings: &Warnings) {
+    fn prepare(&mut self, warnings: &Warnings) {
         let f = match self.case {
             false => str::to_lowercase,
             true => str::to_owned,

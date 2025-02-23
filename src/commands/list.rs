@@ -38,7 +38,7 @@ impl Refine for List {
     const OPENING_LINE: &'static str = "Listing files...";
     const REQUIRE: EntryKinds = EntryKinds::Files;
 
-    fn adjust(&mut self, _: &Warnings) {
+    fn prepare(&mut self, _: &Warnings) {
         if !self.rev {
             const ORDERING: [bool; 3] = [false, true, false];
             self.rev = ORDERING[self.by as usize];
