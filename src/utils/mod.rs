@@ -1,7 +1,9 @@
+mod entries;
 mod files;
 mod running;
 
 use anyhow::{Result, anyhow};
+pub use entries::*;
 pub use files::*;
 pub use running::*;
 use std::collections::HashSet;

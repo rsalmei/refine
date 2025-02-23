@@ -1,9 +1,7 @@
-mod entries;
 mod naming;
 mod ops;
 mod sequence;
 
-pub use entries::*;
 pub use naming::*;
 pub use ops::*;
 pub use sequence::*;
