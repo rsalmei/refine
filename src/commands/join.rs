@@ -40,7 +40,7 @@ pub enum By {
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
 pub enum Clashes {
-    #[value(aliases = ["seq"])]
+    #[value(aliases = ["sq", "seq"])]
     Sequence,
     #[value(aliases = ["pn"])]
     ParentName,
