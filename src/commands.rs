@@ -1,6 +1,7 @@
 mod dupes;
 mod join;
 mod list;
+mod probe;
 mod rebuild;
 mod rename;
 
@@ -21,6 +22,8 @@ pub enum Command {
     Rebuild(rebuild::Rebuild),
     /// Rename files and directories using advanced regular expression rules.
     Rename(rename::Rename),
+    /// Probe filenames against a remote server.
+    Probe(probe::Probe),
 }
 
 /// The common interface for Refine commands that work with media files.
