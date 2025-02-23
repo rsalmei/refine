@@ -11,13 +11,13 @@ use std::sync::OnceLock;
 #[derive(Debug, Args)]
 pub struct Join {
     /// The target directory; will be created if it doesn't exist.
-    #[arg(short = 't', long, value_name = "PATH", default_value = ".")]
+    #[arg(short = 't', long, default_value = ".", value_name = "PATH")]
     target: PathBuf,
     /// The type of join to perform.
-    #[arg(short = 'b', long, value_name = "STR", value_enum, default_value_t = By::Move)]
+    #[arg(short = 'b', long, default_value_t = By::Move, value_name = "STR", value_enum)]
     by: By,
     /// How to resolve clashes.
-    #[arg(short = 'c', long, value_name = "STR", value_enum, default_value_t = Clashes::Sequence)]
+    #[arg(short = 'c', long, default_value_t = Clashes::Sequence, value_name = "STR", value_enum)]
     clashes: Clashes,
     /// Force joining already in place files and directories, i.e. in subdirectories of the target.
     #[arg(short = 'f', long)]
