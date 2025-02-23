@@ -2,7 +2,7 @@ use crate::utils::Sequence;
 use anyhow::{Result, anyhow};
 use std::cmp::Ordering;
 use std::fmt::{self, Display};
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 
 /// A file or directory entry that is guaranteed to have a valid UTF-8 representation.
@@ -117,9 +117,15 @@ impl Display for Entry {
 }
 
 impl Deref for Entry {
-    type Target = Path;
-    fn deref(&self) -> &Path {
+    type Target = PathBuf;
+    fn deref(&self) -> &PathBuf {
         &self.path
+    }
+}
+
+impl DerefMut for Entry {
+    fn deref_mut(&mut self) -> &mut PathBuf {
+        &mut self.path
     }
 }
 
