@@ -1,13 +1,12 @@
-use super::{EntryKind, Fetcher, Refine};
+use super::{Entries, Entry, EntryKinds, Refine};
 use crate::utils::{self, NamingRules, Sequence};
 use crate::{impl_new_name, impl_new_name_mut, impl_original_path};
 use anyhow::Result;
-use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
+use clap::builder::NonEmptyStringValueParser;
 use regex::Regex;
 use std::borrow::Cow;
 use std::fs;
-use std::path::PathBuf;
 use std::sync::LazyLock;
 use std::time::SystemTime;
 
@@ -32,7 +31,7 @@ pub struct Rebuild {
 #[derive(Debug)]
 pub struct Media {
     /// The original path to the file.
-    path: PathBuf,
+    entry: Entry,
     /// The new generated filename.
     new_name: String,
     /// The resulting smart match (if enabled and new_name has spaces or _).
@@ -48,17 +47,17 @@ pub struct Media {
 impl Refine for Rebuild {
     type Media = Media;
     const OPENING_LINE: &'static str = "Rebuilding files...";
-    const ENTRY_KIND: EntryKind = EntryKind::Files;
+    const REQUIRE: EntryKinds = EntryKinds::Files;
 
-    fn adjust(&mut self, fetcher: &Fetcher) {
-        if fetcher.missing_dirs && !self.partial && self.force.is_none() {
+    fn adjust(&mut self, entries: &Entries) {
+        if entries.missing_dirs && !self.partial && self.force.is_none() {
             self.partial = true;
             eprintln!("Enabling partial mode due to missing directories.\n");
         }
     }
 
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
-        let total = medias.len();
+        let total_files = medias.len();
 
         // step: apply naming rules.
         let warnings = self.naming_rules.apply(&mut medias)?;
@@ -111,35 +110,36 @@ impl Refine for Rebuild {
             // unfortunately, some file systems have low resolution creation time, HFS+ for example, so seq is used to disambiguate `created`.
             (m.group(), s_seq(m), m.created, m.seq).cmp(&(n.group(), s_seq(n), n.created, n.seq))
         });
+        let mut total_names = 0;
         medias
             .chunk_by_mut(|m, n| m.group() == n.group())
             .for_each(|g| {
+                total_names += 1;
                 let base = g[name_idx(g)].new_name.to_owned(); // must be owned because `g` will be modified below.
                 let mut seq = p_seq(&g[0]).unwrap_or(1); // the minimum found for this group will be the first.
                 g.iter_mut().for_each(|m| {
-                    let (dot, ext) = if m.ext.is_empty() {
-                        ("", "")
-                    } else {
-                        (".", m.ext)
+                    let (dot, ext) = match m.ext.is_empty() {
+                        true => ("", ""),
+                        false => (".", m.ext),
                     };
                     m.new_name = format!("{base}-{seq}{dot}{ext}");
                     seq += 1; // fixes gaps even in partial mode.
                 });
             });
 
-        utils::user_aborted()?;
+        utils::aborted()?;
 
         // step: settle changes, and display the results.
-        medias.retain(|m| m.new_name != m.path.file_name().unwrap().to_str().unwrap());
+        medias.retain(|m| m.new_name != m.entry.file_name().unwrap().to_str().unwrap());
         medias
             .iter()
-            .for_each(|m| println!("{} --> {}", m.path.display(), m.new_name));
+            .for_each(|m| println!("{} --> {}", m.entry.display(), m.new_name));
 
         // step: display receipt summary.
         if !medias.is_empty() || warnings > 0 {
             println!();
         }
-        println!("total files: {total}");
+        println!("total files: {total_files} ({total_names} unique names)");
         println!("  changes: {}", medias.len());
         println!("  warnings: {warnings}");
         if medias.is_empty() {
@@ -160,10 +160,10 @@ impl Refine for Rebuild {
         println!("attempting to fix {} errors", medias.len());
         medias.iter_mut().for_each(|m| {
             let temp = format!("__refine+{}__", m.new_name);
-            let dest = m.path.with_file_name(&temp);
-            match fs::rename(&m.path, &dest) {
-                Ok(()) => m.path = dest,
-                Err(err) => eprintln!("error: {err:?}: {:?} --> {temp:?}", m.path),
+            let dest = m.entry.with_file_name(&temp);
+            match fs::rename(&m.entry, &dest) {
+                Ok(()) => m.entry = dest.try_into().unwrap(), // FIXME
+                Err(err) => eprintln!("error: {err:?}: {:?} --> {temp:?}", m.entry),
             }
         });
         utils::rename_move_consuming(&mut medias);
@@ -187,18 +187,18 @@ impl Media {
     }
 }
 
-impl TryFrom<PathBuf> for Media {
+impl TryFrom<Entry> for Media {
     type Error = anyhow::Error;
 
-    fn try_from(path: PathBuf) -> Result<Self> {
-        let (name, ext) = utils::filename_parts(&path)?;
+    fn try_from(entry: Entry) -> Result<Self> {
+        let (name, ext) = entry.filename_parts();
         Ok(Media {
             new_name: name.trim().to_lowercase(),
             ext: utils::intern(ext),
-            created: fs::metadata(&path)?.created()?,
+            created: entry.metadata()?.created()?,
             seq: None, // can't be set here, since naming rules must run before it.
             smart_match: None,
-            path,
+            entry,
         })
     }
 }

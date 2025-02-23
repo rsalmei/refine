@@ -1,24 +1,22 @@
-use super::{EntryKind, Refine};
-use crate::utils::{self, Sequence};
+use super::{Entry, EntryKinds, Refine};
+use crate::utils::{self, display_abort, Sequence};
 use anyhow::Result;
 use clap::Args;
 use human_repr::HumanCount;
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::Read;
-use std::path::{Path, PathBuf};
-use std::{fs, io};
+use std::io::{self, Read};
 
 #[derive(Debug, Args)]
 pub struct Dupes {
     /// Sample size in bytes (0 to disable).
-    #[arg(short = 's', long, default_value_t = 2 * 1024, value_name = "BYTES")]
+    #[arg(short = 's', long, default_value_t = 2 * 1024, value_name = "INT")]
     sample: usize,
 }
 
 #[derive(Debug)]
 pub struct Media {
-    path: PathBuf,
+    entry: Entry,
     size: u64,
     words: Box<[String]>,
     sample: Option<Option<Box<[u8]>>>, // only populated if needed, and double to remember when already tried.
@@ -27,7 +25,7 @@ pub struct Media {
 impl Refine for Dupes {
     type Media = Media;
     const OPENING_LINE: &'static str = "Detecting duplicate files...";
-    const ENTRY_KIND: EntryKind = EntryKind::Files;
+    const REQUIRE: EntryKinds = EntryKinds::Files;
 
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         // step: detect duplicates by size.
@@ -38,7 +36,7 @@ impl Refine for Dupes {
             |m| &m.size,
             |&size, acc| {
                 println!("\n{} x{}", size.human_count_bytes(), acc.len());
-                acc.iter().for_each(|&m| println!("{}", m.path.display()));
+                acc.iter().for_each(|&m| println!("{}", m.entry));
             },
         );
 
@@ -51,15 +49,15 @@ impl Refine for Dupes {
             |words, acc| {
                 println!("\n{:?} x{}", words, acc.len());
                 acc.iter()
-                    .for_each(|m| println!("{}: {}", m.size.human_count_bytes(), m.path.display()));
+                    .for_each(|m| println!("{}: {}", m.size.human_count_bytes(), m.entry));
             },
         );
 
         // step: display receipt summary.
         let total = medias.len();
-        println!("\ntotal files: {total}{}", utils::aborted(by_size == 0));
-        println!("  by size: {by_size} dupes{}", utils::aborted(by_name == 0));
-        println!("  by name: {by_name} dupes{}", utils::aborted(true));
+        println!("\ntotal files: {total}{}", display_abort(by_size == 0));
+        println!("  by size: {by_size} dupes{}", display_abort(by_name == 0));
+        println!("  by name: {by_name} dupes{}", display_abort(true));
         Ok(())
     }
 }
@@ -87,16 +85,16 @@ where
             split.into_values().filter(|v| v.len() > 1)
         })
         .map(|mut g| {
-            g.sort_unstable_by(|m, n| m.path.cmp(&n.path));
+            g.sort_unstable_by(|m, n| m.entry.cmp(&n.entry));
             show(group(g[0]), g)
         })
         .count()
 }
 
-fn words(path: &Path) -> Result<Box<[String]>> {
-    let (mut name, _) = utils::filename_parts(path)?;
-    name = &name[..Sequence::from(name).true_len];
-    let mut words = name
+fn words(entry: &Entry) -> Result<Box<[String]>> {
+    let (mut stem, _) = entry.filename_parts();
+    stem = &stem[..Sequence::from(stem).true_len];
+    let mut words = stem
         .split(&[' ', '.', '-', '_'])
         .filter(|s| !s.is_empty())
         .filter(|s| !(s.len() == 1 && s.is_ascii())) // remove vowels.
@@ -108,11 +106,11 @@ fn words(path: &Path) -> Result<Box<[String]>> {
 }
 
 impl Media {
-    fn cache_sample(&mut self, sample: usize) {
+    fn cache_sample(&mut self, size: usize) {
         if self.sample.is_none() {
             let grab_sample = || {
-                let mut file = File::open(&self.path)?;
-                let mut buf = vec![0; sample];
+                let mut file = File::open(&self.entry)?;
+                let mut buf = vec![0; size];
                 let mut read = 0;
                 while read < buf.len() {
                     let n = file.read(&mut buf[read..])?;
@@ -136,14 +134,14 @@ impl Media {
     }
 }
 
-impl TryFrom<PathBuf> for Media {
+impl TryFrom<Entry> for Media {
     type Error = anyhow::Error;
 
-    fn try_from(path: PathBuf) -> Result<Self> {
+    fn try_from(entry: Entry) -> Result<Self> {
         Ok(Media {
-            size: fs::metadata(&path)?.len(),
-            words: words(&path)?,
-            path, // I can use path above before moving it here!
+            size: entry.metadata()?.len(),
+            words: words(&entry)?,
+            entry, // I can use entry above before moving it here!
             sample: None,
         })
     }

@@ -1,11 +1,8 @@
-use super::{EntryKind, Fetcher, Refine};
+use super::{Entries, Entry, EntryKinds, Refine};
 use anyhow::Result;
 use clap::{Args, ValueEnum};
 use human_repr::HumanCount;
-use std::borrow::Cow;
 use std::cmp::Ordering;
-use std::fs;
-use std::path::PathBuf;
 
 #[derive(Debug, Args)]
 pub struct List {
@@ -32,16 +29,16 @@ pub enum By {
 
 #[derive(Debug)]
 pub struct Media {
-    path: PathBuf,
+    entry: Entry,
     size: u64,
 }
 
 impl Refine for List {
     type Media = Media;
     const OPENING_LINE: &'static str = "Listing files...";
-    const ENTRY_KIND: EntryKind = EntryKind::Files;
+    const REQUIRE: EntryKinds = EntryKinds::Files;
 
-    fn adjust(&mut self, _fetcher: &Fetcher) {
+    fn adjust(&mut self, _entries: &Entries) {
         if !self.rev {
             const ORDERING: [bool; 3] = [false, true, false];
             self.rev = ORDERING[self.by as usize];
@@ -54,9 +51,9 @@ impl Refine for List {
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         // step: sort the files by name, size, or path.
         let compare = match self.by {
-            By::Name => |m: &Media, n: &Media| m.path.file_name().cmp(&n.path.file_name()),
+            By::Name => |m: &Media, n: &Media| m.entry.file_name().cmp(&n.entry.file_name()),
             By::Size => |m: &Media, n: &Media| m.size.cmp(&n.size),
-            By::Path => |m: &Media, n: &Media| m.path.cmp(&n.path),
+            By::Path => |m: &Media, n: &Media| m.entry.cmp(&n.entry),
         };
         let compare: &dyn Fn(&Media, &Media) -> Ordering = match self.rev {
             false => &compare,
@@ -65,16 +62,12 @@ impl Refine for List {
         medias.sort_unstable_by(compare);
 
         // step: display the results.
-        let show: fn(m: &Media) -> Cow<str> = match self.paths {
-            true => |m| m.path.to_string_lossy(),
-            false => |m| m.path.file_name().unwrap().to_string_lossy(),
-        };
         medias.iter().for_each(|m| {
-            println!(
-                "{:>7} {}",
-                format!("{}", m.size.human_count_bytes()),
-                show(m)
-            )
+            let size = format!("{}", m.size.human_count_bytes());
+            match self.paths {
+                true => println!("{size:>7} {}", m.entry.display_path()),
+                false => println!("{size:>7} {}", m.entry.display_filename()),
+            };
         });
 
         // step: display receipt summary.
@@ -88,13 +81,13 @@ impl Refine for List {
     }
 }
 
-impl TryFrom<PathBuf> for Media {
+impl TryFrom<Entry> for Media {
     type Error = anyhow::Error;
 
-    fn try_from(path: PathBuf) -> Result<Self> {
+    fn try_from(entry: Entry) -> Result<Self> {
         Ok(Self {
-            size: fs::metadata(&path)?.len(),
-            path,
+            size: entry.metadata()?.len(),
+            entry,
         })
     }
 }

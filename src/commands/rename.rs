@@ -1,12 +1,12 @@
-use super::{EntryKind, Refine};
-use crate::utils::{self, kind, NamingRules};
+use super::{Entry, EntryKinds, Refine};
+use crate::utils::{self, NamingRules};
 use crate::{impl_new_name, impl_new_name_mut, impl_original_path};
 use anyhow::Result;
 use clap::Args;
 use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::fmt::Write;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 #[derive(Debug, Args)]
 pub struct Rename {
@@ -23,7 +23,7 @@ pub struct Rename {
 #[derive(Debug)]
 pub struct Media {
     /// The original path to the file.
-    path: PathBuf,
+    entry: Entry,
     /// The new generated filename.
     new_name: String,
     /// A cached version of the file extension.
@@ -33,7 +33,7 @@ pub struct Media {
 impl Refine for Rename {
     type Media = Media;
     const OPENING_LINE: &'static str = "Renaming files...";
-    const ENTRY_KIND: EntryKind = EntryKind::Both;
+    const REQUIRE: EntryKinds = EntryKinds::Both;
 
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         // step: apply naming rules.
@@ -47,18 +47,18 @@ impl Refine for Rename {
             .try_for_each(|m| write!(m.new_name, ".{}", m.ext))?;
 
         // step: disallow changes in directories where clashes are detected.
-        medias.sort_unstable_by(|m, n| m.path.cmp(&n.path));
+        medias.sort_unstable_by(|m, n| m.entry.cmp(&n.entry));
         medias
-            .chunk_by_mut(|m, n| m.path.parent() == n.path.parent())
+            .chunk_by_mut(|m, n| m.entry.parent() == n.entry.parent())
             .filter(|_| utils::is_running())
             .for_each(|g| {
-                let path = g[0].path.parent().unwrap_or(Path::new("/")).to_owned();
+                let path = g[0].entry.parent().unwrap_or(Path::new("/")).to_owned();
                 let mut clashes = HashMap::with_capacity(g.len());
                 g.iter().for_each(|m| {
                     clashes
                         .entry(&m.new_name)
                         .or_insert_with(Vec::new)
-                        .push(&m.path)
+                        .push(&m.entry)
                 });
                 clashes.retain(|_, v| v.len() > 1);
                 if !clashes.is_empty() {
@@ -87,30 +87,29 @@ impl Refine for Rename {
                 }
             });
 
-        utils::user_aborted()?;
+        utils::aborted()?;
 
         // step: settle changes.
         medias.retain(|m| {
             !m.new_name.is_empty() // new clash detection.
-            && m.new_name != m.path.file_name().unwrap().to_str().unwrap()
+            && m.new_name != m.entry.file_name().unwrap().to_str().unwrap()
         });
 
         // step: display the results by parent directory.
         medias.sort_unstable_by(|m, n| {
-            (Reverse(m.path.components().count()), &m.path)
-                .cmp(&(Reverse(n.path.components().count()), &n.path))
+            (Reverse(m.entry.components().count()), &m.entry)
+                .cmp(&(Reverse(n.entry.components().count()), &n.entry))
         });
         medias
-            .chunk_by(|m, n| m.path.parent() == n.path.parent())
+            .chunk_by(|m, n| m.entry.parent() == n.entry.parent())
             .for_each(|g| {
-                println!("{}/:", g[0].path.parent().unwrap().display());
+                println!("{}/:", g[0].entry.parent().unwrap().display());
                 g.iter().for_each(|m| {
                     println!(
-                        "  {}{} --> {}{}",
-                        m.path.file_name().unwrap().to_str().unwrap(),
-                        kind(&m.path),
+                        "  {} --> {}{}",
+                        m.entry.display_filename(),
                         m.new_name,
-                        kind(&m.path),
+                        m.entry.kind(),
                     )
                 });
             });
@@ -144,15 +143,15 @@ impl_new_name!(Media);
 impl_new_name_mut!(Media);
 impl_original_path!(Media);
 
-impl TryFrom<PathBuf> for Media {
+impl TryFrom<Entry> for Media {
     type Error = anyhow::Error;
 
-    fn try_from(path: PathBuf) -> Result<Self> {
-        let (name, ext) = utils::filename_parts(&path)?;
+    fn try_from(entry: Entry) -> Result<Self> {
+        let (name, ext) = entry.filename_parts();
         Ok(Media {
             new_name: name.trim().to_owned(),
             ext: utils::intern(ext),
-            path,
+            entry,
         })
     }
 }
