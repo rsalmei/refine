@@ -3,12 +3,26 @@ mod filters;
 
 use crate::utils;
 use anyhow::{Result, anyhow};
+use clap::Args;
 pub use entry::*;
 pub use filters::*;
 use regex::Regex;
 use std::iter;
 use std::path::PathBuf;
 use std::rc::Rc;
+
+/// The input specification, which lists directories to scan and filters to apply.
+#[derive(Debug, Args)]
+pub struct InputSpec {
+    /// Directories to scan.
+    #[arg(global = true, help_heading = Some("Global"))]
+    dirs: Vec<PathBuf>,
+    #[command(flatten)]
+    filters: Filters,
+    /// Do not recurse into subdirectories.
+    #[arg(short = 'w', long, global = true, help_heading = Some("Global"))]
+    shallow: bool,
+}
 
 /// The object that fetches and filters entries from multiple directories.
 #[derive(Debug)]
@@ -40,10 +54,16 @@ pub enum EntryKinds {
     Both,
 }
 
-impl Entries {
-    pub fn new(mut dirs: Vec<PathBuf>, shallow: bool, filters: Filters) -> Result<Entries> {
-        let filters = filters.try_into()?; // compile regexes and check for errors before anything else.
+impl TryFrom<InputSpec> for Entries {
+    type Error = anyhow::Error;
 
+    fn try_from(spec: InputSpec) -> Result<Self> {
+        let filters = spec.filters.try_into()?; // compile regexes and check for errors before anything else.
+
+        let mut dirs = match spec.dirs.is_empty() {
+            false => spec.dirs,       // lists files from the given paths,
+            true => vec![".".into()], // or the current directory if no paths are given.
+        };
         let n = dirs.len();
         dirs.sort_unstable();
         dirs.dedup();
@@ -71,13 +91,15 @@ impl Entries {
         Ok(Entries {
             dirs,
             filters,
-            shallow,
+            shallow: spec.shallow,
             warnings: Warnings {
                 missing: !missing.is_empty(),
             },
         })
     }
+}
 
+impl Entries {
     pub fn warnings(&self) -> &Warnings {
         &self.warnings
     }
