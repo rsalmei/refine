@@ -1,5 +1,5 @@
 use super::{Entry, EntryKinds, Refine, Warnings};
-use crate::utils::{self, NamingRules, Sequence};
+use crate::utils::{self, FileOps, NamingRules, Sequence};
 use crate::{impl_new_name, impl_new_name_mut, impl_original_path};
 use anyhow::Result;
 use clap::Args;
@@ -171,7 +171,7 @@ impl Refine for Rebuild {
         if !self.yes {
             utils::prompt_yes_no("apply changes?")?;
         }
-        utils::rename_move_consuming(&mut medias);
+        medias.rename_move_consuming();
         if medias.is_empty() {
             println!("done");
             return Ok(());
@@ -187,7 +187,7 @@ impl Refine for Rebuild {
                 Err(err) => eprintln!("error: {err:?}: {:?} --> {temp:?}", m.entry),
             }
         });
-        utils::rename_move_consuming(&mut medias);
+        medias.rename_move_consuming();
 
         match medias.is_empty() {
             true => println!("done"),

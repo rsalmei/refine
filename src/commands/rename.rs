@@ -1,5 +1,5 @@
 use super::{Entry, EntryKinds, Refine};
-use crate::utils::{self, NamingRules};
+use crate::utils::{self, FileOps, NamingRules};
 use crate::{impl_new_name, impl_new_name_mut, impl_original_path};
 use anyhow::Result;
 use clap::Args;
@@ -129,7 +129,7 @@ impl Refine for Rename {
         if !self.yes {
             utils::prompt_yes_no("apply changes?")?;
         }
-        utils::rename_move_consuming(&mut medias);
+        medias.rename_move_consuming();
 
         match medias.is_empty() {
             true => println!("done"),

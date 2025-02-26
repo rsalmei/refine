@@ -1,6 +1,6 @@
 use super::{Entry, EntryKinds, Refine};
 use crate::impl_original_path;
-use crate::utils::{self, Entries, OriginalPath};
+use crate::utils::{self, Entries, FileOps, OriginalPath};
 use anyhow::{Context, Result};
 use clap::{Args, ValueEnum};
 use std::collections::HashSet;
@@ -191,15 +191,15 @@ impl Refine for Join {
         // step: apply changes, if the user agrees.
         fs::create_dir_all(target).with_context(|| format!("creating {target:?}"))?;
         match self.by {
-            By::Move => utils::rename_move_consuming(&mut medias),
-            By::Copy => utils::copy_consuming(&mut medias),
+            By::Move => medias.rename_move_consuming(),
+            By::Copy => medias.copy_consuming(),
         };
 
         // step: recover from CrossDevice errors.
         if !medias.is_empty() {
             if let By::Move = self.by {
                 println!("attempting to fix {} errors", medias.len());
-                utils::cross_move_consuming(&mut medias);
+                medias.cross_move_consuming();
             }
         }
 
