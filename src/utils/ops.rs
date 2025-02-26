@@ -1,4 +1,4 @@
-use crate::utils::{NewPath, OriginalPath};
+use crate::capabilities::{NewPath, OriginalPath};
 use std::io::Write;
 use std::path::Path;
 use std::{fs, io};

@@ -1,8 +1,8 @@
+use crate::capabilities::{NewNameMut, OriginalPath};
 use crate::utils;
-use crate::utils::{NewNameMut, OriginalPath};
 use anyhow::{Context, Result};
-use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
+use clap::builder::NonEmptyStringValueParser;
 use regex::Regex;
 use std::borrow::Cow;
 use std::iter;

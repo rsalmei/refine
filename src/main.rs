@@ -1,7 +1,10 @@
+mod capabilities;
 mod commands;
+mod entries;
+mod naming;
 mod utils;
 
-use crate::utils::{Entries, Filters};
+use crate::entries::{Entries, Filters};
 use anyhow::Result;
 use clap::Parser;
 use commands::Command;

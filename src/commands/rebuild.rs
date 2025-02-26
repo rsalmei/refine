@@ -1,5 +1,6 @@
 use super::{Entry, EntryKinds, Refine, Warnings};
-use crate::utils::{self, FileOps, NamingRules, Sequence};
+use crate::naming::NamingRules;
+use crate::utils::{self, FileOps, Sequence};
 use crate::{impl_new_name, impl_new_name_mut, impl_original_path};
 use anyhow::Result;
 use clap::Args;

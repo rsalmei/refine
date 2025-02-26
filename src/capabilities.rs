@@ -1,10 +1,3 @@
-mod naming;
-mod ops;
-mod sequence;
-
-pub use naming::*;
-pub use ops::*;
-pub use sequence::*;
 use std::path::{Path, PathBuf};
 
 pub trait NewName {
@@ -34,7 +27,7 @@ impl<M: NewName + OriginalPath> NewPath for M {
 #[macro_export]
 macro_rules! impl_new_name {
     ($t:ty) => {
-        impl $crate::utils::NewName for $t {
+        impl $crate::capabilities::NewName for $t {
             fn new_name(&self) -> &str {
                 &self.new_name
             }
@@ -45,7 +38,7 @@ macro_rules! impl_new_name {
 #[macro_export]
 macro_rules! impl_new_name_mut {
     ($t:ty) => {
-        impl $crate::utils::NewNameMut for $t {
+        impl $crate::capabilities::NewNameMut for $t {
             fn new_name_mut(&mut self) -> &mut String {
                 &mut self.new_name
             }
@@ -56,7 +49,7 @@ macro_rules! impl_new_name_mut {
 #[macro_export]
 macro_rules! impl_original_path {
     ($t:ty) => {
-        impl $crate::utils::OriginalPath for $t {
+        impl $crate::capabilities::OriginalPath for $t {
             fn path(&self) -> &std::path::Path {
                 &self.entry
             }

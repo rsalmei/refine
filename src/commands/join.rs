@@ -1,6 +1,8 @@
 use super::{Entry, EntryKinds, Refine};
+use crate::capabilities::{NewPath, OriginalPath};
+use crate::entries::Entries;
 use crate::impl_original_path;
-use crate::utils::{self, Entries, FileOps, OriginalPath};
+use crate::utils::{self, FileOps};
 use anyhow::{Context, Result};
 use clap::{Args, ValueEnum};
 use std::collections::HashSet;
@@ -255,7 +257,7 @@ impl Media {
 
 impl_original_path!(Media);
 
-impl utils::NewPath for Media {
+impl NewPath for Media {
     fn new_path(&self) -> PathBuf {
         let name = self.new_name.as_ref().map(|s| s.as_ref());
         let path = SHARED.get().unwrap().target.as_ref().unwrap_or_else(|x| x);
