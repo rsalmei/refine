@@ -1,7 +1,7 @@
 use super::{Entry, EntryKinds, Refine, Warnings};
 use crate::media::FileOps;
 use crate::naming::NamingRules;
-use crate::utils::{self, Sequence};
+use crate::utils;
 use crate::{impl_new_name, impl_new_name_mut, impl_original_path};
 use anyhow::Result;
 use clap::Args;
@@ -77,9 +77,9 @@ impl Refine for Rebuild {
 
         // step: extract and strip sequence numbers.
         medias.iter_mut().for_each(|m| {
-            let seq = Sequence::from(&m.new_name);
-            m.seq = seq.num;
-            m.new_name.truncate(seq.true_len); // sequence numbers are always at the end.
+            let (name, seq, _) = m.entry.collection_parts();
+            m.seq = seq;
+            m.new_name.truncate(name.len()); // sequence numbers are always at the end.
         });
 
         // step: reset names if forcing a new one.
@@ -219,7 +219,7 @@ impl TryFrom<Entry> for Media {
             new_name: CASE_FN.get().unwrap()(name.trim()),
             ext: utils::intern(ext),
             created: entry.metadata()?.created()?,
-            seq: None, // can't be set here, since naming rules must run before it.
+            seq: None, // can't be set here, because naming rules must run before it.
             smart_match: None,
             entry,
         })

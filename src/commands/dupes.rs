@@ -1,5 +1,5 @@
 use super::{Entry, EntryKinds, Refine};
-use crate::utils::{self, display_abort, Sequence};
+use crate::utils::{self, display_abort};
 use anyhow::Result;
 use clap::Args;
 use human_repr::HumanCount;
@@ -92,9 +92,8 @@ where
 }
 
 fn words(entry: &Entry) -> Result<Box<[String]>> {
-    let (mut stem, _) = entry.filename_parts();
-    stem = &stem[..Sequence::from(stem).true_len];
-    let mut words = stem
+    let (name, _, _) = entry.collection_parts();
+    let mut words = name
         .split(&[' ', '.', '-', '_'])
         .filter(|s| !s.is_empty())
         .filter(|s| !(s.len() == 1 && s.is_ascii())) // remove vowels.
