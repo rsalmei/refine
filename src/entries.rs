@@ -1,5 +1,6 @@
 mod entry;
 mod filters;
+mod sequence;
 
 use crate::utils;
 use anyhow::{Result, anyhow};

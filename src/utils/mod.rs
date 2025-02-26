@@ -1,9 +1,7 @@
 mod running;
-mod sequence;
 
 use anyhow::{Result, anyhow};
 pub use running::*;
-pub use sequence::*;
 use std::collections::HashSet;
 use std::error::Error;
 use std::io::{Write, stdin, stdout};

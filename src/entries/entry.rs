@@ -1,4 +1,4 @@
-use crate::utils::Sequence;
+use super::sequence::Sequence;
 use anyhow::{Result, anyhow};
 use std::cmp::Ordering;
 use std::fmt::{self, Display};
