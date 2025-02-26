@@ -1,8 +1,8 @@
 use super::{Entry, EntryKinds, Refine};
-use crate::capabilities::{NewPath, OriginalPath};
 use crate::entries::Entries;
 use crate::impl_original_path;
-use crate::utils::{self, FileOps};
+use crate::media::{FileOps, NewPath, OriginalPath};
+use crate::utils;
 use anyhow::{Context, Result};
 use clap::{Args, ValueEnum};
 use std::collections::HashSet;

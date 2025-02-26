@@ -1,9 +1,7 @@
-mod ops;
 mod running;
 mod sequence;
 
 use anyhow::{Result, anyhow};
-pub use ops::*;
 pub use running::*;
 pub use sequence::*;
 use std::collections::HashSet;
