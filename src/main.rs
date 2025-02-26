@@ -13,11 +13,11 @@ pub struct Args {
     /// Directories to scan.
     #[arg(global = true, help_heading = Some("Global"))]
     dirs: Vec<PathBuf>,
-    #[command(flatten)]
-    filters: Filters,
     /// Do not recurse into subdirectories.
     #[arg(short = 'w', long, global = true, help_heading = Some("Global"))]
     shallow: bool,
+    #[command(flatten)]
+    filters: Filters,
     #[command(subcommand)]
     cmd: Command,
 }
