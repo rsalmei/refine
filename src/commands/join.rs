@@ -19,7 +19,7 @@ pub struct Join {
     #[arg(short = 'b', long, default_value_t = By::Move, value_name = "STR", value_enum)]
     by: By,
     /// How to resolve clashes.
-    #[arg(short = 'c', long, default_value_t = Clashes::Sequence, value_name = "STR", value_enum)]
+    #[arg(short = 'c', long, default_value_t = Clashes::NameSequence, value_name = "STR", value_enum)]
     clashes: Clashes,
     /// Force joining already in place files and directories, i.e. in subdirectories of the target.
     #[arg(short = 'f', long)]
@@ -43,7 +43,7 @@ pub enum By {
 #[derive(Debug, Clone, Copy, ValueEnum)]
 pub enum Clashes {
     #[value(aliases = ["sq", "seq"])]
-    Sequence,
+    NameSequence,
     #[value(aliases = ["pn"])]
     ParentName,
     #[value(aliases = ["np"])]
@@ -119,7 +119,7 @@ impl Refine for Join {
                 let (name, ext) = (name.to_owned(), ext.to_owned()); // g must not be borrowed.
                 let dot = if ext.is_empty() { "" } else { "." };
                 match self.clashes {
-                    Clashes::Sequence => {
+                    Clashes::NameSequence => {
                         let mut seq = 2..;
                         g.iter_mut().skip(1).for_each(|m| {
                             let new_name = (&mut seq)
