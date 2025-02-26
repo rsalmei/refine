@@ -92,7 +92,7 @@ impl Refine for Join {
         // step: read the target directory, which might not be empty, to detect outer clashes (not in medias).
         let mut target_names = Vec::new();
         if let Ok(target) = SHARED.get().unwrap().target.as_ref() {
-            let entries = Entries::with_dir(target.to_owned())?;
+            let entries = Entries::with_dir(target)?;
             let in_target = entries.fetch(Join::REQUIRE).collect::<Vec<_>>();
             target_names.extend(in_target.iter().map(|e| e.display_filename().to_string()));
             medias.extend(in_target.into_iter().map(|entry| Media {
