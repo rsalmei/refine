@@ -91,19 +91,6 @@ impl Dupes {
     }
 }
 
-fn words(entry: &Entry) -> Result<Box<[String]>> {
-    let (name, _, _) = entry.collection_parts();
-    let mut words = name
-        .split(&[' ', '.', '-', '_'])
-        .filter(|s| !s.is_empty())
-        .filter(|s| !(s.len() == 1 && s.is_ascii())) // remove vowels.
-        .map(|s| s.to_lowercase())
-        .collect::<Vec<_>>();
-    words.sort_unstable();
-    words.dedup();
-    Ok(words.into_boxed_slice())
-}
-
 impl Media {
     fn cache_sample(&mut self, size: usize) {
         if self.sample.is_none() {
@@ -131,6 +118,19 @@ impl Media {
             };
         }
     }
+}
+
+fn words(entry: &Entry) -> Result<Box<[String]>> {
+    let (name, _, _) = entry.collection_parts();
+    let mut words = name
+        .split(&[' ', '.', '-', '_'])
+        .filter(|s| !s.is_empty())
+        .filter(|s| !(s.len() == 1 && s.is_ascii())) // remove vowels.
+        .map(|s| s.to_lowercase())
+        .collect::<Vec<_>>();
+    words.sort_unstable();
+    words.dedup();
+    Ok(words.into_boxed_slice())
 }
 
 impl TryFrom<Entry> for Media {
