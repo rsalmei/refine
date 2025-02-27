@@ -42,14 +42,14 @@ pub enum By {
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
 pub enum Clashes {
-    #[value(aliases = ["sq", "seq"])]
+    #[value(aliases = ["s", "sq", "seq", "ns"])]
     NameSequence,
     #[value(aliases = ["pn"])]
     ParentName,
     #[value(aliases = ["np"])]
     NameParent,
-    #[value(aliases = ["sk"])]
-    Skip,
+    #[value(aliases = ["i", "ig"])]
+    Ignore,
 }
 
 #[derive(Debug)]
@@ -138,7 +138,7 @@ impl Refine for Join {
                             m.new_name = Some(format!("{name}-{par}{dot}{ext}"));
                         }
                     }),
-                    Clashes::Skip => g.iter_mut().for_each(|m| m.skip = Skip::Yes),
+                    Clashes::Ignore => g.iter_mut().for_each(|m| m.skip = Skip::Yes),
                 }
             });
 
