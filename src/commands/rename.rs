@@ -35,7 +35,7 @@ pub struct Media {
 impl Refine for Rename {
     type Media = Media;
     const OPENING_LINE: &'static str = "Renaming files...";
-    const REQUIRE: EntryKinds = EntryKinds::Both;
+    const REQUIRE: EntryKinds = EntryKinds::DirAndFiles;
 
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         // step: apply naming rules.

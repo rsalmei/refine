@@ -35,10 +35,10 @@ pub struct Warnings {
 pub enum EntryKinds {
     /// Only files.
     Files,
-    /// Either directories or its contents.
-    Either,
-    /// Both directories and its contents, in this order.
-    Both,
+    /// Output directories alone or files, whatever matches.
+    DirOrFiles,
+    /// Both directories and its contents chained.
+    DirAndFiles,
 }
 
 impl Entries {
@@ -148,8 +148,8 @@ fn entries(dir: Entry, k: Option<EntryKinds>, cf: Rc<CFilters>) -> Box<dyn Itera
                     (false, Some(true), _) => Box::new(iter::once(entry)),
                     (true, Some(false), Some(_)) => entries(entry, k, Rc::clone(&cf)),
                     (true, Some(true), Some(Files)) => entries(entry, k, Rc::clone(&cf)),
-                    (true, Some(true), Some(Either)) => Box::new(iter::once(entry)),
-                    (true, Some(true), Some(Both)) => {
+                    (true, Some(true), Some(DirOrFiles)) => Box::new(iter::once(entry)),
+                    (true, Some(true), Some(DirAndFiles)) => {
                         Box::new(iter::once(entry.clone()).chain(entries(entry, k, Rc::clone(&cf))))
                     }
                     _ => Box::new(iter::empty()),
