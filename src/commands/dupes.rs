@@ -30,9 +30,8 @@ impl Refine for Dupes {
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         // step: detect duplicates by size.
         println!("by size:");
-        let by_size = detect_duplicates(
+        let by_size = self.detect_duplicates(
             &mut medias,
-            self.sample,
             |m| &m.size,
             |&size, acc| {
                 println!("\n{} x{}", size.human_count_bytes(), acc.len());
@@ -42,9 +41,8 @@ impl Refine for Dupes {
 
         // step: detect duplicates by name.
         println!("\nby name:");
-        let by_name = detect_duplicates(
+        let by_name = self.detect_duplicates(
             &mut medias,
-            self.sample,
             |m| &m.words,
             |words, acc| {
                 println!("\n{:?} x{}", words, acc.len());
@@ -62,33 +60,35 @@ impl Refine for Dupes {
     }
 }
 
-/// Sort the files by groups, and apply some algorithm on each.
-fn detect_duplicates<G, FG, FS>(medias: &mut [Media], sample: usize, group: FG, show: FS) -> usize
-where
-    G: PartialEq + Ord,
-    FG: Fn(&Media) -> &G,
-    FS: Fn(&G, Vec<&Media>),
-{
-    medias.sort_unstable_by(|m1, m2| group(m1).cmp(group(m2)));
-    medias
-        .chunk_by_mut(|m, m2| group(m) == group(m2))
-        .filter(|_| utils::is_running())
-        .filter(|g| g.len() > 1)
-        .flat_map(|g| {
-            g.iter_mut().for_each(|m| {
-                m.cache_sample(sample); // warm up samples for groups with at least 2 files.
-            });
-            let mut split = HashMap::with_capacity(g.len());
-            g.iter()
-                .map(|m| (m, m.sample.as_ref().unwrap()))
-                .for_each(|(m, sample)| split.entry(sample).or_insert_with(Vec::new).push(m));
-            split.into_values().filter(|v| v.len() > 1)
-        })
-        .map(|mut g| {
-            g.sort_unstable_by(|m, n| m.entry.cmp(&n.entry));
-            show(group(g[0]), g)
-        })
-        .count()
+impl Dupes {
+    /// Sort the files by groups, and apply some algorithm on each.
+    fn detect_duplicates<G, FG, FS>(&self, medias: &mut [Media], group: FG, show: FS) -> usize
+    where
+        G: PartialEq + Ord,
+        FG: Fn(&Media) -> &G,
+        FS: Fn(&G, Vec<&Media>),
+    {
+        medias.sort_unstable_by(|m1, m2| group(m1).cmp(group(m2)));
+        medias
+            .chunk_by_mut(|m, m2| group(m) == group(m2))
+            .filter(|_| utils::is_running())
+            .filter(|g| g.len() > 1)
+            .flat_map(|g| {
+                g.iter_mut().for_each(|m| {
+                    m.cache_sample(self.sample); // warm up samples for groups with at least 2 files.
+                });
+                let mut split = HashMap::with_capacity(g.len());
+                g.iter()
+                    .map(|m| (m, m.sample.as_ref().unwrap()))
+                    .for_each(|(m, sample)| split.entry(sample).or_insert_with(Vec::new).push(m));
+                split.into_values().filter(|v| v.len() > 1)
+            })
+            .map(|mut g| {
+                g.sort_unstable_by(|m, n| m.entry.cmp(&n.entry));
+                show(group(g[0]), g)
+            })
+            .count()
+    }
 }
 
 fn words(entry: &Entry) -> Result<Box<[String]>> {
