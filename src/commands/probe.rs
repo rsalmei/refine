@@ -1,7 +1,7 @@
 use super::{Entry, EntryKinds, Refine};
 use crate::utils::{self, display_abort};
 use Verdict::*;
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, anyhow};
 use clap::{Args, ValueEnum};
 use regex::Regex;
 use std::fmt::Display;
@@ -78,9 +78,26 @@ impl Refine for Probe {
     const OPENING_LINE: &'static str = "Checking files online...";
     const REQUIRE: EntryKinds = EntryKinds::Files;
 
-    fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
-        self.url.parse::<ureq::http::uri::Uri>()?; // validate url before anything else.
+    fn check(&self) -> Result<()> {
+        // make sure the URL contains a single `$` placeholder.
+        if self.url.bytes().filter(|&b| b == b'$').count() != 1 {
+            return Err(anyhow!("URL must contain a single `$` placeholder"))
+                .with_context(|| format!("invalid URL: {:?}", self.url));
+        }
 
+        // make sure the URL is valid, but parsing it as a URI always succeeds.
+        // it seems the only way to check it is by actually sending a request.
+        ureq::head(&self.url)
+            .config()
+            .http_status_as_error(false)
+            .build()
+            .call()
+            .with_context(|| format!("invalid URL: {:?}", self.url))?;
+
+        Ok(())
+    }
+
+    fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         // step: keep only unique file names (sequences were already removed).
         medias.sort_unstable_by(|m, n| m.name.cmp(&n.name));
         medias.dedup_by(|m, n| m.name == n.name);
