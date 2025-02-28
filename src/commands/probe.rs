@@ -55,7 +55,7 @@ pub enum Errors {
     #[value(alias = "l")]
     Last,
     #[value(alias = "a")]
-    All,
+    Always,
     #[value(aliases = ["e", "10"])]
     Each10,
 }
@@ -184,7 +184,7 @@ impl Probe {
             let show = match self.errors {
                 Errors::Never => false,
                 Errors::Last => retry == self.retries,
-                Errors::All => true,
+                Errors::Always => true,
                 Errors::Each10 => (retry + 1) % 10 == 0,
             };
             if show {
