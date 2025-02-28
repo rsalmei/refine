@@ -4,10 +4,10 @@ mod media;
 mod naming;
 mod utils;
 
-use crate::entries::{Entries, Filters};
 use anyhow::Result;
 use clap::Parser;
 use commands::Command;
+use entries::{Entries, Filters};
 use std::path::PathBuf;
 
 #[derive(Debug, Parser)]

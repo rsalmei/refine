@@ -1,4 +1,5 @@
-use super::{Entry, EntryKinds, Refine};
+use crate::commands::Refine;
+use crate::entries::{Entry, EntryKinds};
 use crate::utils::{self, display_abort};
 use anyhow::Result;
 use clap::Args;

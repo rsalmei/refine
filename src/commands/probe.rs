@@ -1,5 +1,5 @@
-use super::{Entry, EntryKinds, Refine};
-use crate::entries::Warnings;
+use crate::commands::Refine;
+use crate::entries::{Entry, EntryKinds, Warnings};
 use crate::utils::{self, display_abort};
 use Verdict::*;
 use anyhow::{Context, Result, anyhow};

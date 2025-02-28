@@ -1,5 +1,5 @@
-use super::{Entry, EntryKinds, Refine};
-use crate::entries::Entries;
+use crate::commands::Refine;
+use crate::entries::{Entries, Entry, EntryKinds};
 use crate::impl_original_path;
 use crate::media::{FileOps, NewPath, OriginalPath};
 use crate::utils;

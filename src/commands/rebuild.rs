@@ -1,4 +1,5 @@
-use super::{Entry, EntryKinds, Refine, Warnings};
+use crate::commands::Refine;
+use crate::entries::{Entry, EntryKinds, Warnings};
 use crate::media::FileOps;
 use crate::naming::NamingRules;
 use crate::utils;
