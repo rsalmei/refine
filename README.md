@@ -150,10 +150,13 @@ And this also includes:
 All commands will:
 
 1. scan all the given directories recursively (excluding hidden .folders)
-    - can optionally perform only a shallow scan, or even filter files and directories based on regular expressions
-2. load the metadata for each file, like size and creation date, required by some commands
-3. execute the command and either print the results or guide the user to perform the changes
-    - everything is always interactive, so you can review the changes before applying them
+    - can optionally filter files and directories based on several regexes, or disable recursion
+2. load the metadata for each file like size and creation date, as required by some commands
+3. execute the command and show the results
+4. ask the user to perform the changes, if applicable
+
+> Everything is always interactive, so don't worry experimenting!
+> <br>It's like you're always in dry-run mode, so nothing will be persisted until you review the results and confirm them.
 
 <details><summary>refine --help</summary>
 
@@ -411,6 +414,12 @@ Options:
 ```
 
 </details>
+
+Example:
+
+```
+$ refine probe ~/media /Volumes/External --url 'https://example.com/$/' -r3 -el
+```
 
 ## Changelog
 
