@@ -1,4 +1,5 @@
 use super::{Entry, EntryKinds, Refine};
+use crate::entries::Warnings;
 use crate::utils::{self, display_abort};
 use Verdict::*;
 use anyhow::{Context, Result, anyhow};
@@ -50,7 +51,7 @@ pub struct Probe {
 #[derive(Debug, Clone, Copy, PartialEq, ValueEnum)]
 pub enum Errors {
     #[value(alias = "n")]
-    None,
+    Never,
     #[value(alias = "l")]
     Last,
     #[value(alias = "a")]
@@ -95,6 +96,15 @@ impl Refine for Probe {
             .with_context(|| format!("invalid URL: {:?}", self.url))?;
 
         Ok(())
+    }
+
+    fn tweak(&mut self, _: &Warnings) {
+        if self.retries < 0 && self.errors == Errors::Last {
+            println!(
+                "Can't show \"last\" error display for indefinite retries, switching to \"never\".\n"
+            );
+            self.errors = Errors::Never;
+        }
     }
 
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
@@ -172,7 +182,7 @@ impl Probe {
                 Err(err) => (&format!("{err}"), "!"),
             };
             let show = match self.errors {
-                Errors::None => false,
+                Errors::Never => false,
                 Errors::Last => retry == self.retries,
                 Errors::All => true,
                 Errors::Each10 => (retry + 1) % 10 == 0,
