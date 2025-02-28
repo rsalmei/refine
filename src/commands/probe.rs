@@ -188,10 +188,15 @@ impl Probe {
                 Errors::Each10 => (retry + 1) % 10 == 0,
             };
             if show {
-                println!("\n    - {full}");
-                print!("    ");
-                spaces = 0;
+                if spaces != 4 {
+                    println!();
+                    spaces = 4;
+                }
+                println!("    - {full}");
             } else {
+                if spaces == 4 {
+                    print!("    ");
+                }
                 print!("{brief}");
                 stdout().flush()?;
                 spaces = 1;
