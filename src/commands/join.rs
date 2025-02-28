@@ -1,6 +1,8 @@
-use super::{EntryKind, Refine};
+use super::{Entry, EntryKinds, Refine};
+use crate::entries::Entries;
 use crate::impl_original_path;
-use crate::utils::{self, kind};
+use crate::media::{FileOps, NewPath, OriginalPath};
+use crate::utils;
 use anyhow::{Context, Result};
 use clap::{Args, ValueEnum};
 use std::collections::HashSet;
@@ -11,13 +13,13 @@ use std::sync::OnceLock;
 #[derive(Debug, Args)]
 pub struct Join {
     /// The target directory; will be created if it doesn't exist.
-    #[arg(short = 't', long, value_name = "PATH", default_value = ".")]
+    #[arg(short = 't', long, default_value = ".", value_name = "PATH")]
     target: PathBuf,
     /// The type of join to perform.
-    #[arg(short = 'b', long, value_name = "STR", value_enum, default_value_t = By::Move)]
+    #[arg(short = 'b', long, default_value_t = By::Move, value_name = "STR", value_enum)]
     by: By,
     /// How to resolve clashes.
-    #[arg(short = 'c', long, value_name = "STR", value_enum, default_value_t = Clashes::Sequence)]
+    #[arg(short = 'c', long, default_value_t = Clashes::NameSequence, value_name = "STR", value_enum)]
     clashes: Clashes,
     /// Force joining already in place files and directories, i.e. in subdirectories of the target.
     #[arg(short = 'f', long)]
@@ -40,19 +42,19 @@ pub enum By {
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
 pub enum Clashes {
-    #[value(aliases = ["seq"])]
-    Sequence,
+    #[value(aliases = ["s", "sq", "seq", "ns"])]
+    NameSequence,
     #[value(aliases = ["pn"])]
     ParentName,
     #[value(aliases = ["np"])]
     NameParent,
-    #[value(aliases = ["sk"])]
-    Skip,
+    #[value(aliases = ["i", "ig"])]
+    Ignore,
 }
 
 #[derive(Debug)]
 pub struct Media {
-    path: PathBuf,
+    entry: Entry,
     new_name: Option<String>,
     skip: Skip,
 }
@@ -76,7 +78,7 @@ static SHARED: OnceLock<Shared> = OnceLock::new();
 impl Refine for Join {
     type Media = Media;
     const OPENING_LINE: &'static str = "Joining files...";
-    const ENTRY_KIND: EntryKind = EntryKind::Either;
+    const REQUIRE: EntryKinds = EntryKinds::DirOrFiles;
 
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         let shared = Shared {
@@ -92,33 +94,32 @@ impl Refine for Join {
         // step: read the target directory, which might not be empty, to detect outer clashes (not in medias).
         let mut target_names = Vec::new();
         if let Ok(target) = SHARED.get().unwrap().target.as_ref() {
-            if let Ok(in_target) = fs::read_dir(target).map(|rd| rd.flatten()) {
-                let in_target = in_target.collect::<Vec<_>>();
-                target_names.extend(in_target.iter().flat_map(|e| e.file_name().into_string()));
-                medias.extend(in_target.iter().map(|entry| Media {
-                    path: entry.path(),
-                    new_name: None,
-                    skip: Skip::Target,
-                }))
-            }
+            let entries = Entries::with_dir(target)?;
+            let in_target = entries.fetch(Join::REQUIRE).collect::<Vec<_>>();
+            target_names.extend(in_target.iter().map(|e| e.display_filename().to_string()));
+            medias.extend(in_target.into_iter().map(|entry| Media {
+                entry,
+                new_name: None,
+                skip: Skip::Target,
+            }))
         }
 
         // step: detect clashes (files with the same name in different directories), and resolve them.
         medias.sort_unstable_by(|m, n| {
             // put files already in place first.
-            (m.path.file_name(), !m.is_in_place()).cmp(&(n.path.file_name(), !n.is_in_place()))
+            (m.entry.file_name(), !m.is_in_place()).cmp(&(n.entry.file_name(), !n.is_in_place()))
         });
         let mut clashes = 0;
         medias
-            .chunk_by_mut(|m, n| m.path.file_name() == n.path.file_name())
+            .chunk_by_mut(|m, n| m.entry.file_name() == n.entry.file_name())
             .filter(|g| g.len() > 1)
             .for_each(|g| {
                 clashes += g.len() - 1; // one is (or will be) in target, the others are clashes.
-                let path = g[0].path.to_owned();
-                let (name, ext) = utils::filename_parts(&path).unwrap(); // files were already checked.
+                let (name, ext) = g[0].entry.filename_parts();
+                let (name, ext) = (name.to_owned(), ext.to_owned()); // g must not be borrowed.
                 let dot = if ext.is_empty() { "" } else { "." };
                 match self.clashes {
-                    Clashes::Sequence => {
+                    Clashes::NameSequence => {
                         let mut seq = 2..;
                         g.iter_mut().skip(1).for_each(|m| {
                             let new_name = (&mut seq)
@@ -129,7 +130,7 @@ impl Refine for Join {
                         })
                     }
                     Clashes::ParentName | Clashes::NameParent => g.iter_mut().for_each(|m| {
-                        let par = m.path.parent().unwrap_or(Path::new("/"));
+                        let par = m.entry.parent().unwrap_or(Path::new("/"));
                         let par = par.file_name().unwrap().to_str().unwrap();
                         if let Clashes::ParentName = self.clashes {
                             m.new_name = Some(format!("{par}-{name}{dot}{ext}"));
@@ -137,22 +138,22 @@ impl Refine for Join {
                             m.new_name = Some(format!("{name}-{par}{dot}{ext}"));
                         }
                     }),
-                    Clashes::Skip => g.iter_mut().for_each(|m| m.skip = Skip::Yes),
+                    Clashes::Ignore => g.iter_mut().for_each(|m| m.skip = Skip::Yes),
                 }
             });
 
         // step: settle results by removing the files that are in place or skipped.
-        medias.sort_unstable_by(|m, n| m.path.cmp(&n.path));
+        medias.sort_unstable_by(|m, n| m.entry.cmp(&n.entry));
         let mut in_place = 0;
         medias.retain(|m| match (m.skip, m.is_in_place()) {
             (Skip::No, false) => true,
             (Skip::No, true) => {
                 in_place += 1;
-                println!("already in place: {}{}", m.path.display(), kind(&m.path));
+                println!("already in place: {}", m.entry);
                 false
             }
             (Skip::Yes, _) => {
-                println!("clash skipped: {}{}", m.path.display(), kind(&m.path));
+                println!("clash skipped: {}", m.entry);
                 false
             }
             (Skip::Target, _) => false,
@@ -160,8 +161,8 @@ impl Refine for Join {
 
         // step: display the results.
         medias.iter().for_each(|m| match &m.new_name {
-            Some(name) => println!("{}{} -> {name}", m.path.display(), kind(&m.path)),
-            None => println!("{}{}", m.path.display(), kind(&m.path)),
+            Some(name) => println!("{} -> {name}", m.entry),
+            None => println!("{}", m.entry),
         });
 
         // step: display receipt summary.
@@ -185,22 +186,22 @@ impl Refine for Join {
             true => HashSet::new(),
             false => medias
                 .iter()
-                .map(|m| m.path.parent().unwrap().to_owned())
+                .map(|m| m.entry.parent().unwrap().to_owned())
                 .collect::<HashSet<_>>(),
         };
 
         // step: apply changes, if the user agrees.
         fs::create_dir_all(target).with_context(|| format!("creating {target:?}"))?;
         match self.by {
-            By::Move => utils::rename_move_consuming(&mut medias),
-            By::Copy => utils::copy_consuming(&mut medias),
+            By::Move => medias.rename_move_consuming(),
+            By::Copy => medias.copy_consuming(),
         };
 
         // step: recover from CrossDevice errors.
         if !medias.is_empty() {
             if let By::Move = self.by {
                 println!("attempting to fix {} errors", medias.len());
-                utils::cross_move_consuming(&mut medias);
+                medias.cross_move_consuming();
             }
         }
 
@@ -244,32 +245,32 @@ impl Media {
 
         let target = shared.target.as_ref().unwrap();
         if shared.force {
-            return self.path.parent().unwrap() == target;
+            return self.entry.parent().unwrap() == target;
         }
 
-        match self.path.is_dir() {
-            true => self.path.starts_with(target),
-            false => self.path.parent().unwrap().starts_with(target),
+        match self.entry.is_dir() {
+            true => self.entry.starts_with(target),
+            false => self.entry.parent().unwrap().starts_with(target),
         }
     }
 }
 
 impl_original_path!(Media);
 
-impl utils::NewPath for Media {
+impl NewPath for Media {
     fn new_path(&self) -> PathBuf {
         let name = self.new_name.as_ref().map(|s| s.as_ref());
         let path = SHARED.get().unwrap().target.as_ref().unwrap_or_else(|x| x);
-        path.join(name.unwrap_or_else(|| self.path.file_name().unwrap()))
+        path.join(name.unwrap_or_else(|| self.path().file_name().unwrap()))
     }
 }
 
-impl TryFrom<PathBuf> for Media {
+impl TryFrom<Entry> for Media {
     type Error = anyhow::Error;
 
-    fn try_from(path: PathBuf) -> Result<Self> {
+    fn try_from(entry: Entry) -> Result<Self> {
         Ok(Media {
-            path,
+            entry,
             new_name: None,
             skip: Skip::No,
         })

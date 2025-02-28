@@ -1,23 +1,33 @@
-use crate::utils::{NewPath, OriginalPath};
+use super::{NewPath, OriginalPath};
 use std::io::Write;
 use std::path::Path;
 use std::{fs, io};
 
-/// Rename files and directories. Works only within the same file system.
-///
-/// Can also be used to move files and directories, when the target path is not the same.
-pub fn rename_move_consuming(medias: &mut Vec<impl OriginalPath + NewPath>) {
-    files_op(medias, silent, |p, q| fs::rename(p, q))
+pub trait FileOps {
+    /// Rename files and directories. Works only within the same file system.
+    ///
+    /// Can also be used to move files and directories, when the target path is not the same.
+    fn rename_move_consuming(&mut self);
+
+    /// Copy files to a new location. Works between file systems.
+    fn copy_consuming(&mut self);
+
+    /// Move files to a new location by copying and removing the original. Works between file systems.
+    fn cross_move_consuming(&mut self);
 }
 
-/// Copy files to a new location. Works between file systems.
-pub fn copy_consuming(medias: &mut Vec<impl OriginalPath + NewPath>) {
-    files_op(medias, verbose, |p, q| copy_path(p, q, false, 0))
-}
+impl<M: OriginalPath + NewPath> FileOps for Vec<M> {
+    fn rename_move_consuming(&mut self) {
+        files_op(self, silent, |p, q| fs::rename(p, q))
+    }
 
-/// Move files to a new location by copying and removing the original. Works between file systems.
-pub fn cross_move_consuming(medias: &mut Vec<impl OriginalPath + NewPath>) {
-    files_op(medias, verbose, |p, q| copy_path(p, q, true, 0))
+    fn copy_consuming(&mut self) {
+        files_op(self, verbose, |p, q| copy_path(p, q, false, 0))
+    }
+
+    fn cross_move_consuming(&mut self) {
+        files_op(self, verbose, |p, q| copy_path(p, q, true, 0))
+    }
 }
 
 fn files_op(

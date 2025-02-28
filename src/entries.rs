@@ -1,66 +1,60 @@
+mod entry;
+mod filters;
+mod sequence;
+
 use crate::utils;
-use anyhow::{anyhow, Result};
-use clap::builder::NonEmptyStringValueParser;
-use clap::Args;
+use anyhow::{Result, anyhow};
+pub use entry::*;
+pub use filters::*;
 use regex::Regex;
 use std::iter;
-use std::path::{Path, PathBuf};
-use std::sync::OnceLock;
+use std::path::PathBuf;
+use std::rc::Rc;
 
-#[derive(Debug, Args)]
-pub struct Filters {
-    /// Include only these files and directories; checked without extension.
-    #[arg(short = 'i', long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    pub include: Option<String>,
-    /// Exclude these files and directories; checked without extension.
-    #[arg(short = 'x', long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    pub exclude: Option<String>,
-    /// Include only these directories.
-    #[arg(short = 'I', long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    pub dir_in: Option<String>,
-    /// Exclude these directories.
-    #[arg(short = 'X', long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    pub dir_ex: Option<String>,
-    /// Include only these files; checked without extension.
-    #[arg(long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    pub file_in: Option<String>,
-    /// Exclude these files; checked without extension.
-    #[arg(long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    pub file_ex: Option<String>,
-    /// Include only these extensions.
-    #[arg(long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    pub ext_in: Option<String>,
-    /// Exclude these extensions.
-    #[arg(long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    pub ext_ex: Option<String>,
-    /// Do not recurse into subdirectories.
-    #[arg(short = 'w', long, global = true, help_heading = Some("Global"))]
-    pub shallow: bool,
+/// The object that fetches and filters entries from multiple directories.
+#[derive(Debug)]
+pub struct Entries {
+    /// Effective input paths to scan, after deduplication and checking.
+    dirs: Vec<Entry>,
+    /// Compiled regexes for filtering entries.
+    filters: CFilters,
+    /// Whether to scan subdirectories of each directory.
+    shallow: bool,
+    /// Warnings that were encountered while parsing the input.
+    warnings: Warnings,
 }
 
 #[derive(Debug)]
-pub struct Fetcher {
-    dirs: Vec<PathBuf>,
-    shallow: bool,
-    /// Used to determine whether there were missing directories in the input.
-    pub missing_dirs: bool,
+pub struct Warnings {
+    /// Whether there were missing paths in the input.
+    pub missing: bool,
 }
 
 /// Denotes which kind of entries should be included.
 #[derive(Debug, Copy, Clone)]
-pub enum EntryKind {
+pub enum EntryKinds {
     /// Only files.
     Files,
-    /// Either directories or files, in this order.
-    Either,
-    /// Both directories and files, in this order.
-    Both,
+    /// Output directories alone or files, whatever matches.
+    DirOrFiles,
+    /// Both directories and its contents chained.
+    DirAndFiles,
 }
 
-impl Fetcher {
-    pub(super) fn new(mut dirs: Vec<PathBuf>, filters: Filters) -> Result<Fetcher> {
-        parse_input_regexes(&filters)?;
+impl Entries {
+    /// Reads all entries from a single directory, non-recursively.
+    pub fn with_dir(dir: impl Into<PathBuf>) -> Result<Self> {
+        Self::with_filters(vec![dir.into()], Filters::default(), false)
+    }
 
+    /// Reads entries from the given directories, with the given filtering rules and recursion.
+    pub fn with_filters(dirs: Vec<PathBuf>, filters: Filters, shallow: bool) -> Result<Self> {
+        let filters = filters.try_into()?; // compile regexes and check for errors before anything else.
+
+        let mut dirs = match dirs.is_empty() {
+            false => dirs,            // lists files from the given paths,
+            true => vec![".".into()], // or the current directory if no paths are given.
+        };
         let n = dirs.len();
         dirs.sort_unstable();
         dirs.dedup();
@@ -68,60 +62,62 @@ impl Fetcher {
             eprintln!("warning: {} duplicated directories ignored", n - dirs.len());
         }
 
-        let (dirs, errs) = dirs.into_iter().partition::<Vec<_>, _>(|p| p.is_dir());
-        errs.iter()
+        let (dirs, missing) = dirs
+            .into_iter()
+            .map(Entry::try_from)
+            .inspect(|res| {
+                if let Err(err) = res {
+                    eprintln!("warning: invalid entry: {err}");
+                }
+            })
+            .flatten()
+            .partition::<Vec<_>, _>(|p| p.is_dir());
+        missing
+            .iter()
             .for_each(|p| eprintln!("warning: directory not found: {}", p.display()));
         if dirs.is_empty() {
             return Err(anyhow!("no valid paths given"));
         }
 
-        Ok(Fetcher {
+        Ok(Entries {
             dirs,
-            shallow: filters.shallow,
-            missing_dirs: !errs.is_empty(),
+            filters,
+            shallow,
+            warnings: Warnings {
+                missing: !missing.is_empty(),
+            },
         })
     }
 
-    pub(super) fn fetch(&self, kind: EntryKind) -> impl Iterator<Item = PathBuf> + '_ {
-        let kind = (!self.shallow).then_some(kind);
+    pub fn warnings(&self) -> &Warnings {
+        &self.warnings
+    }
+
+    pub fn fetch(self, kinds: EntryKinds) -> impl Iterator<Item = Entry> {
+        let kind = (!self.shallow).then_some(kinds);
+        let cf = Rc::new(self.filters);
         self.dirs
-            .iter()
-            .flat_map(move |p| entries(p.to_owned(), kind))
+            .into_iter()
+            .flat_map(move |p| entries(p, kind, Rc::clone(&cf)))
     }
 }
 
-macro_rules! re_input {
-    ($($re:ident, $param:ident);+ $(;)?) => {
-        $( static $re: OnceLock<Regex> = OnceLock::new(); )+
-        fn parse_input_regexes(filters: &Filters) -> Result<()> {
-            $( utils::set_regex(&$re, &filters.$param, stringify!($param))?; )+
-            Ok(())
-        }
-    };
-}
-re_input!(
-    RE_IN, include; RE_EX, exclude; // general include and exclude (both files and directories).
-    RE_DIN, dir_in; RE_DEX, dir_ex; // directory include and exclude.
-    RE_FIN, file_in; RE_FEX, file_ex; // file include and exclude.
-    RE_EIN, ext_in; RE_EEX, ext_ex; // extension include and exclude.
-);
-
-fn entries(dir: PathBuf, kind: Option<EntryKind>) -> Box<dyn Iterator<Item = PathBuf>> {
-    fn is_included(path: &Path) -> Option<bool> {
+fn entries(dir: Entry, k: Option<EntryKinds>, cf: Rc<CFilters>) -> Box<dyn Iterator<Item = Entry>> {
+    fn is_included(entry: &Entry, cf: &CFilters) -> Option<bool> {
         fn is_match(s: &str, re_in: Option<&Regex>, re_ex: Option<&Regex>) -> bool {
-            re_ex.map_or(true, |re_ex| !re_ex.is_match(s))
-                && re_in.map_or(true, |re_in| re_in.is_match(s))
+            re_ex.is_none_or(|re_ex| !re_ex.is_match(s))
+                && re_in.is_none_or(|re_in| re_in.is_match(s))
         }
 
-        let (name, ext) = utils::filename_parts(path).ok()?; // discards invalid UTF-8 names.
-        (!name.starts_with('.')).then_some(())?; // exclude hidden files and directories.
+        let (stem, ext) = entry.filename_parts();
+        (!stem.starts_with('.')).then_some(())?; // exclude hidden files and directories.
 
-        (is_match(name, RE_IN.get(), RE_EX.get()) // applied to both files and directories.
-            && is_match(ext, RE_EIN.get(), RE_EEX.get())
-            && match path.is_dir() {
-                true => is_match(path.to_str()?, RE_DIN.get(), RE_DEX.get()),
-                false => is_match(path.parent()?.to_str()?, RE_DIN.get(), RE_DEX.get())
-                    && is_match(name, RE_FIN.get(), RE_FEX.get()),
+        (is_match(stem, cf.include.as_ref(), cf.exclude.as_ref()) // applied to both files and directories.
+            && is_match(ext, cf.ext_in.as_ref(), cf.ext_ex.as_ref())
+            && match entry.is_dir() {
+                true => is_match(entry.to_str()?, cf.dir_in.as_ref(), cf.dir_ex.as_ref()),
+                false => is_match(entry.parent()?.to_str()?, cf.dir_in.as_ref(), cf.dir_ex.as_ref())
+                    && is_match(stem, cf.file_in.as_ref(), cf.file_ex.as_ref()),
             })
         .into()
     }
@@ -133,22 +129,28 @@ fn entries(dir: PathBuf, kind: Option<EntryKind>) -> Box<dyn Iterator<Item = Pat
     // this does allow hidden directories, if the user directly asks for them.
     match std::fs::read_dir(&dir) {
         Ok(rd) => Box::new(
-            rd.inspect(move |r| {
-                if let Err(err) = r {
-                    eprintln!("error: read entry {}: {err}", dir.display());
+            rd.inspect(|res| {
+                if let Err(err) = res {
+                    eprintln!("error: dir entry: {err}");
                 }
             })
             .flatten()
-            .flat_map(move |de| {
-                let path = de.path();
-                use EntryKind::*;
-                match (path.is_dir(), is_included(&path), kind) {
-                    (false, Some(true), _) => Box::new(iter::once(path)),
-                    (true, Some(false), Some(_)) => entries(path, kind),
-                    (true, Some(true), Some(Files)) => entries(path, kind),
-                    (true, Some(true), Some(Either)) => Box::new(iter::once(path)),
-                    (true, Some(true), Some(Both)) => {
-                        Box::new(iter::once(path.to_owned()).chain(entries(path, kind)))
+            .map(|de| Entry::try_from(de.path()))
+            .inspect(|res| {
+                if let Err(err) = res {
+                    eprintln!("error: entry: {err}");
+                }
+            })
+            .flatten()
+            .flat_map(move |entry| {
+                use EntryKinds::*;
+                match (entry.is_dir(), is_included(&entry, &cf), k) {
+                    (false, Some(true), _) => Box::new(iter::once(entry)),
+                    (true, Some(false), Some(_)) => entries(entry, k, Rc::clone(&cf)),
+                    (true, Some(true), Some(Files)) => entries(entry, k, Rc::clone(&cf)),
+                    (true, Some(true), Some(DirOrFiles)) => Box::new(iter::once(entry)),
+                    (true, Some(true), Some(DirAndFiles)) => {
+                        Box::new(iter::once(entry.clone()).chain(entries(entry, k, Rc::clone(&cf))))
                     }
                     _ => Box::new(iter::empty()),
                 }

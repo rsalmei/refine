@@ -1,28 +1,25 @@
-mod files;
 mod running;
 
-use anyhow::{anyhow, Context, Result};
-pub use files::*;
-use regex::Regex;
+use anyhow::{Result, anyhow};
 pub use running::*;
 use std::collections::HashSet;
 use std::error::Error;
-use std::io::Write;
+use std::io::{Write, stdin, stdout};
 use std::str::FromStr;
-use std::sync::{mpsc, LazyLock, Mutex, OnceLock};
+use std::sync::{LazyLock, Mutex, mpsc};
+use std::thread;
 use std::time::Duration;
-use std::{io, thread};
 
 /// Prompt the user for confirmation.
 pub fn prompt_yes_no(msg: impl Into<Box<str>>) -> Result<()> {
     let (tx, rx) = mpsc::channel();
     let msg = msg.into(); // I need ownership of an immutable message here.
     let fun = move |input: &mut String| {
-        user_aborted()?;
+        aborted()?;
         print!("{msg} [y|n|q]: ");
-        io::stdout().flush()?;
+        stdout().flush()?;
         input.clear();
-        io::stdin().read_line(input)?;
+        stdin().read_line(input)?;
         Ok(())
     };
     thread::spawn(move || {
@@ -41,7 +38,7 @@ pub fn prompt_yes_no(msg: impl Into<Box<str>>) -> Result<()> {
     loop {
         match rx.recv_timeout(Duration::from_millis(1000 / 2)) {
             Ok(res) => break res,
-            Err(_) => user_aborted()?,
+            Err(_) => aborted()?,
         }
     }
 }
@@ -58,22 +55,6 @@ pub fn intern(text: &str) -> &'static str {
             cache.insert(interned);
             interned
         }
-    }
-}
-
-// Set an optional regular expression into a OnceLock (case-insensitive).
-pub fn set_regex(var: &OnceLock<Regex>, val: &Option<String>, param: &str) -> Result<()> {
-    match val {
-        None => Ok(()),
-        Some(s) => match Regex::new(&format!("(?i){s}"))
-            .with_context(|| format!("compiling regex: {s:?}"))
-        {
-            Ok(re) => {
-                var.set(re).unwrap();
-                Ok(())
-            }
-            Err(err) => Err(anyhow!("error: invalid --{param}: {err:?}")),
-        },
     }
 }
 

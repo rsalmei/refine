@@ -1,31 +1,10 @@
-use crate::utils::Sequence;
-use anyhow::{anyhow, Result};
 use regex::Regex;
-use std::path::Path;
 use std::sync::LazyLock;
 
-/// Get the file stem and extension from files, or name from directories.
-pub fn filename_parts(path: &Path) -> Result<(&str, &str)> {
-    if path.is_dir() {
-        let name = path
-            .file_name()
-            .ok_or_else(|| anyhow!("no file name: {path:?}"))?
-            .to_str()
-            .ok_or_else(|| anyhow!("no UTF-8 file name: {path:?}"))?;
-        Ok((name, ""))
-    } else {
-        let stem = path
-            .file_stem()
-            .ok_or_else(|| anyhow!("no file stem: {path:?}"))?
-            .to_str()
-            .ok_or_else(|| anyhow!("no UTF-8 file stem: {path:?}"))?;
-        let ext = path
-            .extension()
-            .unwrap_or_default()
-            .to_str()
-            .ok_or_else(|| anyhow!("no UTF-8 extension: {path:?}"))?;
-        Ok((stem, ext))
-    }
+#[derive(Debug)]
+pub struct Sequence {
+    pub num: Option<usize>,
+    pub true_len: usize,
 }
 
 impl<S: AsRef<str>> From<S> for Sequence {
@@ -46,37 +25,9 @@ impl<S: AsRef<str>> From<S> for Sequence {
     }
 }
 
-/// Return the kind of path, handy for display purposes.
-///
-/// Beware this function touches the filesystem, checking it every time it is called.
-pub fn kind(p: &Path) -> &str {
-    match p.is_dir() {
-        true => "/",
-        false => "",
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs;
-
-    #[test]
-    fn parts() {
-        #[track_caller]
-        fn case(p: impl AsRef<Path>, (s, e): (&str, &str)) {
-            assert_eq!(filename_parts(p.as_ref()).unwrap(), (s, e));
-        }
-
-        case("foo", ("foo", ""));
-        case("foo.bar", ("foo", "bar"));
-        case("foo.bar.baz", ("foo.bar", "baz"));
-        case("foo/", ("foo", ""));
-
-        fs::create_dir("foo.bar").unwrap(); // not a great solution, but is_dir() actually tries the fs.
-        case("foo.bar/", ("foo.bar", ""));
-        fs::remove_dir("foo.bar").unwrap()
-    }
 
     #[test]
     fn extract_sequence() {

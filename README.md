@@ -11,7 +11,7 @@
 
 This tool will revolutionize the way you manage and organize your media collections! It can scan multiple root directories recursively and analyze all the files and directories found as a whole, performing some advanced operations on them.
 
-It can help you reasonably find duplicated files based on both size and filename, seamlessly join them into a single directory with advanced conflict resolution, quickly list files from multiple directories sorted together by various criteria, effortlessly rename files and directories using advanced regular expressions, and even intelligently rebuild entire media collections by identifying groups with similar names and assigning sequence numbers to each, allowing you to organize them in a way that makes sense to you.
+It can help you reasonably find duplicated files based on both size and filename, seamlessly join them into a single directory with advanced conflict resolution, quickly list files from multiple directories sorted together by various criteria, effortlessly rename files and directories using advanced regular expressions, intelligently rebuild entire media collection names, and even reliably probe filenames against a remote server! It is a one-stop solution for all your media needs, allowing you to organize them in a way that makes sense to you.
 
 > Use it to _refine_ your photo, music, movie, porn, etc., collection in a simple and efficient way!
 
@@ -33,13 +33,19 @@ And that's it, you're ready to go! You can now call it anywhere.
 
 ## What's new
 
+### New in 1.4
+
+This version introduces the `probe` command, which allows you to probe filenames against a remote server! This can be used to validate the filenames of your media collections by checking whether a URL points to a valid file or page on a remote server.
+
+Also, the `rebuild` command has a new `--case` option, which allows you to keep the original case of the filenames, and the `rename` command has improved support for handling clashes, allowing you to insert sequence numbers in the filenames when you really want to let them be the same.
+
+<details><summary>(older versions)</summary>
+
 ### New in 1.3
 
 This version is mostly about polishing, with some improvements and bug fixes.
 
 We have a smarter list command, which hides full paths by default and uses descending order for size and ascending for name and path; join: change no_remove flag to parents (n -> p) and some clash options; rebuild: change simple_match flag to simple and fix full mode, which was not resetting sequences; general polishing.
-
-<details><summary>(older versions)</summary>
 
 ### New in 1.2
 
@@ -157,11 +163,12 @@ Refine your file collection using Rust!
 Usage: refine [OPTIONS] [DIRS]... <COMMAND>
 
 Commands:
-  dupes    Find possibly duplicated files by both size and filename
-  join     Join files into the same directory
-  list     List files from the given directories
-  rebuild  Rebuild the filenames of media collections intelligently
-  rename   Rename files in batch, according to the given rules
+  dupes    Find reasonably duplicated files by both size and filename
+  join     Join files into a single directory with advanced conflict resolution
+  list     List files from multiple directories sorted together
+  rebuild  Rebuild entire media collections intelligently
+  rename   Rename files and directories using advanced regular expression rules
+  probe    Probe filenames against a remote server
   help     Print this message or the help of the given subcommand(s)
 
 Options:
@@ -169,6 +176,7 @@ Options:
   -V, --version  Print version
 
 Global:
+  -w, --shallow          Do not recurse into subdirectories
   -i, --include <REGEX>  Include only these files and directories; checked without extension
   -x, --exclude <REGEX>  Exclude these files and directories; checked without extension
   -I, --dir-in <REGEX>   Include only these directories
@@ -177,7 +185,6 @@ Global:
       --file-ex <REGEX>  Exclude these files; checked without extension
       --ext-in <REGEX>   Include only these extensions
       --ext-ex <REGEX>   Exclude these extensions
-  -w, --shallow          Do not recurse into subdirectories
   [DIRS]...          Directories to scan
 
 For more information, see https://github.com/rsalmei/refine
@@ -199,13 +206,13 @@ The `dupes` command will analyze and report the possibly duplicated files, eithe
 <details><summary>refine dupes --help</summary>
 
 ```
-Find possibly duplicated files by both size and filename
+Find reasonably duplicated files by both size and filename
 
 Usage: refine dupes [OPTIONS] [DIRS]...
 
 Options:
-  -s, --sample <BYTES>  Sample size in bytes (0 to disable) [default: 2048]
-  -h, --help            Print help
+  -s, --sample <INT>  Sample size in bytes (0 to disable) [default: 2048]
+  -h, --help          Print help
 ```
 
 </details>
@@ -231,14 +238,14 @@ The `join` command will let you grab all files and directories in the given dire
 <details><summary>refine join --help</summary>
 
 ```
-Join files into the same directory
+Join files into a single directory with advanced conflict resolution
 
 Usage: refine join [OPTIONS] [DIRS]...
 
 Options:
   -t, --target <PATH>  The target directory; will be created if it doesn't exist [default: .]
   -b, --by <STR>       The type of join to perform [default: move] [possible values: move, copy]
-  -c, --clashes <STR>  How to resolve clashes [default: sequence] [possible values: sequence, parent-name, name-parent, skip]
+  -c, --clashes <STR>  How to resolve clashes [default: name-sequence] [possible values: name-sequence, parent-name, name-parent, ignore]
   -f, --force          Force joining already in place files and directories, i.e. in subdirectories of the target
   -p, --parents        Do not remove empty parent directories after joining files
   -y, --yes            Skip the confirmation prompt, useful for automation
@@ -264,7 +271,7 @@ The `list` command will gather all the files in the given directories, sort them
 <details><summary>refine list --help</summary>
 
 ```
-List files from the given directories
+List files from multiple directories sorted together
 
 Usage: refine list [OPTIONS] [DIRS]...
 
@@ -305,7 +312,7 @@ And don't worry as this tool is interactive, so you can review all changes befor
 <details><summary>refine rebuild --help</summary>
 
 ```
-Rebuild the filenames of media collections intelligently
+Rebuild entire media collections intelligently
 
 Usage: refine rebuild [OPTIONS] [DIRS]...
 
@@ -317,6 +324,7 @@ Options:
   -s, --simple                      Disable smart matching, so "foo bar.mp4", "FooBar.mp4" and "foo__bar.mp4" are different
   -f, --force <STR>                 Force to overwrite filenames (use the Global options to filter files)
   -p, --partial                     Assume not all directories are available, which retains current sequences (but fixes gaps)
+  -c, --case                        Keep the original case of filenames, otherwise they are lowercased
   -y, --yes                         Skip the confirmation prompt, useful for automation
   -h, --help                        Print help
 ```
@@ -334,15 +342,17 @@ $ refine rebuild ~/media /Volumes/External -a 720p -a Bluray -b xpto -e old
 The `rename` command will let you batch rename files like no other tool, seriously! You can quickly strip common prefixes, suffixes, and exact parts of the filenames, as well as apply any regex replacements you want. By default, in case a filename ends up clashing with other files in the same directory, that whole directory will be disallowed to make any changes. The list of clashes will be nicely formatted and printed, so you can manually check them. And you can optionally allow changes to other files in the same directory, removing only the clashes if you find it safe.
 
 1. apply naming rules to strip or replace parts of the filenames
-2. remove all changes from the whole directory where clashes are detected
-    - optionally removes only the clashes, allowing other changes
+2. handle the clashes according to the given strategy, which can:
+    - forbid any changes in the directory where clashes are detected
+    - ignore the clashes, allowing other changes in the same directory
+    - apply sequence numbers to the clashes, allowing all changes
 3. print the resulting changes to the filenames and directories, and ask for confirmation
 4. if the user confirms, apply the changes
 
 <details><summary>refine rename --help</summary>
 
 ```
-Rename files in batch, according to the given rules
+Rename files and directories using advanced regular expression rules
 
 Usage: refine rename [OPTIONS] [DIRS]...
 
@@ -351,7 +361,7 @@ Options:
   -a, --strip-after <STR|REGEX>     Strip to the end of the filename; blanks nearby are automatically removed
   -e, --strip-exact <STR|REGEX>     Strip all occurrences in the filename; blanks nearby are automatically removed
   -r, --replace <STR|REGEX=STR|$N>  Replace all occurrences in the filename with another; blanks are not touched
-  -c, --clashes                     Allow changes in directories where clashes are detected
+  -c, --clashes <STR>               How to resolve clashes [default: forbid] [possible values: forbid, ignore, name-sequence]
   -y, --yes                         Skip the confirmation prompt, useful for automation
   -h, --help                        Print help
 ```
@@ -364,10 +374,49 @@ Example:
 $ refine rename ~/media /Volumes/External -b "^\d+_" -r '([^\.]*?)\.=$1 '
 ```
 
+### The `probe` command
+
+The `probe` command allows you to probe filenames against a remote server, which can be very useful to validate the filenames of your media collections. It works by checking whether a URL points to a valid file or page on a remote server.
+
+The URL can be any valid HTTP(S) URL, and must have a placeholder for the filename. The command generates URLs by replacing the placeholder with the names of the files, and sends a HEAD request to each one, allowing you to use some advanced options to control the behavior, such as the timeout, number of retries, wait times, exponential backoff, and when to display errors. The request is expected to return:
+- a 200 OK or 403 Forbidden response to be considered valid;
+- a 404 Not Found to be considered invalid;
+- any other response is retried, with exponential backoff, until the maximum number of retries is reached, then it is considered failed.
+
+It does not support any kind of parallel connections or API rate limiting by design in order to not disturb the server too much. It thus only works in a sequential manner and may take a while to complete. It also does not support any kind of authentication, redirects, or custom headers, so it may not work for some servers.
+
+1. extract the names from files (without sequence numbers and extension), and deduplicate them
+2. pick the desired subset of them (by a regex)
+3. prepare the URL for each name and probe it with a HEAD request
+4. split the results into Valid, Invalid, Failed, and Pending (in case you press Ctrl+C)
+5. print the invalid ones, along with a summary of the results
+
+<details><summary>refine probe --help</summary>
+
+```
+Probe filenames against a remote server
+
+Usage: refine probe [OPTIONS] --url <URL> [DIRS]...
+
+Options:
+  -p, --pick <REGEX>     Pick a subset of the files to probe
+  -u, --url <URL>        The URL to probe filenames against (use `$` as placeholder, e.g. https://example.com/$/)
+  -t, --timeout <INT>    The HTTP connection and read timeouts in milliseconds [default: 2000]
+  -n, --min-wait <INT>   The initial time to wait between retries in milliseconds [default: 1000]
+  -b, --backoff <FLOAT>  The factor by which to increase the time to wait between retries [default: 1.5]
+  -a, --max-wait <INT>   The maximum time to wait between retries in milliseconds [default: 5000]
+  -r, --retries <INT>    The maximum number of retries; use 0 to disable and -1 to retry indefinitely [default: -1]
+  -e, --errors <STR>     Specify when to display errors [default: each10] [possible values: never, last, always, each10]
+  -h, --help             Print help
+```
+
+</details>
+
 ## Changelog
 
 <details><summary>(click to expand)</summary>
 
+- 1.4.0 Feb 28, 2025: new `probe` command; rebuild: new `--case` option to keep original case, rename: included support for handling clashes by inserting sequences in the filenames.
 - 1.3.1 Feb 04, 2025: rebuild: fix the last full mode change, to actually reset sequences.
 - 1.3.0 Jan 31, 2025: list: smarter list command, which hides full paths by default (with a flag for showing them if needed) and uses by default descending order for size and ascending for name and path (with a flag to reverse it if needed); join: change no_remove flag to parents (n -> p) and some clash options; rebuild: change simple_match flag to simple and fix full mode, which was not resetting sequences; general polishing.
 - 1.2.1 Nov 19, 2024: just require newer regex, so deps badge won't show "maybe insecure".
