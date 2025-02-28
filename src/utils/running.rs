@@ -1,7 +1,7 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use std::fmt::{Display, Formatter};
 use std::sync::atomic::AtomicBool;
-use std::sync::{atomic, LazyLock};
+use std::sync::{LazyLock, atomic};
 
 static RUNNING_FLAG: LazyLock<AtomicBool> = LazyLock::new(|| AtomicBool::new(true));
 
@@ -14,7 +14,7 @@ pub fn is_running() -> bool {
 pub fn aborted() -> Result<()> {
     match is_running() {
         true => Ok(()),
-        false => Err(anyhow!("user halted")),
+        false => Err(anyhow!("user asked to abort")),
     }
 }
 
