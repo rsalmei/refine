@@ -32,7 +32,9 @@ pub trait Refine {
     const OPENING_LINE: &'static str;
     const REQUIRE: EntryKinds;
 
-    fn prepare(&mut self, _: &Warnings) {}
+    fn prepare(&mut self, _: &Warnings) -> Result<()> {
+        Ok(())
+    }
     fn refine(&self, medias: Vec<Self::Media>) -> Result<()>;
 }
 
@@ -42,8 +44,8 @@ trait Runner {
 
 impl<R: Refine> Runner for R {
     fn run(mut self, entries: Entries) -> Result<()> {
+        self.prepare(entries.warnings())?;
         println!("=> {}\n", R::OPENING_LINE);
-        self.prepare(entries.warnings());
         self.refine(gen_medias(entries.fetch(R::REQUIRE)))
     }
 }

@@ -56,7 +56,7 @@ impl Refine for Rebuild {
     const OPENING_LINE: &'static str = "Rebuilding files...";
     const REQUIRE: EntryKinds = EntryKinds::Files;
 
-    fn prepare(&mut self, warnings: &Warnings) {
+    fn prepare(&mut self, warnings: &Warnings) -> Result<()> {
         let f = match self.case {
             false => str::to_lowercase,
             true => str::to_owned,
@@ -67,6 +67,8 @@ impl Refine for Rebuild {
             self.partial = true;
             eprintln!("Enabling partial mode due to missing directories.\n");
         }
+
+        Ok(())
     }
 
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {

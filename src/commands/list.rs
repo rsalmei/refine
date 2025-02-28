@@ -38,7 +38,7 @@ impl Refine for List {
     const OPENING_LINE: &'static str = "Listing files...";
     const REQUIRE: EntryKinds = EntryKinds::Files;
 
-    fn prepare(&mut self, _: &Warnings) {
+    fn prepare(&mut self, _: &Warnings) -> Result<()> {
         if !self.rev {
             const ORDERING: [bool; 3] = [false, true, false];
             self.rev = ORDERING[self.by as usize];
@@ -46,6 +46,8 @@ impl Refine for List {
         if let By::Path = self.by {
             self.paths = true;
         }
+
+        Ok(())
     }
 
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
