@@ -40,7 +40,7 @@ impl Display for DisplayAbort {
 /// Install a Ctrl-C handler. It must be called only once.
 pub fn install_ctrl_c_handler() {
     let handler = || {
-        eprintln!("aborting...");
+        eprintln!(" aborting...");
         RUNNING_FLAG.store(false, atomic::Ordering::Relaxed);
     };
     if let Err(err) = ctrlc::set_handler(handler) {
