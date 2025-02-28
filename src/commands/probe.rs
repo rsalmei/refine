@@ -30,9 +30,9 @@ pub struct Probe {
     /// The maximum time to wait between retries in milliseconds.
     #[arg(short = 'a', long, default_value_t = 5000, value_name = "INT")]
     max_wait: u64,
-    /// The maximum number of retries before giving up; use 0 to retry indefinitely.
-    #[arg(short = 'r', long, default_value_t = 0, value_name = "INT")]
-    retries: u32,
+    /// The maximum number of retries; use 0 to disable and -1 to retry indefinitely.
+    #[arg(short = 'r', long, default_value_t = -1, value_name = "INT")]
+    retries: i32,
     /// Specify when to display errors.
     #[arg(short = 'e', long, default_value_t = Errors::Each10, value_name = "STR", value_enum)]
     errors: Errors,
@@ -187,7 +187,7 @@ impl Probe {
                 spaces = 1;
             }
             retry += 1;
-            if self.retries > 0 && retry > self.retries {
+            if self.retries >= 0 && retry > self.retries {
                 break Failed;
             }
             std::thread::sleep(Duration::from_millis(wait));
