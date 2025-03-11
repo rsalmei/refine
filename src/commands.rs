@@ -5,7 +5,7 @@ mod probe;
 mod rebuild;
 mod rename;
 
-use crate::entries::{Entries, Entry, EntryKinds, Warnings};
+use crate::entries::{Entries, Entry, EntrySupport, Warnings};
 use anyhow::Result;
 use clap::Subcommand;
 use std::fmt;
@@ -30,7 +30,7 @@ pub enum Command {
 pub trait Refine {
     type Media: TryFrom<Entry, Error: fmt::Display>;
     const OPENING_LINE: &'static str;
-    const REQUIRE: EntryKinds;
+    const SUPPORT: EntrySupport;
 
     /// Check the command options for issues that must abort the command before the opening line.
     fn check(&self) -> Result<()> {
@@ -51,7 +51,7 @@ impl<R: Refine> Runner for R {
         self.check()?;
         println!("=> {}\n", R::OPENING_LINE);
         self.tweak(entries.warnings());
-        self.refine(gen_medias(entries.fetch(R::REQUIRE)))
+        self.refine(gen_medias(entries.fetch(R::SUPPORT)))
     }
 }
 

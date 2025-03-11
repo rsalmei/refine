@@ -1,5 +1,5 @@
 use crate::commands::Refine;
-use crate::entries::{Entry, EntryKinds};
+use crate::entries::{Entry, EntrySupport};
 use crate::utils::{self, display_abort};
 use anyhow::Result;
 use clap::Args;
@@ -26,7 +26,7 @@ pub struct Media {
 impl Refine for Dupes {
     type Media = Media;
     const OPENING_LINE: &'static str = "Detecting duplicate files...";
-    const REQUIRE: EntryKinds = EntryKinds::Files;
+    const SUPPORT: EntrySupport = EntrySupport::Files;
 
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         // step: detect duplicates by size.

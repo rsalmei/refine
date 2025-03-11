@@ -1,5 +1,5 @@
 use crate::commands::Refine;
-use crate::entries::{Entries, Entry, EntryKinds};
+use crate::entries::{Entries, Entry, EntrySupport};
 use crate::impl_original_path;
 use crate::media::{FileOps, NewPath, OriginalPath};
 use crate::utils;
@@ -78,7 +78,7 @@ static SHARED: OnceLock<Shared> = OnceLock::new();
 impl Refine for Join {
     type Media = Media;
     const OPENING_LINE: &'static str = "Joining files...";
-    const REQUIRE: EntryKinds = EntryKinds::DirOrFiles;
+    const SUPPORT: EntrySupport = EntrySupport::DirOrFiles;
 
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         let shared = Shared {
@@ -95,7 +95,7 @@ impl Refine for Join {
         let mut target_names = Vec::new();
         if let Ok(target) = SHARED.get().unwrap().target.as_ref() {
             let entries = Entries::with_dir(target)?;
-            let in_target = entries.fetch(Join::REQUIRE).collect::<Vec<_>>();
+            let in_target = entries.fetch(Join::SUPPORT).collect::<Vec<_>>();
             target_names.extend(in_target.iter().map(|e| e.display_filename().to_string()));
             medias.extend(in_target.into_iter().map(|entry| Media {
                 entry,

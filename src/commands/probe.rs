@@ -1,5 +1,5 @@
 use crate::commands::Refine;
-use crate::entries::{Entry, EntryKinds, Warnings};
+use crate::entries::{Entry, EntrySupport, Warnings};
 use crate::utils::{self, display_abort};
 use Verdict::*;
 use anyhow::{Context, Result, anyhow};
@@ -77,7 +77,7 @@ enum Verdict {
 impl Refine for Probe {
     type Media = Media;
     const OPENING_LINE: &'static str = "Checking files online...";
-    const REQUIRE: EntryKinds = EntryKinds::Files;
+    const SUPPORT: EntrySupport = EntrySupport::Files;
 
     fn check(&self) -> Result<()> {
         // make sure the URL contains a single `$` placeholder.
