@@ -33,6 +33,11 @@ impl TryFrom<PathBuf> for Entry {
                 .to_str()
                 .ok_or_else(|| anyhow!("no UTF-8 file extension: {path:?}"))?;
         }
+        // yes, I could just check that the entire path is valid UTF-8, but I want to give better error messages.
+        path.parent()
+            .ok_or_else(|| anyhow!("no parent: {path:?}"))?
+            .to_str()
+            .ok_or_else(|| anyhow!("no UTF-8 parent: {path:?}"))?;
         Ok(Entry { path, is_dir })
     }
 }
