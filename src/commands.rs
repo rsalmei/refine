@@ -5,7 +5,7 @@ mod probe;
 mod rebuild;
 mod rename;
 
-use crate::entries::{Entries, Entry, EntrySupport, Warnings};
+use crate::entries::{Entries, Entry, EntrySet, Warnings};
 use anyhow::Result;
 use clap::Subcommand;
 use std::fmt;
