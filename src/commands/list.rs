@@ -1,5 +1,5 @@
 use crate::commands::Refine;
-use crate::entries::{Entry, EntrySupport, Warnings};
+use crate::entries::{Entry, EntrySet, Warnings};
 use anyhow::Result;
 use clap::{Args, ValueEnum};
 use human_repr::HumanCount;
@@ -37,7 +37,7 @@ pub struct Media {
 impl Refine for List {
     type Media = Media;
     const OPENING_LINE: &'static str = "Listing files...";
-    const SUPPORT: EntrySupport = EntrySupport::Files;
+    const HANDLES: EntrySet = EntrySet::Files;
 
     fn tweak(&mut self, _: &Warnings) {
         if !self.rev {

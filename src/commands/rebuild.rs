@@ -1,5 +1,5 @@
 use crate::commands::Refine;
-use crate::entries::{Entry, EntrySupport, Warnings};
+use crate::entries::{Entry, EntrySet, Warnings};
 use crate::media::FileOps;
 use crate::naming::NamingRules;
 use crate::utils;
@@ -55,7 +55,7 @@ static CASE_FN: OnceLock<fn(&str) -> String> = OnceLock::new();
 impl Refine for Rebuild {
     type Media = Media;
     const OPENING_LINE: &'static str = "Rebuilding files...";
-    const SUPPORT: EntrySupport = EntrySupport::Files;
+    const HANDLES: EntrySet = EntrySet::Files;
 
     fn tweak(&mut self, warnings: &Warnings) {
         let f = match self.case {

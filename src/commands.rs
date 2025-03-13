@@ -30,7 +30,7 @@ pub enum Command {
 pub trait Refine {
     type Media: TryFrom<Entry, Error: fmt::Display>;
     const OPENING_LINE: &'static str;
-    const SUPPORT: EntrySupport;
+    const HANDLES: EntrySet;
 
     /// Check the command options for issues that must abort the command before the opening line.
     fn check(&self) -> Result<()> {
@@ -51,7 +51,7 @@ impl<R: Refine> Runner for R {
         self.check()?;
         println!("=> {}\n", R::OPENING_LINE);
         self.tweak(entries.warnings());
-        self.refine(gen_medias(entries.fetch(R::SUPPORT)))
+        self.refine(gen_medias(entries.fetch(R::HANDLES)))
     }
 }
 
