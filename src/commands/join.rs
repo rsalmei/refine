@@ -3,7 +3,7 @@ use crate::entries::{Entries, Entry, EntrySet};
 use crate::impl_original_path;
 use crate::media::{FileOps, NewPath, OriginalPath};
 use crate::utils;
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, anyhow};
 use clap::{Args, ValueEnum};
 use std::collections::HashSet;
 use std::fs;
@@ -81,6 +81,11 @@ impl Refine for Join {
     const HANDLES: EntrySet = EntrySet::DirOrFiles;
 
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
+        if self.target.is_file() {
+            return Err(anyhow!("target must be a directory or not exist"))
+                .with_context(|| format!("invalid target: {:?}", self.target));
+        }
+
         let shared = Shared {
             target: self
                 .target
