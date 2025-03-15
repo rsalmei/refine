@@ -5,7 +5,8 @@ mod probe;
 mod rebuild;
 mod rename;
 
-use crate::entries::{Entries, Entry, EntrySet, Warnings};
+use crate::Warnings;
+use crate::entries::{Entries, Entry, EntrySet};
 use anyhow::Result;
 use clap::Subcommand;
 use std::fmt;
@@ -33,32 +34,32 @@ pub trait Refine {
     const HANDLES: EntrySet;
 
     /// Tweak the command options to fix small issues after the opening line.
-    fn tweak(&mut self, _: &Warnings) {}
+    fn tweak(&mut self, _warnings: &Warnings) {}
     /// Actual command implementation.
     fn refine(&self, medias: Vec<Self::Media>) -> Result<()>;
 }
 
 trait Runner {
-    fn run(self, entries: Entries) -> Result<()>;
+    fn run(self, entries: Entries, w: Warnings) -> Result<()>;
 }
 
 impl<R: Refine> Runner for R {
-    fn run(mut self, entries: Entries) -> Result<()> {
+    fn run(mut self, entries: Entries, warnings: Warnings) -> Result<()> {
         println!("=> {}\n", R::OPENING_LINE);
-        self.tweak(entries.warnings());
+        self.tweak(&warnings);
         self.refine(gen_medias(entries.fetch(R::HANDLES)))
     }
 }
 
 impl Command {
-    pub fn run(self, entries: Entries) -> Result<()> {
+    pub fn run(self, entries: Entries, warnings: Warnings) -> Result<()> {
         match self {
-            Command::Dupes(options) => options.run(entries),
-            Command::Join(options) => options.run(entries),
-            Command::List(options) => options.run(entries),
-            Command::Rebuild(options) => options.run(entries),
-            Command::Rename(options) => options.run(entries),
-            Command::Probe(options) => options.run(entries),
+            Command::Dupes(options) => options.run(entries, warnings),
+            Command::Join(options) => options.run(entries, warnings),
+            Command::List(options) => options.run(entries, warnings),
+            Command::Rebuild(options) => options.run(entries, warnings),
+            Command::Rename(options) => options.run(entries, warnings),
+            Command::Probe(options) => options.run(entries, warnings),
         }
     }
 }

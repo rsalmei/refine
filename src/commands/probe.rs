@@ -1,5 +1,6 @@
 use crate::commands::Refine;
-use crate::entries::{Entry, EntrySet, Warnings};
+use crate::Warnings;
+use crate::entries::{Entry, EntrySet};
 use crate::utils::{self, display_abort};
 use Verdict::*;
 use anyhow::{Context, Result, anyhow};

@@ -7,7 +7,6 @@ use anyhow::{Result, anyhow};
 pub use entry::*;
 pub use filter::*;
 use std::iter;
-use std::path::PathBuf;
 use std::rc::Rc;
 
 /// The object that fetches and filters entries from multiple directories.
@@ -17,14 +16,6 @@ pub struct Entries {
     dirs: Vec<Entry>,
     shallow: bool,
     selector: Selector,
-    /// Warnings that were encountered while parsing the input.
-    warnings: Warnings,
-}
-
-#[derive(Debug)]
-pub struct Warnings {
-    /// Whether there were missing paths in the input.
-    pub missing: bool,
 }
 
 /// Denotes the set of entry types a command will process.
@@ -39,39 +30,15 @@ pub enum EntrySet {
 }
 
 impl Entries {
-    /// Reads all entries from a single directory, non-recursively.
-    pub fn with_dir(dir: impl Into<PathBuf>) -> Result<Self> {
-        Self::new(vec![dir.into()], true, Filter::default())
+    /// Reads entries from a single directory, non-recursively.
+    pub fn single(entry: Entry) -> Result<Self> {
+        Self::new(vec![entry], true, Filter::default())
     }
 
     /// Reads entries from the given directories, with the given filtering rules and recursion.
-    pub fn new(dirs: Vec<PathBuf>, shallow: bool, f: Filter) -> Result<Self> {
-        let selector = f.try_into()?; // compile regexes and check for errors before anything else.
+    pub fn new(dirs: Vec<Entry>, shallow: bool, filter: Filter) -> Result<Self> {
+        let selector = filter.try_into()?; // compile regexes and check for errors before anything else.
 
-        let mut dirs = match dirs.is_empty() {
-            false => dirs,            // lists files from the given paths,
-            true => vec![".".into()], // or the current directory if no paths are given.
-        };
-        let n = dirs.len();
-        dirs.sort_unstable();
-        dirs.dedup();
-        if n != dirs.len() {
-            eprintln!("warning: {} duplicated directories ignored", n - dirs.len());
-        }
-
-        let (dirs, missing) = dirs
-            .into_iter()
-            .map(Entry::try_from)
-            .inspect(|res| {
-                if let Err(err) = res {
-                    eprintln!("warning: invalid entry: {err}");
-                }
-            })
-            .flatten()
-            .partition::<Vec<_>, _>(|p| p.is_dir());
-        missing
-            .iter()
-            .for_each(|p| eprintln!("warning: directory not found: {}", p.display()));
         if dirs.is_empty() {
             return Err(anyhow!("no valid paths given"));
         }
@@ -80,14 +47,7 @@ impl Entries {
             dirs,
             shallow,
             selector,
-            warnings: Warnings {
-                missing: !missing.is_empty(),
-            },
         })
-    }
-
-    pub fn warnings(&self) -> &Warnings {
-        &self.warnings
     }
 
     pub fn fetch(self, es: EntrySet) -> impl Iterator<Item = Entry> {

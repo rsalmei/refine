@@ -1,5 +1,6 @@
+use crate::Warnings;
 use crate::commands::Refine;
-use crate::entries::{Entry, EntrySet, Warnings};
+use crate::entries::{Entry, EntrySet};
 use anyhow::Result;
 use clap::{Args, ValueEnum};
 use human_repr::HumanCount;
