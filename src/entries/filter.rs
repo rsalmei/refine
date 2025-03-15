@@ -8,10 +8,10 @@ use regex::Regex;
 #[derive(Debug, Default, Args)]
 pub struct Filter {
     /// Include only files.
-    #[arg(short = 'F', long, global = true, conflicts_with = "no_files", help_heading = Some("Global"))]
+    #[arg(short = 'F', long, global = true, conflicts_with = "only_dirs", help_heading = Some("Global"))]
     only_files: bool,
     /// Include only directories.
-    #[arg(short = 'D', long, global = true, conflicts_with = "no_dirs", help_heading = Some("Global"))]
+    #[arg(short = 'D', long, global = true, conflicts_with = "only_files", help_heading = Some("Global"))]
     only_dirs: bool,
     /// Include only these files (checked without extension) and directories.
     #[arg(short = 'i', long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
