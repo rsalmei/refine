@@ -79,7 +79,6 @@ impl Refine for Probe {
     const OPENING_LINE: &'static str = "Checking files online...";
     const HANDLES: EntrySet = EntrySet::Files;
 
-    fn check(&self) -> Result<()> {
         // make sure the URL contains a single `$` placeholder.
         if self.url.bytes().filter(|&b| b == b'$').count() != 1 {
             return Err(anyhow!("URL must contain a single `$` placeholder"))
@@ -94,9 +93,6 @@ impl Refine for Probe {
             .build()
             .call()
             .with_context(|| format!("invalid URL: {:?}", self.url))?;
-
-        Ok(())
-    }
 
     fn tweak(&mut self, _: &Warnings) {
         if self.retries < 0 && self.errors == Errors::Last {

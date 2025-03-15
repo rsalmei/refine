@@ -32,10 +32,6 @@ pub trait Refine {
     const OPENING_LINE: &'static str;
     const HANDLES: EntrySet;
 
-    /// Check the command options for issues that must abort the command before the opening line.
-    fn check(&self) -> Result<()> {
-        Ok(())
-    }
     /// Tweak the command options to fix small issues after the opening line.
     fn tweak(&mut self, _: &Warnings) {}
     /// Actual command implementation.
@@ -48,7 +44,6 @@ trait Runner {
 
 impl<R: Refine> Runner for R {
     fn run(mut self, entries: Entries) -> Result<()> {
-        self.check()?;
         println!("=> {}\n", R::OPENING_LINE);
         self.tweak(entries.warnings());
         self.refine(gen_medias(entries.fetch(R::HANDLES)))
