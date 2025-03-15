@@ -36,7 +36,7 @@ pub struct Media {
 
 impl Refine for List {
     type Media = Media;
-    const OPENING_LINE: &'static str = "Listing files...";
+    const OPENING_LINE: &'static str = "List files";
     const HANDLES: EntrySet = EntrySet::Files;
 
     fn tweak(&mut self, _: &Warnings) {

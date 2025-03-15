@@ -76,7 +76,7 @@ enum Verdict {
 
 impl Refine for Probe {
     type Media = Media;
-    const OPENING_LINE: &'static str = "Checking files online...";
+    const OPENING_LINE: &'static str = "Probe files online";
     const HANDLES: EntrySet = EntrySet::Files;
 
         // make sure the URL contains a single `$` placeholder.

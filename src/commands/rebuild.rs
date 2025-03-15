@@ -54,7 +54,7 @@ static CASE_FN: OnceLock<fn(&str) -> String> = OnceLock::new();
 
 impl Refine for Rebuild {
     type Media = Media;
-    const OPENING_LINE: &'static str = "Rebuilding files...";
+    const OPENING_LINE: &'static str = "Rebuild filenames";
     const HANDLES: EntrySet = EntrySet::Files;
 
     fn tweak(&mut self, warnings: &Warnings) {
