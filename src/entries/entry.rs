@@ -43,6 +43,17 @@ impl TryFrom<PathBuf> for Entry {
 }
 
 impl Entry {
+    /// Create a new entry that, in case the path does not exist, will assume the given directory flag.
+    /// If it does exist, check that it has the correct directory flag or panic.
+    pub fn new(path: PathBuf, is_dir: bool) -> Result<Self> {
+        let mut entry = Self::try_from(path)?;
+        match entry.path.exists() {
+            true => assert_eq!(entry.is_dir, is_dir),
+            false => entry.is_dir = is_dir,
+        }
+        Ok(entry)
+    }
+
     /// Get the stem and extension from files, or name from directories.
     pub fn filename_parts(&self) -> (&str, &str) {
         match self.is_dir {

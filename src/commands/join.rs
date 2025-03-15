@@ -68,8 +68,7 @@ enum Skip {
 
 #[derive(Debug)]
 struct Shared {
-    /// Tells whether the target path exists or not.
-    target: Result<PathBuf, PathBuf>,
+    target: Entry,
     force: bool,
 }
 
@@ -85,12 +84,10 @@ impl Refine for Join {
             return Err(anyhow!("target must be a directory or not exist"))
                 .with_context(|| format!("invalid target: {:?}", self.target));
         }
+        let target = Entry::new(self.target.clone(), true)?; // either a directory or doesn't exist.
 
         let shared = Shared {
-            target: self
-                .target
-                .canonicalize()
-                .map_err(|_| self.target.to_owned()),
+            target: target.clone(),
             force: self.force,
         };
         SHARED.set(shared).unwrap();
@@ -98,16 +95,14 @@ impl Refine for Join {
 
         // step: read the target directory, which might not be empty, to detect outer clashes (not in medias).
         let mut target_names = Vec::new();
-        if let Ok(target) = SHARED.get().unwrap().target.as_ref() {
-            let entries = Entries::with_dir(target)?;
-            let in_target = entries.fetch(Join::HANDLES).collect::<Vec<_>>();
-            target_names.extend(in_target.iter().map(|e| e.display_filename().to_string()));
-            medias.extend(in_target.into_iter().map(|entry| Media {
-                entry,
-                new_name: None,
-                skip: Skip::Target,
-            }))
-        }
+        let entries = Entries::single(target.clone())?;
+        let in_target = entries.fetch(Join::HANDLES).collect::<Vec<_>>();
+        target_names.extend(in_target.iter().map(|e| e.display_filename().to_string()));
+        medias.extend(in_target.into_iter().map(|entry| Media {
+            entry,
+            new_name: None,
+            skip: Skip::Target,
+        }));
 
         // step: detect clashes (files with the same name in different directories), and resolve them.
         medias.sort_unstable_by(|m, n| {
@@ -180,7 +175,6 @@ impl Refine for Join {
         if medias.is_empty() {
             return Ok(());
         }
-        let target = SHARED.get().unwrap().target.as_ref().unwrap_or_else(|x| x);
         println!("\njoin [by {:?}] to: {}", self.by, target.display());
         if !self.yes {
             utils::prompt_yes_no("apply changes?")?;
@@ -196,7 +190,7 @@ impl Refine for Join {
         };
 
         // step: apply changes, if the user agrees.
-        fs::create_dir_all(target).with_context(|| format!("creating {target:?}"))?;
+        fs::create_dir_all(&target).with_context(|| format!("creating {target:?}"))?;
         match self.by {
             By::Move => medias.rename_move_consuming(),
             By::Copy => medias.copy_consuming(),
@@ -244,11 +238,8 @@ impl Refine for Join {
 impl Media {
     fn is_in_place(&self) -> bool {
         let shared = SHARED.get().unwrap();
-        if shared.target.is_err() {
-            return false;
-        }
 
-        let target = shared.target.as_ref().unwrap();
+        let target = shared.target.as_ref();
         if shared.force {
             return self.entry.parent().unwrap() == target;
         }
@@ -265,7 +256,7 @@ impl_original_path!(Media);
 impl NewPath for Media {
     fn new_path(&self) -> PathBuf {
         let name = self.new_name.as_ref().map(|s| s.as_ref());
-        let path = SHARED.get().unwrap().target.as_ref().unwrap_or_else(|x| x);
+        let path = SHARED.get().unwrap().target.as_ref();
         path.join(name.unwrap_or_else(|| self.path().file_name().unwrap()))
     }
 }
