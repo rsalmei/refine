@@ -33,6 +33,7 @@ pub enum By {
 pub struct Media {
     entry: Entry,
     size: u64,
+    count: u32,
 }
 
 impl Refine for List {
@@ -67,9 +68,13 @@ impl Refine for List {
         medias.iter().for_each(|m| {
             let size = format!("{}", m.size.human_count_bytes());
             match self.paths {
-                true => println!("{size:>8} {}", m.entry.display_path()),
-                false => println!("{size:>8} {}", m.entry.display_filename()),
+                true => print!("{size:>8} {}", m.entry.display_path()),
+                false => print!("{size:>8} {}", m.entry.display_filename()),
             };
+            if m.entry.is_dir() {
+                print!(" ({} files)", m.count);
+            }
+            println!();
         });
 
         // step: display receipt summary.
@@ -87,19 +92,27 @@ impl TryFrom<Entry> for Media {
     type Error = (anyhow::Error, Entry);
 
     fn try_from(entry: Entry) -> Result<Self, Self::Error> {
-        let size = match entry.is_dir() {
+        let (size, count) = match entry.is_dir() {
             true => {
                 let entries = Entries::single(&entry, Depth::Unlimited);
-                entries
+                let mut count = 0;
+                let sum = entries
                     .fetch(EntrySet::Files)
-                    .map(|e| e.metadata().map_or(0, |md| md.len()))
-                    .sum::<u64>()
+                    .map(|e| {
+                        count += 1;
+                        e.metadata().map_or(0, |md| md.len())
+                    })
+                    .sum::<u64>();
+                (sum, count)
             }
-            false => entry
-                .metadata()
-                .map_err(|err| (err.into(), entry.clone()))?
-                .len(),
+            false => (
+                entry
+                    .metadata()
+                    .map_err(|err| (err.into(), entry.clone()))?
+                    .len(),
+                1,
+            ),
         };
-        Ok(Self { size, entry })
+        Ok(Self { entry, size, count })
     }
 }
