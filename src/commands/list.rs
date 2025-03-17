@@ -1,6 +1,6 @@
 use crate::Warnings;
 use crate::commands::Refine;
-use crate::entries::{Entry, EntrySet};
+use crate::entries::{Depth, Entries, Entry, EntrySet};
 use anyhow::Result;
 use clap::{Args, ValueEnum};
 use human_repr::HumanCount;
@@ -38,7 +38,7 @@ pub struct Media {
 impl Refine for List {
     type Media = Media;
     const OPENING_LINE: &'static str = "List files";
-    const HANDLES: EntrySet = EntrySet::Files;
+    const HANDLES: EntrySet = EntrySet::ContentOverDirs;
 
     fn tweak(&mut self, _: &Warnings) {
         if !self.rev {
@@ -67,8 +67,8 @@ impl Refine for List {
         medias.iter().for_each(|m| {
             let size = format!("{}", m.size.human_count_bytes());
             match self.paths {
-                true => println!("{size:>7} {}", m.entry.display_path()),
-                false => println!("{size:>7} {}", m.entry.display_filename()),
+                true => println!("{size:>8} {}", m.entry.display_path()),
+                false => println!("{size:>8} {}", m.entry.display_filename()),
             };
         });
 
@@ -86,10 +86,20 @@ impl Refine for List {
 impl TryFrom<Entry> for Media {
     type Error = (anyhow::Error, Entry);
 
-        Ok(Self {
-            size: entry.metadata()?.len(),
-            entry,
-        })
     fn try_from(entry: Entry) -> Result<Self, Self::Error> {
+        let size = match entry.is_dir() {
+            true => {
+                let entries = Entries::single(&entry, Depth::Unlimited);
+                entries
+                    .fetch(EntrySet::Files)
+                    .map(|e| e.metadata().map_or(0, |md| md.len()))
+                    .sum::<u64>()
+            }
+            false => entry
+                .metadata()
+                .map_err(|err| (err.into(), entry.clone()))?
+                .len(),
+        };
+        Ok(Self { size, entry })
     }
 }

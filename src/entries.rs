@@ -27,7 +27,7 @@ pub enum EntrySet {
     DirsStop, // join.
     /// Directories are chained with their content.
     DirsAndContent, // rename.
-    /// Contents are listed when recursing, or directories otherwise.
+    /// Contents are listed while recursing, and directories at the max depth.
     ContentOverDirs, // list
 }
 
