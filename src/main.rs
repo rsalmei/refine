@@ -32,7 +32,7 @@ fn main() -> Result<()> {
     println!("Refine v{}", env!("CARGO_PKG_VERSION"));
     let args = Args::parse();
     let (dirs, warnings) = validate_dirs(args.dirs)?;
-    let entries = Entries::new(dirs, args.depth, args.filter)?;
+    let entries = Entries::new(dirs, args.depth.into(), args.filter)?;
     args.cmd.run(entries, warnings)
 }
 
