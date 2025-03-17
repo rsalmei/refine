@@ -9,7 +9,7 @@ use std::cmp::Ordering;
 #[derive(Debug, Args)]
 pub struct List {
     /// Sort by.
-    #[arg(short = 'b', long, default_value_t = By::Name, value_name = "STR", value_enum)]
+    #[arg(short = 'b', long, default_value_t = By::Size, value_name = "STR", value_enum)]
     by: By,
     /// Reverse the default order (name:asc, size:desc, path:asc).
     #[arg(short = 'r', long)]
@@ -21,10 +21,10 @@ pub struct List {
 
 #[derive(Debug, Copy, Clone, ValueEnum)]
 pub enum By {
-    #[value(alias = "n")]
-    Name,
     #[value(alias = "s")]
     Size,
+    #[value(alias = "n")]
+    Name,
     #[value(alias = "p")]
     Path,
 }
@@ -42,7 +42,7 @@ impl Refine for List {
 
     fn tweak(&mut self, _: &Warnings) {
         if !self.rev {
-            const ORDERING: [bool; 3] = [false, true, false];
+            const ORDERING: [bool; 3] = [true, false, false];
             self.rev = ORDERING[self.by as usize];
         }
         if let By::Path = self.by {
@@ -53,8 +53,8 @@ impl Refine for List {
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         // step: sort the files by name, size, or path.
         let compare = match self.by {
-            By::Name => |m: &Media, n: &Media| m.entry.file_name().cmp(&n.entry.file_name()),
             By::Size => |m: &Media, n: &Media| m.size.cmp(&n.size),
+            By::Name => |m: &Media, n: &Media| m.entry.file_name().cmp(n.entry.file_name()),
             By::Path => |m: &Media, n: &Media| m.entry.cmp(&n.entry),
         };
         let compare: &dyn Fn(&Media, &Media) -> Ordering = match self.rev {
