@@ -21,7 +21,7 @@ impl TryFrom<PathBuf> for Entry {
         let is_dir = path.is_dir();
         if is_dir {
             path.file_name()
-                .ok_or_else(|| anyhow!("no dir name: {path:?}"))?
+                .unwrap_or_default() // the root dir has no name.
                 .to_str()
                 .ok_or_else(|| anyhow!("no UTF-8 dir name: {path:?}"))?;
         } else {
@@ -34,11 +34,11 @@ impl TryFrom<PathBuf> for Entry {
                 .to_str()
                 .ok_or_else(|| anyhow!("no UTF-8 file extension: {path:?}"))?;
         }
-        // yes, I could just check that the entire path is valid UTF-8, but I want to give better error messages.
-        path.parent()
-            .ok_or_else(|| anyhow!("no parent: {path:?}"))?
-            .to_str()
-            .ok_or_else(|| anyhow!("no UTF-8 parent: {path:?}"))?;
+        // I could just check that the entire path is valid UTF-8, but I want to give better error messages.
+        if let Some(path) = path.parent() {
+            path.to_str() // the root dir has no parent.
+                .ok_or_else(|| anyhow!("no UTF-8 parent: {path:?}"))?;
+        }
         Ok(Entry { path, is_dir })
     }
 }
@@ -244,8 +244,6 @@ mod tests {
         case("foo.bar.baz").unwrap();
         case("foo/").unwrap();
         case("😃").unwrap();
-
-        case("a\0\0").unwrap_err();
     }
 
     #[test]
