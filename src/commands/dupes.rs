@@ -121,7 +121,7 @@ impl Media {
     }
 }
 
-fn words(entry: &Entry) -> Result<Box<[String]>> {
+fn words(entry: &Entry) -> Box<[String]> {
     let (name, _, _) = entry.collection_parts();
     let mut words = name
         .split(&[' ', '.', '-', '_'])
@@ -131,7 +131,7 @@ fn words(entry: &Entry) -> Result<Box<[String]>> {
         .collect::<Vec<_>>();
     words.sort_unstable();
     words.dedup();
-    Ok(words.into_boxed_slice())
+    words.into_boxed_slice()
 }
 
 impl TryFrom<Entry> for Media {
@@ -140,7 +140,7 @@ impl TryFrom<Entry> for Media {
     fn try_from(entry: Entry) -> Result<Self> {
         Ok(Media {
             size: entry.metadata()?.len(),
-            words: words(&entry)?,
+            words: words(&entry),
             entry, // I can use entry above before moving it here!
             sample: None,
         })
