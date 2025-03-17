@@ -1,13 +1,15 @@
 use super::sequence::Sequence;
 use anyhow::{Result, anyhow};
 use std::cmp::Ordering;
+use std::convert::Into;
 use std::fmt::{self, Display};
+use std::hash::{Hash, Hasher};
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use yansi::{Paint, Style};
 
 /// A file or directory entry that is guaranteed to have a valid UTF-8 representation.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq)] // Hash, PartialEq, Ord, and PartialOrd are below.
 pub struct Entry {
     path: PathBuf,
     is_dir: bool,
@@ -208,6 +210,12 @@ impl AsRef<Path> for Entry {
     }
 }
 
+impl Hash for Entry {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.path.hash(state)
+    }
+}
+
 impl Ord for Entry {
     fn cmp(&self, other: &Self) -> Ordering {
         self.path.cmp(&other.path)
@@ -225,8 +233,6 @@ impl PartialEq for Entry {
         self.path == other.path
     }
 }
-
-impl Eq for Entry {}
 
 #[cfg(test)]
 mod tests {
