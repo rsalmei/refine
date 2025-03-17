@@ -14,8 +14,8 @@ pub struct List {
     #[arg(short = 'b', long, default_value_t = By::Size, value_name = "STR", value_enum)]
     by: By,
     /// Reverse the default order (name:asc, size:desc, path:asc).
-    #[arg(short = 'r', long)]
-    rev: bool,
+    #[arg(short = 's', long)]
+    reverse: bool,
     /// Show full file paths.
     #[arg(short = 'p', long)]
     paths: bool,
@@ -24,7 +24,7 @@ pub struct List {
     no_calc_dirs: bool,
 }
 
-#[derive(Debug, Copy, Clone, ValueEnum)]
+#[derive(Debug, Copy, Clone, PartialEq, ValueEnum)]
 pub enum By {
     #[value(alias = "s")]
     Size,
@@ -40,6 +40,12 @@ pub struct Media {
     size_count: Option<(u64, u32)>,
 }
 
+const ORDERING: &[(By, bool)] = &[
+    (By::Size, true),
+    (By::Count, true),
+    (By::Name, false),
+    (By::Path, false),
+];
 static CALC_DIR_SIZES: OnceLock<bool> = OnceLock::new();
 
 impl Refine for List {
@@ -48,11 +54,7 @@ impl Refine for List {
     const HANDLES: EntrySet = EntrySet::ContentOverDirs;
 
     fn tweak(&mut self, _: &Warnings) {
-        if !self.rev {
-            const ORDERING: [bool; 3] = [true, false, false];
-            self.rev = ORDERING[self.by as usize];
-        }
-        if let By::Path = self.by {
+        self.reverse ^= ORDERING.iter().find(|(b, _)| *b == self.by).unwrap().1;
             self.paths = true;
         }
         CALC_DIR_SIZES.set(!self.no_calc_dirs).unwrap();
@@ -69,7 +71,7 @@ impl Refine for List {
             By::Name => |m: &Media, n: &Media| m.entry.file_name().cmp(n.entry.file_name()),
             By::Path => |m: &Media, n: &Media| m.entry.cmp(&n.entry),
         };
-        let compare: &dyn Fn(&Media, &Media) -> Ordering = match self.rev {
+        let compare: &dyn Fn(&Media, &Media) -> Ordering = match self.reverse {
             false => &compare,
             true => &|m, n| compare(m, n).reverse(),
         };
