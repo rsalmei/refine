@@ -135,11 +135,14 @@ fn words(entry: &Entry) -> Box<[String]> {
 }
 
 impl TryFrom<Entry> for Media {
-    type Error = anyhow::Error;
+    type Error = (anyhow::Error, Entry);
 
-    fn try_from(entry: Entry) -> Result<Self> {
+    fn try_from(entry: Entry) -> Result<Self, Self::Error> {
         Ok(Media {
-            size: entry.metadata()?.len(),
+            size: entry
+                .metadata()
+                .map_err(|err| (err.into(), entry.clone()))?
+                .len(),
             words: words(&entry),
             entry, // I can use entry above before moving it here!
             sample: None,

@@ -212,7 +212,7 @@ impl Probe {
 }
 
 impl TryFrom<Entry> for Media {
-    type Error = anyhow::Error;
+    type Error = (anyhow::Error, Entry);
 
     fn try_from(entry: Entry) -> Result<Self, Self::Error> {
         let (name, _, _) = entry.collection_parts();

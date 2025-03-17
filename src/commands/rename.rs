@@ -158,9 +158,9 @@ impl Media {
 }
 
 impl TryFrom<Entry> for Media {
-    type Error = anyhow::Error;
+    type Error = (anyhow::Error, Entry);
 
-    fn try_from(entry: Entry) -> Result<Self> {
+    fn try_from(entry: Entry) -> Result<Self, Self::Error> {
         let (name, ext) = entry.filename_parts();
         Ok(Media {
             new_name: name.trim().to_owned(),

@@ -9,7 +9,6 @@ use crate::Warnings;
 use crate::entries::{Entries, Entry, EntrySet};
 use anyhow::Result;
 use clap::Subcommand;
-use std::fmt;
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
@@ -29,7 +28,7 @@ pub enum Command {
 
 /// The common interface for Refine commands that work with media files.
 pub trait Refine {
-    type Media: TryFrom<Entry, Error: fmt::Display>;
+    type Media: TryFrom<Entry, Error = (anyhow::Error, Entry)>;
     const OPENING_LINE: &'static str;
     const HANDLES: EntrySet;
 
@@ -64,15 +63,15 @@ impl Command {
     }
 }
 
-fn gen_medias<T>(paths: impl Iterator<Item = Entry>) -> Vec<T>
+fn gen_medias<T>(entries: impl Iterator<Item = Entry>) -> Vec<T>
 where
-    T: TryFrom<Entry, Error: fmt::Display>,
+    T: TryFrom<Entry, Error = (anyhow::Error, Entry)>,
 {
-    paths
-        .map(|path| T::try_from(path))
+    entries
+        .map(|entry| T::try_from(entry))
         .inspect(|res| {
-            if let Err(err) = res {
-                eprintln!("error: load media: {err}");
+            if let Err((err, entry)) = res {
+                eprintln!("error: load media {entry}: {err}");
             }
         })
         .flatten()
