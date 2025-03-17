@@ -43,11 +43,10 @@ pub struct Warnings {
     pub missing: bool,
 }
 
-fn valid_dirs(dirs: Vec<PathBuf>) -> Result<(Vec<Entry>, Warnings)> {
-    let mut dirs = match dirs.is_empty() {
-        false => dirs,            // lists files from the given paths,
-        true => vec![".".into()], // or the current directory if no paths are given.
-    };
+fn validate_dirs(mut dirs: Vec<PathBuf>) -> Result<(Vec<Entry>, Warnings)> {
+    if dirs.is_empty() {
+        dirs = vec![".".into()]; // use the current directory if no paths are given.
+    }
     let n = dirs.len();
     dirs.sort_unstable();
     dirs.dedup();
