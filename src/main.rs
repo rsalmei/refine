@@ -1,7 +1,6 @@
 mod commands;
 mod entries;
 mod media;
-mod naming;
 mod utils;
 
 use crate::entries::Entry;
