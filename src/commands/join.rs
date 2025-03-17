@@ -173,7 +173,7 @@ impl Refine for Join {
         if !medias.is_empty() || in_place > 0 || clashes > 0 {
             println!();
         }
-        println!("total files: {total}");
+        println!("total entries: {total}");
         println!("  clashes: {clashes}");
         println!("  in place: {in_place}");
         if medias.is_empty() {

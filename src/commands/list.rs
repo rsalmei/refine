@@ -1,6 +1,6 @@
-use crate::Warnings;
 use crate::commands::Refine;
 use crate::entries::{Depth, Entries, Entry, EntrySet};
+use crate::{Warnings, utils};
 use anyhow::Result;
 use clap::{Args, ValueEnum};
 use human_repr::HumanCount;
@@ -82,8 +82,17 @@ impl Refine for List {
         if !medias.is_empty() {
             println!();
         }
-        let size = medias.iter().map(|m| m.size).sum::<u64>();
-        println!("total files: {} ({})", medias.len(), size.human_count("B"));
+        let (mut size, mut count) = (0, 0);
+        medias.iter().for_each(|m| {
+            size += m.size;
+            count += m.count;
+        });
+        println!(
+            "listed entries: {}{}",
+            medias.len(),
+            utils::display_abort(true),
+        );
+        println!("  total: {} in {count} files", size.human_count("B"),);
 
         Ok(())
     }
