@@ -17,31 +17,31 @@ pub struct Entry {
 
 /// Create a new entry from a path, checking that it has a valid UTF-8 representation.
 impl TryFrom<PathBuf> for Entry {
-    type Error = anyhow::Error;
+    type Error = (anyhow::Error, PathBuf);
 
-    fn try_from(path: PathBuf) -> Result<Self> {
-        let is_dir = path.is_dir();
+    fn try_from(pb: PathBuf) -> Result<Self, Self::Error> {
+        let is_dir = pb.is_dir();
         if is_dir {
-            path.file_name()
+            pb.file_name()
                 .unwrap_or_default() // the root dir has no name.
                 .to_str()
-                .ok_or_else(|| anyhow!("no UTF-8 dir name: {path:?}"))?;
+                .ok_or_else(|| (anyhow!("no UTF-8 dir name: {pb:?}"), pb.clone()))?;
         } else {
-            path.file_stem()
-                .ok_or_else(|| anyhow!("no file stem: {path:?}"))?
+            pb.file_stem()
+                .ok_or_else(|| (anyhow!("no file stem: {pb:?}"), pb.clone()))?
                 .to_str()
-                .ok_or_else(|| anyhow!("no UTF-8 file stem: {path:?}"))?;
-            path.extension()
+                .ok_or_else(|| (anyhow!("no UTF-8 file stem: {pb:?}"), pb.clone()))?;
+            pb.extension()
                 .unwrap_or_default()
                 .to_str()
-                .ok_or_else(|| anyhow!("no UTF-8 file extension: {path:?}"))?;
+                .ok_or_else(|| (anyhow!("no UTF-8 file extension: {pb:?}"), pb.clone()))?;
         }
         // I could just check that the entire path is valid UTF-8, but I want to give better error messages.
-        if let Some(path) = path.parent() {
-            path.to_str() // the root dir has no parent.
-                .ok_or_else(|| anyhow!("no UTF-8 parent: {path:?}"))?;
+        if let Some(pp) = pb.parent() {
+            pp.to_str() // the root dir has no parent.
+                .ok_or_else(|| (anyhow!("no UTF-8 parent: {pp:?}"), pp.to_owned()))?;
         }
-        Ok(Entry { path, is_dir })
+        Ok(Entry { path: pb, is_dir })
     }
 }
 
