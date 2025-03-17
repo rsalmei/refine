@@ -154,10 +154,10 @@ impl Refine for Rebuild {
         utils::aborted()?;
 
         // step: settle changes, and display the results.
-        medias.retain(|m| m.new_name != m.entry.file_name().unwrap().to_str().unwrap());
+        medias.retain(|m| m.new_name != m.entry.file_name());
         medias
             .iter()
-            .for_each(|m| println!("{} --> {}", m.entry.display(), m.new_name));
+            .for_each(|m| println!("{} --> {}", m.entry, m.new_name));
 
         // step: display receipt summary.
         if !medias.is_empty() || warnings > 0 {

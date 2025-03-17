@@ -7,7 +7,7 @@ use anyhow::{Context, Result, anyhow};
 use clap::{Args, ValueEnum};
 use std::collections::HashSet;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::OnceLock;
 
 #[derive(Debug, Args)]
@@ -84,7 +84,7 @@ impl Refine for Join {
             return Err(anyhow!("target must be a directory or not exist"))
                 .with_context(|| format!("invalid target: {:?}", self.target));
         }
-        let target = Entry::new(self.target.clone(), true)?; // either a directory or doesn't exist.
+        let target = Entry::new(&self.target, true)?; // either a directory or doesn't exist.
 
         let shared = Shared {
             target: target.clone(),
@@ -95,14 +95,16 @@ impl Refine for Join {
 
         // step: read the target directory, which might not be empty, to detect outer clashes (not in medias).
         let mut target_names = Vec::new();
-        let entries = Entries::single(target.clone())?;
-        let in_target = entries.fetch(Join::HANDLES).collect::<Vec<_>>();
-        target_names.extend(in_target.iter().map(|e| e.display_filename().to_string()));
-        medias.extend(in_target.into_iter().map(|entry| Media {
-            entry,
-            new_name: None,
-            skip: Skip::Target,
-        }));
+        if target.exists() {
+            let entries = Entries::single(target.clone(), false)?;
+            let in_target = entries.fetch(Join::HANDLES).collect::<Vec<_>>();
+            target_names.extend(in_target.iter().map(|e| e.file_name().to_string()));
+            medias.extend(in_target.into_iter().map(|entry| Media {
+                entry,
+                new_name: None,
+                skip: Skip::Target,
+            }));
+        }
 
         // step: detect clashes (files with the same name in different directories), and resolve them.
         medias.sort_unstable_by(|m, n| {
@@ -130,8 +132,8 @@ impl Refine for Join {
                         })
                     }
                     Clashes::ParentName | Clashes::NameParent => g.iter_mut().for_each(|m| {
-                        let par = m.entry.parent().unwrap_or(Path::new("/"));
-                        let par = par.file_name().unwrap().to_str().unwrap();
+                        let par = m.entry.parent().unwrap_or(Entry::new("/", true).unwrap());
+                        let par = par.file_name();
                         if let Clashes::ParentName = self.clashes {
                             m.new_name = Some(format!("{par}-{name}{dot}{ext}"));
                         } else {
@@ -175,7 +177,7 @@ impl Refine for Join {
         if medias.is_empty() {
             return Ok(());
         }
-        println!("\njoin [by {:?}] to: {}", self.by, target.display());
+        println!("\njoin [by {:?}] to: {target}", self.by);
         if !self.yes {
             utils::prompt_yes_no("apply changes?")?;
         }
@@ -185,7 +187,7 @@ impl Refine for Join {
             true => HashSet::new(),
             false => medias
                 .iter()
-                .map(|m| m.entry.parent().unwrap().to_owned())
+                .map(|m| m.entry.parent().unwrap())
                 .collect::<HashSet<_>>(),
         };
 
@@ -221,7 +223,7 @@ impl Refine for Join {
                     }
                 }
                 if let Ok(()) = fs::remove_dir(&dir) {
-                    println!("  removed empty dir: {}", dir.display())
+                    println!("  removed empty dir: {dir}")
                 }
             });
         }
@@ -239,9 +241,9 @@ impl Media {
     fn is_in_place(&self) -> bool {
         let shared = SHARED.get().unwrap();
 
-        let target = shared.target.as_ref();
+        let target = &shared.target;
         if shared.force {
-            return self.entry.parent().unwrap() == target;
+            return self.entry.parent().unwrap() == *target;
         }
 
         match self.entry.is_dir() {

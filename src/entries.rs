@@ -95,7 +95,7 @@ fn entries(dir: Entry, es: Option<EntrySet>, s: Rc<Selector>) -> Box<dyn Iterato
             }),
         ),
         Err(err) => {
-            eprintln!("error: read dir {dir:?}: {err}");
+            eprintln!("error: read dir {dir}: {err}");
             Box::new(iter::empty())
         }
     }

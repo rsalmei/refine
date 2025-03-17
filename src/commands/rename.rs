@@ -69,17 +69,14 @@ impl Refine for Rename {
                     .any(|g| g.len() > 1) // this should be way faster than using a hashmap as before.
             })
             .for_each(|g| {
-                eprintln!(
-                    "warning: names clash in: {}/",
-                    g[0].entry.parent().unwrap().display()
-                );
+                eprintln!("warning: names clash in: {}/", g[0].entry.parent().unwrap());
                 g.chunk_by(|m, n| m.new_name == n.new_name)
                     .filter(|g| g.len() > 1)
                     .for_each(|g| {
                         let k = &g[0].new_name;
                         let list = g
                             .iter()
-                            .map(|m| m.filename())
+                            .map(|m| m.entry.file_name())
                             .filter(|f| f != k)
                             .collect::<Vec<_>>();
                         warnings += list.len();
@@ -120,15 +117,9 @@ impl Refine for Rename {
         medias
             .chunk_by(|m, n| m.entry.parent() == n.entry.parent())
             .for_each(|g| {
-                println!("{}/:", g[0].entry.parent().unwrap().display());
-                g.iter().for_each(|m| {
-                    println!(
-                        "  {} --> {}{}",
-                        m.entry.display_filename(),
-                        m.new_name,
-                        m.entry.kind(),
-                    )
-                });
+                println!("{}", g[0].entry.parent().unwrap());
+                g.iter()
+                    .for_each(|m| println!("  {} --> {}", m.entry.display_filename(), m.new_name));
             });
 
         // step: display receipt summary.
@@ -162,10 +153,7 @@ impl_original_entry!(Media);
 
 impl Media {
     fn is_changed(&self) -> bool {
-        self.new_name != self.filename()
-    }
-    fn filename(&self) -> &str {
-        self.entry.file_name().unwrap().to_str().unwrap()
+        self.new_name != self.entry.file_name()
     }
 }
 
