@@ -14,8 +14,8 @@ use std::rc::Rc;
 pub struct Entries {
     /// Effective input paths to scan, after deduplication and checking.
     dirs: Vec<Entry>,
-    depth: Depth,
-    selector: Selector,
+    recurse: Recurse,
+    selector: Rc<Selector>,
 }
 
 /// Denotes the set of entry types a command will process.
@@ -31,14 +31,20 @@ pub enum EntrySet {
     ContentOverDirs, // list
 }
 
+pub enum Depth {
+    Unlimited,
+    Shallow,
+    Max(u32),
+}
+
 impl Entries {
     /// Reads all entries from a single directory.
-    pub fn single(entry: Entry, depth: u32) -> Result<Self> {
-        Self::new(vec![entry], depth, Filter::default())
+    pub fn single(entry: impl Into<Entry>, depth: Depth) -> Self {
+        Self::new(vec![entry.into()], depth, Filter::default()).unwrap() // can't fail.
     }
 
     /// Reads entries from the given directories, with the given filtering rules and recursion.
-    pub fn new(dirs: Vec<Entry>, depth: u32, filter: Filter) -> Result<Self> {
+    pub fn new(dirs: Vec<Entry>, depth: Depth, filter: Filter) -> Result<Self> {
         let selector = filter.try_into()?; // compile regexes and check for errors before anything else.
 
         if dirs.is_empty() {
@@ -47,37 +53,24 @@ impl Entries {
 
         Ok(Entries {
             dirs,
-            depth: Depth::new(depth),
-            selector,
+            recurse: depth.into(),
+            selector: Rc::new(selector),
         })
     }
 
     pub fn fetch(self, es: EntrySet) -> impl Iterator<Item = Entry> {
-        let s = Rc::new(self.selector);
         self.dirs
             .into_iter()
-            .flat_map(move |dir| entries(dir, self.depth, es, Rc::clone(&s)))
+            .flat_map(move |dir| entries(dir, self.recurse, es, Rc::clone(&self.selector)))
     }
 }
 
-#[derive(Debug, Copy, Clone)]
-struct Depth {
-    max: u32,
-    curr: u32,
-}
-
-impl Depth {
-    fn new(max: u32) -> Self {
-        Depth { max, curr: 0 }
-    }
-    fn inc(self) -> (Self, bool) {
-        let Depth { max, curr } = self;
-        let curr = curr + 1;
-        (Depth { max, curr }, curr < max || max == 0)
-    }
-}
-
-fn entries(dir: Entry, d: Depth, es: EntrySet, s: Rc<Selector>) -> Box<dyn Iterator<Item = Entry>> {
+fn entries(
+    dir: Entry,
+    r: Recurse,
+    es: EntrySet,
+    s: Rc<Selector>,
+) -> Box<dyn Iterator<Item = Entry>> {
     if !utils::is_running() {
         return Box::new(iter::empty());
     }
@@ -100,19 +93,19 @@ fn entries(dir: Entry, d: Depth, es: EntrySet, s: Rc<Selector>) -> Box<dyn Itera
             .flatten()
             .flat_map(move |entry| {
                 use EntrySet::*;
-                let (d, rec) = d.inc();
+                let (r, rec) = r.inc();
                 match (entry.is_dir(), s.is_in(&entry), rec, es) {
                     (false, true, _, _) => Box::new(iter::once(entry)),
-                    (true, false, true, _) => entries(entry, d, es, Rc::clone(&s)),
+                    (true, false, true, _) => entries(entry, r, es, Rc::clone(&s)),
                     (true, true, false, DirsStop | DirsAndContent | ContentOverDirs) => {
                         Box::new(iter::once(entry))
                     }
                     (true, true, true, Files | ContentOverDirs) => {
-                        entries(entry, d, es, Rc::clone(&s))
+                        entries(entry, r, es, Rc::clone(&s))
                     }
                     (true, true, true, DirsStop) => Box::new(iter::once(entry)),
                     (true, true, true, DirsAndContent) => Box::new(
-                        iter::once(entry.clone()).chain(entries(entry, d, es, Rc::clone(&s))),
+                        iter::once(entry.clone()).chain(entries(entry, r, es, Rc::clone(&s))),
                     ),
                     _ => Box::new(iter::empty()),
                 }
@@ -122,5 +115,39 @@ fn entries(dir: Entry, d: Depth, es: EntrySet, s: Rc<Selector>) -> Box<dyn Itera
             eprintln!("error: read dir {dir}: {err}");
             Box::new(iter::empty())
         }
+    }
+}
+
+impl From<u32> for Depth {
+    fn from(d: u32) -> Self {
+        match d {
+            0 => Depth::Unlimited,
+            1 => Depth::Shallow,
+            _ => Depth::Max(d),
+        }
+    }
+}
+
+impl From<Depth> for Recurse {
+    fn from(d: Depth) -> Self {
+        match d {
+            Depth::Unlimited => Recurse { max: 0, curr: 0 },
+            Depth::Shallow => Recurse { max: 1, curr: 0 },
+            Depth::Max(d) => Recurse { max: d, curr: 0 },
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+struct Recurse {
+    max: u32,
+    curr: u32,
+}
+
+impl Recurse {
+    fn inc(self) -> (Self, bool) {
+        let Recurse { max, curr } = self;
+        let curr = curr + 1;
+        (Recurse { max, curr }, curr < max || max == 0)
     }
 }
