@@ -77,7 +77,7 @@ static SHARED: OnceLock<Shared> = OnceLock::new();
 impl Refine for Join {
     type Media = Media;
     const OPENING_LINE: &'static str = "Join files";
-    const HANDLES: EntrySet = EntrySet::DirOrFiles;
+    const HANDLES: EntrySet = EntrySet::DirsStop;
 
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         if self.target.is_file() {

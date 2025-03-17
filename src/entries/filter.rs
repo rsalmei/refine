@@ -51,7 +51,7 @@ pub struct Selector {
 }
 
 impl Selector {
-    pub fn is_included(&self, entry: &Entry) -> bool {
+    pub fn is_in(&self, entry: &Entry) -> bool {
         self._is_included(entry).unwrap_or_default()
     }
 
@@ -61,11 +61,11 @@ impl Selector {
 
         let ret = self.all.is_match(stem)
             && match entry.is_dir() {
-                true => self.dir.is_match(entry.to_str()?) && !self.only_files,
+                true => self.dir.is_match(entry.to_str()) && !self.only_files,
                 false => {
                     self.file.is_match(stem)
                         && self.ext.is_match(ext)
-                        && self.dir.is_match(entry.parent()?.to_str()?)
+                        && self.dir.is_match(entry.parent()?.to_str())
                         && !self.only_dirs
                 }
             };
