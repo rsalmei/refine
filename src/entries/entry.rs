@@ -255,7 +255,7 @@ mod tests {
     #[test]
     fn entry_creation() {
         #[track_caller]
-        fn case(p: impl AsRef<Path>) -> Result<Entry> {
+        fn case(p: impl AsRef<Path>) -> Result<Entry, (anyhow::Error, PathBuf)> {
             Entry::try_from(p.as_ref().to_owned())
         }
 
