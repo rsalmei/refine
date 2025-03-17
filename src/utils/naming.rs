@@ -25,20 +25,17 @@ pub struct NamingRules {
 }
 
 impl NamingRules {
-    /// Strip and replace parts of filenames based on the given rules.
-    ///
-    /// Return the number of warnings generated.
-    pub fn apply<M: NewNameMut + OriginalEntry>(&self, medias: &mut Vec<M>) -> Result<usize> {
-        let rules = Rules::compile(
+    /// Compile this set of rules.
+    pub fn compile(&self) -> Result<Rules> {
+        Rules::compile(
             [&self.strip_before, &self.strip_after, &self.strip_exact],
             &self.replace,
-        )?;
-        rules.apply(medias)
+        )
     }
 }
 
 #[derive(Debug)]
-struct Rules<'r>(Vec<(Regex, &'r str)>);
+pub struct Rules<'r>(Vec<(Regex, &'r str)>);
 
 impl<'r> Rules<'r> {
     fn compile(
@@ -71,7 +68,8 @@ impl<'r> Rules<'r> {
         Ok(Rules(rules))
     }
 
-    fn apply<M: NewNameMut + OriginalEntry>(&self, medias: &mut Vec<M>) -> Result<usize> {
+    /// Apply these rules to a list of media.
+    pub fn apply<M: NewNameMut + OriginalEntry>(&self, medias: &mut Vec<M>) -> usize {
         // this is just so that warnings are printed in a consistent order.
         medias.sort_unstable_by(|m, n| m.entry().cmp(n.entry()));
 
@@ -94,7 +92,7 @@ impl<'r> Rules<'r> {
             *m.new_name_mut() = name;
             true
         });
-        Ok(total - medias.len())
+        total - medias.len()
     }
 }
 
@@ -126,8 +124,8 @@ mod tests {
         fn case(strip_rules: [&[&str]; 3], stem: &str, new_name: &str) {
             let mut medias = vec![Media(stem.to_owned())];
             let rules = Rules::compile(strip_rules, NO_REPLACE).unwrap();
-            let res = rules.apply(&mut medias);
-            assert_eq!(res.unwrap(), 0);
+            let warnings = rules.apply(&mut medias);
+            assert_eq!(warnings, 0);
             assert_eq!(medias[0].0, new_name);
         }
 
@@ -182,8 +180,8 @@ mod tests {
         fn case(replace_rules: &[(&str, &str)], stem: &str, new_name: &str) {
             let mut medias = vec![Media(stem.to_owned())];
             let rules = Rules::compile(NO_STRIP, replace_rules).unwrap();
-            let res = rules.apply(&mut medias);
-            assert_eq!(res.unwrap(), 0);
+            let warnings = rules.apply(&mut medias);
+            assert_eq!(warnings, 0);
             assert_eq!(medias[0].0, new_name);
         }
 
@@ -202,8 +200,8 @@ mod tests {
             Media("foobar".to_owned()),
         ];
         let rules = Rules::compile([&["e"], &["b"], &["c.*i"]], &[("on", "")]).unwrap();
-        let res = rules.apply(&mut medias);
-        assert_eq!(res.unwrap(), 4);
+        let warnings = rules.apply(&mut medias);
+        assert_eq!(warnings, 4);
         assert_eq!(medias, vec![Media("foo".to_owned())]);
     }
 }

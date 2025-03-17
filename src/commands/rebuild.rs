@@ -74,7 +74,7 @@ impl Refine for Rebuild {
         let total_files = medias.len();
 
         // step: apply naming rules.
-        let warnings = self.naming_rules.apply(&mut medias)?;
+        let warnings = self.naming_rules.compile()?.apply(&mut medias);
 
         // step: extract and strip sequence numbers.
         medias.iter_mut().for_each(|m| {

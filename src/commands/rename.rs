@@ -49,7 +49,7 @@ impl Refine for Rename {
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         // step: apply naming rules.
         let total = medias.len();
-        let mut warnings = self.naming_rules.apply(&mut medias)?;
+        let mut warnings = self.naming_rules.compile()?.apply(&mut medias);
 
         // step: re-include extension in the names.
         medias
