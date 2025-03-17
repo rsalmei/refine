@@ -1,7 +1,7 @@
 use crate::commands::Refine;
 use crate::entries::{Entries, Entry, EntrySet};
-use crate::impl_original_path;
-use crate::media::{FileOps, NewPath, OriginalPath};
+use crate::impl_original_entry;
+use crate::media::{FileOps, NewEntry, OriginalEntry};
 use crate::utils;
 use anyhow::{Context, Result, anyhow};
 use clap::{Args, ValueEnum};
@@ -251,13 +251,13 @@ impl Media {
     }
 }
 
-impl_original_path!(Media);
+impl_original_entry!(Media);
 
-impl NewPath for Media {
-    fn new_path(&self) -> PathBuf {
+impl NewEntry for Media {
+    fn new_entry(&self) -> Entry {
         let name = self.new_name.as_ref().map(|s| s.as_ref());
-        let path = SHARED.get().unwrap().target.as_ref();
-        path.join(name.unwrap_or_else(|| self.path().file_name().unwrap()))
+        let path = &SHARED.get().unwrap().target;
+        path.join(name.unwrap_or_else(|| self.entry().file_name()))
     }
 }
 

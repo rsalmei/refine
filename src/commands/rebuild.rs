@@ -3,7 +3,7 @@ use crate::entries::{Entry, EntrySet};
 use crate::media::FileOps;
 use crate::naming::NamingRules;
 use crate::{Warnings, utils};
-use crate::{impl_new_name, impl_new_name_mut, impl_original_path};
+use crate::{impl_new_name, impl_new_name_mut, impl_original_entry};
 use anyhow::Result;
 use clap::Args;
 use clap::builder::NonEmptyStringValueParser;
@@ -202,7 +202,7 @@ impl Refine for Rebuild {
 
 impl_new_name!(Media);
 impl_new_name_mut!(Media);
-impl_original_path!(Media);
+impl_original_entry!(Media);
 
 impl Media {
     /// The group name will either be the smart match or the new name.

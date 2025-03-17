@@ -1,4 +1,4 @@
-use crate::media::{NewNameMut, OriginalPath};
+use crate::media::{NewNameMut, OriginalEntry};
 use crate::utils;
 use anyhow::{Context, Result};
 use clap::Args;
@@ -28,7 +28,7 @@ impl NamingRules {
     /// Strip and replace parts of filenames based on the given rules.
     ///
     /// Return the number of warnings generated.
-    pub fn apply<M: NewNameMut + OriginalPath>(&self, medias: &mut Vec<M>) -> Result<usize> {
+    pub fn apply<M: NewNameMut + OriginalEntry>(&self, medias: &mut Vec<M>) -> Result<usize> {
         let rules = Rules::compile(
             [&self.strip_before, &self.strip_after, &self.strip_exact],
             &self.replace,
@@ -71,9 +71,9 @@ impl<'r> Rules<'r> {
         Ok(Rules(rules))
     }
 
-    fn apply<M: NewNameMut + OriginalPath>(&self, medias: &mut Vec<M>) -> Result<usize> {
+    fn apply<M: NewNameMut + OriginalEntry>(&self, medias: &mut Vec<M>) -> Result<usize> {
         // this is just so that warnings are printed in a consistent order.
-        medias.sort_unstable_by(|m, n| m.path().cmp(n.path()));
+        medias.sort_unstable_by(|m, n| m.entry().cmp(n.entry()));
 
         // apply all rules in order.
         let total = medias.len();
@@ -88,7 +88,7 @@ impl<'r> Rules<'r> {
             });
 
             if name.is_empty() {
-                eprintln!("warning: rules cleared name: {}", m.path().display());
+                eprintln!("warning: rules cleared name: {}", m.entry());
                 return false;
             }
             *m.new_name_mut() = name;
@@ -101,10 +101,14 @@ impl<'r> Rules<'r> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::Path;
+    use crate::entries::Entry;
+    use std::path::PathBuf;
+    use std::sync::LazyLock;
 
     const NO_STRIP: [&[&str]; 3] = [&[], &[], &[]];
     const NO_REPLACE: &[(&str, &str)] = &[];
+
+    static ROOT: LazyLock<Entry> = LazyLock::new(|| Entry::new(PathBuf::from("/"), true).unwrap());
 
     /// A dummy type that expects it is always changed.
     #[derive(Debug, PartialEq)]
@@ -114,9 +118,9 @@ mod tests {
             &mut self.0
         }
     }
-    impl OriginalPath for Media {
-        fn path(&self) -> &Path {
-            "".as_ref()
+    impl OriginalEntry for Media {
+        fn entry(&self) -> &Entry {
+            &ROOT
         }
     }
 

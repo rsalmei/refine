@@ -3,7 +3,7 @@ use crate::entries::{Entry, EntrySet};
 use crate::media::FileOps;
 use crate::naming::NamingRules;
 use crate::utils;
-use crate::{impl_new_name, impl_new_name_mut, impl_original_path};
+use crate::{impl_new_name, impl_new_name_mut, impl_original_entry};
 use anyhow::Result;
 use clap::{Args, ValueEnum};
 use std::cmp::Reverse;
@@ -158,7 +158,7 @@ impl Refine for Rename {
 
 impl_new_name!(Media);
 impl_new_name_mut!(Media);
-impl_original_path!(Media);
+impl_original_entry!(Media);
 
 impl Media {
     fn is_changed(&self) -> bool {
