@@ -210,6 +210,8 @@ impl Refine for Join {
 
         // step: remove the empty parent directories.
         if !self.parents {
+            let mut dirs = dirs.into_iter().collect::<Vec<_>>();
+            dirs.sort_unstable_by(|m, n| m.cmp(n).reverse());
             dirs.into_iter().for_each(|dir| {
                 if let Ok(rd) = fs::read_dir(&dir) {
                     const DS_STORE: &str = ".DS_Store";
