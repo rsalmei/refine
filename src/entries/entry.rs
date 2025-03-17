@@ -48,8 +48,11 @@ impl TryFrom<PathBuf> for Entry {
 impl Entry {
     /// Create a new entry that, in case the path does not exist, will assume the given directory flag.
     /// If it does exist, check that it has the correct directory flag or panic.
-    pub fn new(path: impl Into<PathBuf>, is_dir: bool) -> Result<Self> {
-        let mut entry = Self::try_from(path.into())?;
+    pub fn try_new(
+        path: impl Into<PathBuf>,
+        is_dir: bool,
+    ) -> Result<Self, (anyhow::Error, PathBuf)> {
+        let mut entry = Entry::try_from(path.into())?;
         match entry.path.exists() {
             true => assert_eq!(entry.is_dir, is_dir),
             false => entry.is_dir = is_dir,

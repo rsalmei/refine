@@ -84,7 +84,7 @@ impl Refine for Join {
             return Err(anyhow!("target must be a directory or not exist"))
                 .with_context(|| format!("invalid target: {:?}", self.target));
         }
-        let target = Entry::new(&self.target, true)?; // either a directory or doesn't exist.
+        let target = Entry::try_new(&self.target, true).map_err(|(e, _)| e)?; // either a directory or doesn't exist.
 
         let shared = Shared {
             target: target.clone(),
