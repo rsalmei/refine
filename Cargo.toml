@@ -19,4 +19,4 @@ anyhow = "1"
 regex = "1.11"
 ctrlc = "3"
 ureq = "3"
-#yansi = "1"
+yansi = { version = "1", features = ["detect-tty"] }

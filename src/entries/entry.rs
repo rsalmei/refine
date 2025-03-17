@@ -4,6 +4,7 @@ use std::cmp::Ordering;
 use std::fmt::{self, Display};
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
+use yansi::{Paint, Style};
 
 /// A file or directory entry that is guaranteed to have a valid UTF-8 representation.
 #[derive(Debug, Clone)]
@@ -86,10 +87,6 @@ impl Entry {
         self.is_dir
     }
 
-    pub fn kind(&self) -> &'static str {
-        match self.is_dir {
-            true => "/",
-            false => "",
         }
     }
 
@@ -110,19 +107,46 @@ pub struct DisplayPath<'a>(&'a Entry);
 #[derive(Debug)]
 pub struct DisplayFilename<'a>(&'a Entry);
 
+const PAR_FILE: Style = Style::new().cyan();
+const PAR_DIR: Style = Style::new().yellow();
+const DIR: Style = PAR_DIR.bold();
+const FILE: Style = PAR_FILE.bold();
+
 impl Display for DisplayPath<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let entry = self.0;
-        let path = entry.path.display();
-        write!(f, "{path}{}", entry.kind())
+        let (par, sep) = entry
+            .path
+            .parent()
+            .map(|p| p.to_str().unwrap())
+            .map(|s| (s, if s == "/" { "" } else { "/" }))
+            .unwrap_or_default();
+        let name = entry.file_name();
+        let (dir, file, sep2, style) = match entry.is_dir {
+            true => (name, "", "/", PAR_DIR),
+            false => ("", name, "", PAR_FILE),
+        };
+        write!(
+            f,
+            "{}{}{}{}{}",
+            par.paint(style),
+            sep.paint(style),
+            dir.paint(DIR),
+            sep2.paint(DIR),
+            file.paint(FILE)
+        )
     }
 }
 
 impl Display for DisplayFilename<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let entry = self.0;
-        let file = entry.path.file_name().unwrap().to_str().unwrap();
-        write!(f, "{file}{}", entry.kind())
+        let name = entry.file_name();
+        let (style, kind) = match entry.is_dir {
+            true => (DIR, "/"),
+            false => (FILE, ""),
+        };
+        write!(f, "{}{}", name.paint(style), kind.paint(style))
     }
 }
 
