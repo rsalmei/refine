@@ -32,9 +32,10 @@ pub trait Refine {
     const OPENING_LINE: &'static str;
     const HANDLES: EntrySet;
 
-    /// Tweak the command options to fix small issues after the opening line.
+    /// Tweak the command options to fix small issues after the opening line, but before fetching
+    /// the entries and converting them to the proper Media type.
     fn tweak(&mut self, _warnings: &Warnings) {}
-    /// Actual command implementation.
+    /// Actual command implementation, called with the fetched media files.
     fn refine(&self, medias: Vec<Self::Media>) -> Result<()>;
 }
 
