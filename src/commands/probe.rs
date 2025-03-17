@@ -80,6 +80,14 @@ impl Refine for Probe {
     const OPENING_LINE: &'static str = "Probe files online";
     const HANDLES: EntrySet = EntrySet::Files;
 
+    fn tweak(&mut self, _: &Warnings) {
+        if self.retries < 0 && self.errors == Errors::Last {
+            eprintln!("Displaying \"last\" error won't show anything with indefinite retries.\n");
+            self.errors = Errors::Never;
+        }
+    }
+
+    fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         // make sure the URL contains a single `$` placeholder.
         if self.url.bytes().filter(|&b| b == b'$').count() != 1 {
             return Err(anyhow!("URL must contain a single `$` placeholder"))
@@ -95,16 +103,6 @@ impl Refine for Probe {
             .call()
             .with_context(|| format!("invalid URL: {:?}", self.url))?;
 
-    fn tweak(&mut self, _: &Warnings) {
-        if self.retries < 0 && self.errors == Errors::Last {
-            println!(
-                "Can't show \"last\" error display for indefinite retries, switching to \"never\".\n"
-            );
-            self.errors = Errors::Never;
-        }
-    }
-
-    fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         // step: keep only unique file names (sequences were already removed).
         medias.sort_unstable_by(|m, n| m.name.cmp(&n.name));
         medias.dedup_by(|m, n| m.name == n.name);
@@ -116,9 +114,7 @@ impl Refine for Probe {
                 medias.retain(|m| re.is_match(&m.name));
                 println!("probing names matching {s:?}: {}", medias.len());
             }
-            None => {
-                println!("probing all names: {}", medias.len());
-            }
+            None => println!("probing all names: {}", medias.len()),
         }
 
         let total_names = medias.len();
