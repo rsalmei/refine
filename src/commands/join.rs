@@ -96,6 +96,7 @@ impl Refine for Join {
         // step: read the target directory, which might not be empty, to detect outer clashes (not in medias).
         let mut target_names = Vec::new();
         if target.exists() {
+            // if target happens to be inside any input path and is not empty, this will dup the files.
             let entries = Entries::single(target.clone(), false)?;
             let in_target = entries.fetch(Join::HANDLES).collect::<Vec<_>>();
             target_names.extend(in_target.iter().map(|e| e.file_name().to_string()));
@@ -111,6 +112,7 @@ impl Refine for Join {
             // put files already in place first.
             (m.entry.file_name(), !m.is_in_place()).cmp(&(n.entry.file_name(), !n.is_in_place()))
         });
+        medias.dedup_by(|m, n| m.entry.to_str() == n.entry.to_str()); // remove target dup files.
         let mut clashes = 0;
         medias
             .chunk_by_mut(|m, n| m.entry.file_name() == n.entry.file_name())
