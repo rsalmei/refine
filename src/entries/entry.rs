@@ -6,6 +6,7 @@ use std::fmt::{self, Display};
 use std::hash::{Hash, Hasher};
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
+use std::sync::LazyLock;
 use yansi::{Paint, Style};
 
 /// A file or directory entry that is guaranteed to have a valid UTF-8 representation.
@@ -44,6 +45,8 @@ impl TryFrom<PathBuf> for Entry {
         Ok(Entry { path: pb, is_dir })
     }
 }
+
+pub static ROOT: LazyLock<Entry> = LazyLock::new(|| Entry::try_new("/", true).unwrap());
 
 impl Entry {
     /// Create a new entry that, in case the path does not exist, will assume the given directory flag.

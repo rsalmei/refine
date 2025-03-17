@@ -101,14 +101,10 @@ impl<'r> Rules<'r> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::entries::Entry;
-    use std::path::PathBuf;
-    use std::sync::LazyLock;
+    use crate::entries::{Entry, ROOT};
 
     const NO_STRIP: [&[&str]; 3] = [&[], &[], &[]];
     const NO_REPLACE: &[(&str, &str)] = &[];
-
-    static ROOT: LazyLock<Entry> = LazyLock::new(|| Entry::new(PathBuf::from("/"), true).unwrap());
 
     /// A dummy type that expects it is always changed.
     #[derive(Debug, PartialEq)]

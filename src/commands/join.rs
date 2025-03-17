@@ -1,5 +1,5 @@
 use crate::commands::Refine;
-use crate::entries::{Entries, Entry, EntrySet};
+use crate::entries::{Entries, Entry, EntrySet, ROOT};
 use crate::impl_original_entry;
 use crate::media::{FileOps, NewEntry, OriginalEntry};
 use crate::utils;
@@ -134,7 +134,7 @@ impl Refine for Join {
                         })
                     }
                     Clashes::ParentName | Clashes::NameParent => g.iter_mut().for_each(|m| {
-                        let par = m.entry.parent().unwrap_or(Entry::new("/", true).unwrap());
+                        let par = m.entry.parent().unwrap_or(ROOT.clone());
                         let par = par.file_name();
                         if let Clashes::ParentName = self.clashes {
                             m.new_name = Some(format!("{par}-{name}{dot}{ext}"));
