@@ -58,7 +58,7 @@ impl Entry {
     /// Get the stem and extension from files, or name from directories.
     pub fn filename_parts(&self) -> (&str, &str) {
         match self.is_dir {
-            true => (self.path.file_name().unwrap().to_str().unwrap(), ""),
+            true => (self.file_name(), ""),
             false => (
                 self.path.file_stem().unwrap().to_str().unwrap(),
                 self.path.extension().unwrap_or_default().to_str().unwrap(),
@@ -87,6 +87,39 @@ impl Entry {
         self.is_dir
     }
 
+    /// Get the filename from entries directly as a &str.
+    pub fn file_name(&self) -> &str {
+        self.path
+            .file_name()
+            .map(|n| n.to_str().unwrap())
+            .unwrap_or_default()
+    }
+
+    pub fn to_str(&self) -> &str {
+        self.path.to_str().unwrap()
+    }
+
+    /// Get the parent directory as an entry, without checking UTF-8 again.
+    pub fn parent(&self) -> Option<Entry> {
+        self.path.parent().map(|p| Entry {
+            path: p.to_owned(),
+            is_dir: true,
+        })
+    }
+
+    /// Get a new entry with the given file name, without checking UTF-8 again.
+    pub fn with_file_name(&self, name: impl AsRef<str>) -> Entry {
+        Entry {
+            path: self.path.with_file_name(name.as_ref()),
+            is_dir: self.is_dir,
+        }
+    }
+
+    /// Get a new entry with the given name adjoined, without checking UTF-8 again.
+    pub fn join(&self, name: impl AsRef<str>) -> Entry {
+        Entry {
+            path: self.path.join(name.as_ref()),
+            is_dir: self.is_dir,
         }
     }
 
