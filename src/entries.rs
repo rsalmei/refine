@@ -84,10 +84,10 @@ fn entries(
                 }
             })
             .flatten()
-            .map(|de| Entry::try_from(de.path()))
+            .map(move |de| de.file_name().to_str().map(|s| dir.join(s)).ok_or(de))
             .inspect(|res| {
-                if let Err(err) = res {
-                    eprintln!("error: entry: {err}");
+                if let Err(de) = res {
+                    eprintln!("error: no UTF-8 name: {de:?}");
                 }
             })
             .flatten()
