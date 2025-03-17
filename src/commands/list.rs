@@ -5,6 +5,7 @@ use anyhow::Result;
 use clap::{Args, ValueEnum};
 use human_repr::HumanCount;
 use std::cmp::Ordering;
+use yansi::{Color, Paint};
 
 #[derive(Debug, Args)]
 pub struct List {
@@ -72,9 +73,9 @@ impl Refine for List {
                 false => print!("{size:>8} {}", m.entry.display_filename()),
             };
             if m.entry.is_dir() {
-                print!(" ({} files)", m.count);
+                print!(" {} files", m.count.paint(Color::Blue).linger());
             }
-            println!();
+            println!("{}", "".resetting());
         });
 
         // step: display receipt summary.
