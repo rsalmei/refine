@@ -57,7 +57,9 @@ impl Refine for List {
 
     fn tweak(&mut self, _: &Warnings) {
         self.reverse ^= ORDERING.iter().find(|(b, _)| *b == self.by).unwrap().1;
+        if self.by == By::Path && !self.paths {
             self.paths = true;
+            eprintln!("Enabling full file paths due to path sorting.\n");
         }
         CALC_DIR_SIZES.set(!self.no_calc_dirs).unwrap();
     }
