@@ -17,9 +17,9 @@ pub struct Args {
     /// Directories to scan.
     #[arg(global = true, help_heading = Some("Global"))]
     dirs: Vec<PathBuf>,
-    /// Do not recurse into subdirectories.
-    #[arg(short = 'w', long, global = true, help_heading = Some("Global"))]
-    shallow: bool,
+    /// The maximum recursion depth; use 0 for unlimited (default).
+    #[arg(short = 'd', long, default_value_t = 0, global = true, help_heading = Some("Global"))]
+    depth: u32,
     #[command(flatten)]
     filter: Filter,
     #[command(subcommand)]
@@ -31,8 +31,8 @@ fn main() -> Result<()> {
 
     println!("Refine v{}", env!("CARGO_PKG_VERSION"));
     let args = Args::parse();
-    let (dirs, warnings) = valid_dirs(args.dirs)?;
-    let entries = Entries::new(dirs, args.shallow, args.filter)?;
+    let (dirs, warnings) = validate_dirs(args.dirs)?;
+    let entries = Entries::new(dirs, args.depth, args.filter)?;
     args.cmd.run(entries, warnings)
 }
 

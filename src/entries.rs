@@ -14,7 +14,7 @@ use std::rc::Rc;
 pub struct Entries {
     /// Effective input paths to scan, after deduplication and checking.
     dirs: Vec<Entry>,
-    recursive: bool,
+    depth: Depth,
     selector: Selector,
 }
 
@@ -33,12 +33,12 @@ pub enum EntrySet {
 
 impl Entries {
     /// Reads all entries from a single directory.
-    pub fn single(entry: Entry, recursive: bool) -> Result<Self> {
-        Self::new(vec![entry], recursive, Filter::default())
+    pub fn single(entry: Entry, depth: u32) -> Result<Self> {
+        Self::new(vec![entry], depth, Filter::default())
     }
 
     /// Reads entries from the given directories, with the given filtering rules and recursion.
-    pub fn new(dirs: Vec<Entry>, recursive: bool, filter: Filter) -> Result<Self> {
+    pub fn new(dirs: Vec<Entry>, depth: u32, filter: Filter) -> Result<Self> {
         let selector = filter.try_into()?; // compile regexes and check for errors before anything else.
 
         if dirs.is_empty() {
@@ -47,7 +47,7 @@ impl Entries {
 
         Ok(Entries {
             dirs,
-            recursive,
+            depth: Depth::new(depth),
             selector,
         })
     }
@@ -56,16 +56,28 @@ impl Entries {
         let s = Rc::new(self.selector);
         self.dirs
             .into_iter()
-            .flat_map(move |dir| entries(dir, self.recursive, es, Rc::clone(&s)))
+            .flat_map(move |dir| entries(dir, self.depth, es, Rc::clone(&s)))
     }
 }
 
-fn entries(
-    dir: Entry,
-    rec: bool,
-    es: EntrySet,
-    s: Rc<Selector>,
-) -> Box<dyn Iterator<Item = Entry>> {
+#[derive(Debug, Copy, Clone)]
+struct Depth {
+    max: u32,
+    curr: u32,
+}
+
+impl Depth {
+    fn new(max: u32) -> Self {
+        Depth { max, curr: 0 }
+    }
+    fn inc(self) -> (Self, bool) {
+        let Depth { max, curr } = self;
+        let curr = curr + 1;
+        (Depth { max, curr }, curr < max || max == 0)
+    }
+}
+
+fn entries(dir: Entry, d: Depth, es: EntrySet, s: Rc<Selector>) -> Box<dyn Iterator<Item = Entry>> {
     if !utils::is_running() {
         return Box::new(iter::empty());
     }
@@ -88,18 +100,19 @@ fn entries(
             .flatten()
             .flat_map(move |entry| {
                 use EntrySet::*;
+                let (d, rec) = d.inc();
                 match (entry.is_dir(), s.is_in(&entry), rec, es) {
                     (false, true, _, _) => Box::new(iter::once(entry)),
-                    (true, false, true, _) => entries(entry, rec, es, Rc::clone(&s)),
+                    (true, false, true, _) => entries(entry, d, es, Rc::clone(&s)),
                     (true, true, false, DirsStop | DirsAndContent | ContentOverDirs) => {
                         Box::new(iter::once(entry))
                     }
                     (true, true, true, Files | ContentOverDirs) => {
-                        entries(entry, rec, es, Rc::clone(&s))
+                        entries(entry, d, es, Rc::clone(&s))
                     }
                     (true, true, true, DirsStop) => Box::new(iter::once(entry)),
                     (true, true, true, DirsAndContent) => Box::new(
-                        iter::once(entry.clone()).chain(entries(entry, rec, es, Rc::clone(&s))),
+                        iter::once(entry.clone()).chain(entries(entry, d, es, Rc::clone(&s))),
                     ),
                     _ => Box::new(iter::empty()),
                 }
