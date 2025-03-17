@@ -218,6 +218,12 @@ impl AsRef<Path> for Entry {
     }
 }
 
+impl From<&Entry> for Entry {
+    fn from(entry: &Entry) -> Self {
+        entry.clone()
+    }
+}
+
 impl Hash for Entry {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.path.hash(state)
