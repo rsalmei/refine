@@ -117,17 +117,19 @@ impl Entry {
 
     /// Get a new entry with the given file name, without checking UTF-8 again.
     pub fn with_file_name(&self, name: impl AsRef<str>) -> Entry {
+        let path = self.path.with_file_name(name.as_ref());
         Entry {
-            path: self.path.with_file_name(name.as_ref()),
-            is_dir: self.is_dir,
+            is_dir: path.is_dir(),
+            path,
         }
     }
 
     /// Get a new entry with the given name adjoined, without checking UTF-8 again.
     pub fn join(&self, name: impl AsRef<str>) -> Entry {
+        let path = self.path.join(name.as_ref());
         Entry {
-            path: self.path.join(name.as_ref()),
-            is_dir: self.is_dir,
+            is_dir: path.is_dir(),
+            path,
         }
     }
 
