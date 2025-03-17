@@ -28,6 +28,8 @@ pub struct List {
 pub enum By {
     #[value(alias = "s")]
     Size,
+    #[value(alias = "c")]
+    Count,
     #[value(alias = "n")]
     Name,
     #[value(alias = "p")]
@@ -61,12 +63,17 @@ impl Refine for List {
     }
 
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
-        // step: sort the files by name, size, or path.
+        // step: sort the files by size, count, name, or path.
         let compare = match self.by {
             By::Size => |m: &Media, n: &Media| {
                 m.size_count
                     .map(|(s, _)| s)
                     .cmp(&n.size_count.map(|(s, _)| s))
+            },
+            By::Count => |m: &Media, n: &Media| {
+                m.size_count
+                    .map(|(_, c)| c)
+                    .cmp(&n.size_count.map(|(_, c)| c))
             },
             By::Name => |m: &Media, n: &Media| m.entry.file_name().cmp(n.entry.file_name()),
             By::Path => |m: &Media, n: &Media| m.entry.cmp(&n.entry),
