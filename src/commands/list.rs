@@ -84,7 +84,7 @@ impl Refine for List {
             false => &compare,
             true => &|m, n| compare(m, n).reverse(),
         };
-        medias.sort_unstable_by(compare);
+        medias.sort_unstable_by(|m, n| compare(m, n).then_with(|| m.entry.cmp(&n.entry)));
 
         // step: display the results.
         medias.iter().for_each(|m| {
