@@ -17,8 +17,8 @@ pub struct Args {
     #[arg(global = true, help_heading = Some("Global"))]
     dirs: Vec<PathBuf>,
     /// The maximum recursion depth; use 0 for unlimited (default).
-    #[arg(short = 'd', long, default_value_t = 0, global = true, help_heading = Some("Global"))]
-    depth: u32,
+    #[arg(short = 'r', long, default_value_t = 0, global = true, help_heading = Some("Global"))]
+    recurse: u32,
     #[command(flatten)]
     filter: Filter,
     #[command(subcommand)]
@@ -31,7 +31,7 @@ fn main() -> Result<()> {
     println!("Refine v{}", env!("CARGO_PKG_VERSION"));
     let args = Args::parse();
     let (dirs, warnings) = validate_dirs(args.dirs)?;
-    let entries = Entries::new(dirs, args.depth.into(), args.filter)?;
+    let entries = Entries::new(dirs, args.recurse.into(), args.filter)?;
     args.cmd.run(entries, warnings)
 }
 
