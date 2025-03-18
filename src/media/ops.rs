@@ -39,7 +39,7 @@ fn files_op(
         let target = m.new_entry();
         if target.exists() {
             notify(b"-\n");
-            eprintln!("file already exists: {} -> {target:?}", m.entry());
+            eprintln!("file already exists: {} -> {target}", m.entry());
             notify(b"\n");
             return true;
         }
@@ -47,7 +47,7 @@ fn files_op(
             Ok(()) => false,
             Err(err) => {
                 notify(b"x\n");
-                eprintln!("error: {err}: {} -> {target:?}", m.entry());
+                eprintln!("error: {err}: {} -> {target}", m.entry());
                 notify(b"\n");
                 true
             }
