@@ -13,9 +13,9 @@ pub struct List {
     /// Sort by.
     #[arg(short = 'b', long, default_value_t = By::Size, value_name = "STR", value_enum)]
     by: By,
-    /// Reverse the default order (name:asc, size:desc, path:asc).
-    #[arg(short = 's', long)]
-    reverse: bool,
+    /// Reverse the default order (size/count:desc, name/path:asc).
+    #[arg(short = 'R', long)]
+    rev: bool,
     /// Show full file paths.
     #[arg(short = 'p', long)]
     paths: bool,
@@ -56,7 +56,7 @@ impl Refine for List {
     const HANDLES: EntrySet = EntrySet::ContentOverDirs;
 
     fn tweak(&mut self, _: &Warnings) {
-        self.reverse ^= ORDERING.iter().find(|(b, _)| *b == self.by).unwrap().1;
+        self.rev ^= ORDERING.iter().find(|(b, _)| *b == self.by).unwrap().1;
         if self.by == By::Path && !self.paths {
             self.paths = true;
             eprintln!("Enabling full file paths due to path sorting.\n");
@@ -80,7 +80,7 @@ impl Refine for List {
             By::Name => |m: &Media, n: &Media| m.entry.file_name().cmp(n.entry.file_name()),
             By::Path => |m: &Media, n: &Media| m.entry.cmp(&n.entry),
         };
-        let compare: &dyn Fn(&Media, &Media) -> Ordering = match self.reverse {
+        let compare: &dyn Fn(&Media, &Media) -> Ordering = match self.rev {
             false => &compare,
             true => &|m, n| compare(m, n).reverse(),
         };
