@@ -1,5 +1,5 @@
 use crate::commands::Refine;
-use crate::entries::{Depth, Entries, Entry, EntrySet, ROOT};
+use crate::entries::{Entries, Entry, EntrySet, ROOT, Recurse};
 use crate::impl_original_entry;
 use crate::media::{FileOps, NewEntry, OriginalEntry};
 use crate::utils;
@@ -97,7 +97,7 @@ impl Refine for Join {
         let mut target_names = Vec::new();
         if target.exists() {
             // if target happens to be inside any input path and is not empty, this will dup the files.
-            let entries = Entries::single(&target, Depth::Shallow);
+            let entries = Entries::single(&target, Recurse::Shallow);
             let in_target = entries.fetch(Join::HANDLES).collect::<Vec<_>>();
             target_names.extend(in_target.iter().map(|e| e.file_name().to_string()));
             medias.extend(in_target.into_iter().map(|entry| Media {

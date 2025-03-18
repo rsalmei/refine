@@ -1,5 +1,5 @@
 use crate::commands::Refine;
-use crate::entries::{Depth, Entries, Entry, EntrySet};
+use crate::entries::{Entries, Entry, EntrySet, Recurse};
 use crate::{Warnings, utils};
 use anyhow::Result;
 use clap::{Args, ValueEnum};
@@ -132,7 +132,7 @@ impl TryFrom<Entry> for Media {
         let size_count = match (entry.is_dir(), CALC_DIR_SIZES.get().unwrap()) {
             (true, false) => None,
             (true, true) => {
-                let entries = Entries::single(&entry, Depth::Unlimited);
+                let entries = Entries::single(&entry, Recurse::Full);
                 let mut count = 0;
                 let sum = entries
                     .fetch(EntrySet::Files)
