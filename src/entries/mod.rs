@@ -96,7 +96,6 @@ fn entries(
                 let (r, rec) = r.inc();
                 match (entry.is_dir(), s.is_in(&entry), rec, es) {
                     (false, true, _, _) => Box::new(iter::once(entry)),
-                    (true, false, true, _) => entries(entry, r, es, Rc::clone(&s)),
                     (true, true, false, DirsStop | DirsAndContent | ContentOverDirs) => {
                         Box::new(iter::once(entry))
                     }
