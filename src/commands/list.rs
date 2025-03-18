@@ -96,7 +96,7 @@ impl Refine for List {
                 true => print!("{size:>8} {}", m.entry.display_path()),
                 false => print!("{size:>8} {}", m.entry.display_filename()),
             };
-            if m.entry.is_dir() {
+            if m.entry.is_dir() && m.size_count.is_some() {
                 print!(" {} files", count.paint(Color::Blue).linger());
             }
             println!("{}", "".resetting());
