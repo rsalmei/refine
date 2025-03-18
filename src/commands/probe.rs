@@ -144,7 +144,7 @@ impl Refine for Probe {
             medias.iter().for_each(|m| println!("  {}", m.name));
         }
 
-        // step: display receipt summary.
+        // step: display summary receipt.
         println!("\ntotal names: {total_names}");
         println!("  valid  : {valid}");
         println!("  invalid: {}", medias.len());

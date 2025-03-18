@@ -122,7 +122,7 @@ impl Refine for Rename {
                     .for_each(|m| println!("  {} --> {}", m.entry.display_filename(), m.new_name));
             });
 
-        // step: display receipt summary.
+        // step: display summary receipt.
         if !medias.is_empty() || warnings > 0 {
             println!();
         }

@@ -159,7 +159,7 @@ impl Refine for Rebuild {
             .iter()
             .for_each(|m| println!("{} --> {}", m.entry, m.new_name));
 
-        // step: display receipt summary.
+        // step: display summary receipt.
         if !medias.is_empty() || warnings > 0 {
             println!();
         }

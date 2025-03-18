@@ -169,7 +169,7 @@ impl Refine for Join {
             None => println!("{}", m.entry),
         });
 
-        // step: display receipt summary.
+        // step: display summary receipt.
         if !medias.is_empty() || in_place > 0 || clashes > 0 {
             println!();
         }

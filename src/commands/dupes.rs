@@ -52,7 +52,7 @@ impl Refine for Dupes {
             },
         );
 
-        // step: display receipt summary.
+        // step: display summary receipt.
         let total = medias.len();
         println!("\ntotal files: {total}{}", display_abort(by_size == 0));
         println!("  by size: {by_size} dupes{}", display_abort(by_name == 0));
