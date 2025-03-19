@@ -1,4 +1,4 @@
-use crate::media::{NewNameMut, OriginalEntry};
+use super::{NewNameMut, OriginalEntry};
 use crate::utils;
 use anyhow::{Context, Result};
 use clap::Args;

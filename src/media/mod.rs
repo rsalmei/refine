@@ -1,6 +1,8 @@
+mod naming;
 mod ops;
 
 use crate::entries::Entry;
+pub use naming::*;
 pub use ops::*;
 
 pub trait NewName {
