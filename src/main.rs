@@ -17,7 +17,7 @@ pub struct Args {
     #[arg(global = true, help_heading = Some("Global"))]
     dirs: Vec<PathBuf>,
     /// The maximum recursion depth; use 0 for unlimited (default).
-    #[arg(short = 'r', long, default_value_t = 0, global = true, help_heading = Some("Global"))]
+    #[arg(short = 'R', long, default_value_t = 0, global = true, help_heading = Some("Global"))]
     recurse: u32,
     #[command(flatten)]
     filter: Filter,

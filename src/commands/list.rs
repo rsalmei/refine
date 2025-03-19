@@ -14,7 +14,7 @@ pub struct List {
     #[arg(short = 'b', long, default_value_t = By::Size, value_name = "STR", value_enum)]
     by: By,
     /// Reverse the default order (size/count:desc, name/path:asc).
-    #[arg(short = 'R', long)]
+    #[arg(short = 'r', long)]
     rev: bool,
     /// Show full file paths.
     #[arg(short = 'p', long)]
