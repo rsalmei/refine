@@ -215,7 +215,7 @@ impl Refine for Join {
             dirs.into_iter().for_each(|dir| {
                 if let Ok(rd) = fs::read_dir(&dir) {
                     const DS_STORE: &str = ".DS_Store";
-                    if rd // .DS_Store might exist on macOS, but should be ignored if it is the only file in there.
+                    if rd // .DS_Store might exist on macOS, but should be removed if it is the only file in there.
                         .map(|r| r.is_ok_and(|d| d.file_name() == DS_STORE).then_some(()))
                         .collect::<Option<Vec<_>>>()
                         .is_some_and(|v| !v.is_empty()) // an empty iterator is collected into Some([]).

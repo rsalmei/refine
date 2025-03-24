@@ -17,7 +17,7 @@ pub struct Args {
     cmd: Command,
     #[command(flatten)]
     input: Input,
-    /// Override the called command to just view the filtered input entries.
+    /// Bypass the command execution and preview the filter results to be processed.
     #[arg(long, global = true, help_heading = Some("Fetch"))]
     view: bool,
 }
