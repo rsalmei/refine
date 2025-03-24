@@ -46,8 +46,10 @@ Another great new feature is the global `--view` option, which allows you to byp
 Everything is again more polished and optimized. Even the usage and help are much more user-friendly!
 
 And last but not least, the input paths can now be relative, which will make all output also be relative and thus easier to read.
+
 Behold the new `refine` command!
 
+![refine 2.0 list](https://raw.githubusercontent.com/rsalmei/refine/main/img/list-2.0.png)
 
 <details><summary>(older versions)</summary>
 
