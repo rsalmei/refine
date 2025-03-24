@@ -33,13 +33,29 @@ And that's it, you're ready to go! You can now call it anywhere.
 
 ## What's new
 
+### New in 2.0
+
+Yay! This is a major release, with a lot of new features!
+<br>The most exciting one is global support for COLORS, making files and directories much easier to read and distinguish!
+
+Also, the `list` command is greatly improved, with support for listing directory entries, complete with their number of files and full sizes! This was only possible with the new precise recursion feature, allowing you to choose how deep you want to go within directories.
+<br>You can also now sort the output by number of files, in addition to size (full recursive size), name, or path.
+
+Another great new feature is the global `--view` option, which allows you to bypass any command and quickly view the filtered files and directories that will be processed by it! Countless times I wanted to preview my filter results, forcing me to replace the command with `list`, remove all other arguments, execute it, study the output, and painstakingly reconstruct the original command—a hugely frustrating process. And now we can do it in any command without changing anything, just by adding `--view`!
+
+Everything is again more polished and optimized. Even the usage and help are much more user-friendly!
+
+And last but not least, the input paths can now be relative, which will make all output also be relative and thus easier to read.
+Behold the new `refine` command!
+
+
+<details><summary>(older versions)</summary>
+
 ### New in 1.4
 
 This version introduces the `probe` command, which allows you to probe filenames against a remote server! This can be used to validate the filenames of your media collections by checking whether a URL points to a valid file or page on a remote server.
 
 Also, the `rebuild` command has a new `--case` option, which allows you to keep the original case of the filenames, and the `rename` command has improved support for handling clashes, allowing you to insert sequence numbers in the filenames when you really want to let them be the same.
-
-<details><summary>(older versions)</summary>
 
 ### New in 1.3
 
@@ -149,21 +165,23 @@ And this also includes:
 
 All commands will:
 
-1. scan all the given directories recursively (excluding hidden .folders)
-    - can optionally filter files and directories based on several regexes, or disable recursion
+1. scan all the given directories recursively (excluding hidden `.folders`)
+    - can optionally filter files and directories based on several options
 2. load the metadata for each file like size and creation date, as required by some commands
 3. execute the command and show the results
 4. ask the user to perform the changes, if applicable
 
 > Everything is always interactive, so don't worry experimenting!
-> <br>It's like you're always in dry-run mode, so nothing will be persisted until you review the results and confirm them.
+> <br>It's like you're always in dry-run mode, so nothing will be persisted until you review the results and agree to apply them.
 
-<details><summary>refine --help</summary>
+### The global refine command (help)
+
+> `$ refine --help`
 
 ```
-Refine your file collection using Rust!
+Refine your file collections using Rust!
 
-Usage: refine [OPTIONS] [DIRS]... <COMMAND>
+Usage: refine <COMMAND> [DIRS]... [FETCH] [OPTIONS]
 
 Commands:
   dupes    Find reasonably duplicated files by both size and filename
@@ -174,26 +192,29 @@ Commands:
   probe    Probe filenames against a remote server
   help     Print this message or the help of the given subcommand(s)
 
+Arguments:
+  [DIRS]...  Directories to scan
+
 Options:
   -h, --help     Print help
   -V, --version  Print version
 
-Global:
-  -w, --shallow          Do not recurse into subdirectories
-  -i, --include <REGEX>  Include only these files and directories; checked without extension
-  -x, --exclude <REGEX>  Exclude these files and directories; checked without extension
+Fetch:
+  -R, --recurse <INT>    The maximum recursion depth; use 0 for unlimited [default: 0]
+  -F, --only-files       Include only files
+  -D, --only-dirs        Include only directories
+  -i, --include <REGEX>  Include only these files and directories
+  -x, --exclude <REGEX>  Exclude these files and directories
   -I, --dir-in <REGEX>   Include only these directories
   -X, --dir-ex <REGEX>   Exclude these directories
-      --file-in <REGEX>  Include only these files; checked without extension
-      --file-ex <REGEX>  Exclude these files; checked without extension
+      --file-in <REGEX>  Include only these files
+      --file-ex <REGEX>  Exclude these files
       --ext-in <REGEX>   Include only these extensions
       --ext-ex <REGEX>   Exclude these extensions
-  [DIRS]...          Directories to scan
+      --view             Bypass the command execution and preview the filter results to be processed
 
 For more information, see https://github.com/rsalmei/refine
 ```
-
-</details>
 
 ### The `dupes` command
 
@@ -206,19 +227,22 @@ The `dupes` command will analyze and report the possibly duplicated files, eithe
     - the word extractor ignores sequence numbers like file-1, file copy, file-3 copy 2, etc.
 5. run 2. and 3. again, and print the results
 
-<details><summary>refine dupes --help</summary>
+> `$ refine dupes --help`
 
 ```
 Find reasonably duplicated files by both size and filename
 
-Usage: refine dupes [OPTIONS] [DIRS]...
+Usage: refine dupes [DIRS]... [FETCH] [OPTIONS]
+
+Arguments:
+  [DIRS]...  Directories to scan
 
 Options:
   -s, --sample <INT>  Sample size in bytes (0 to disable) [default: 2048]
   -h, --help          Print help
 ```
 
-</details>
+> There's also the "Fetch" options, which are the same as for the global refine command.
 
 Example:
 
@@ -238,7 +262,7 @@ The `join` command will let you grab all files and directories in the given dire
 4. if the user confirms, apply the changes
 5. remove any empty parent directories when moving files
 
-<details><summary>refine join --help</summary>
+> `$ refine join --help`
 
 ```
 Join files into a single directory with advanced conflict resolution
@@ -255,7 +279,7 @@ Options:
   -h, --help           Print help
 ```
 
-</details>
+> There's also the "Fetch" options, which are the same as for the global refine command.
 
 Example:
 
@@ -271,21 +295,25 @@ The `list` command will gather all the files in the given directories, sort them
     - ascending by default for name and path, descending for size, or optionally reverse
 2. print the results
 
-<details><summary>refine list --help</summary>
+> `$ refine list --help`
 
 ```
 List files from multiple directories sorted together
 
-Usage: refine list [OPTIONS] [DIRS]...
+Usage: refine list [DIRS]... [FETCH] [OPTIONS]
+
+Arguments:
+  [DIRS]...  Directories to scan
 
 Options:
-  -b, --by <STR>  Sort by [default: name] [possible values: name, size, path]
-  -r, --rev       Reverse the default order (name:asc, size:desc, path:asc)
-  -p, --paths     Show full file paths
-  -h, --help      Print help
+  -b, --by <STR>      Sort by [default: size] [possible values: size, count, name, path]
+  -r, --rev           Reverse the default order (size/count:desc, name/path:asc)
+  -p, --paths         Show full file paths
+  -c, --no-calc-dirs  Do not calculate directory sizes
+  -h, --help          Print help
 ```
 
-</details>
+> There's also the "Fetch" options, which are the same as for the global refine command.
 
 Example:
 
@@ -312,18 +340,21 @@ And don't worry as this tool is interactive, so you can review all changes befor
 8. print the resulting changes to the filenames, and ask for confirmation
 9. if the user confirms, apply the changes
 
-<details><summary>refine rebuild --help</summary>
+> `$ refine rebuild --help`
 
 ```
 Rebuild entire media collections intelligently
 
-Usage: refine rebuild [OPTIONS] [DIRS]...
+Usage: refine rebuild [DIRS]... [FETCH] [OPTIONS]
+
+Arguments:
+  [DIRS]...  Directories to scan
 
 Options:
-  -b, --strip-before <STR|REGEX>    Strip from the start of the filename; blanks nearby are automatically removed
-  -a, --strip-after <STR|REGEX>     Strip to the end of the filename; blanks nearby are automatically removed
-  -e, --strip-exact <STR|REGEX>     Strip all occurrences in the filename; blanks nearby are automatically removed
-  -r, --replace <STR|REGEX=STR|$N>  Replace all occurrences in the filename with another; blanks are not touched
+  -b, --strip-before <STR|REGEX>    Strip from the start of the filename; separators nearby are automatically removed
+  -a, --strip-after <STR|REGEX>     Strip to the end of the filename; separators nearby are automatically removed
+  -e, --strip-exact <STR|REGEX>     Strip all occurrences in the filename; separators nearby are automatically removed
+  -r, --replace <STR|REGEX=STR|$N>  Replace all occurrences in the filename with another; separators are not touched
   -s, --simple                      Disable smart matching, so "foo bar.mp4", "FooBar.mp4" and "foo__bar.mp4" are different
   -f, --force <STR>                 Force to overwrite filenames (use the Global options to filter files)
   -p, --partial                     Assume not all directories are available, which retains current sequences (but fixes gaps)
@@ -332,7 +363,7 @@ Options:
   -h, --help                        Print help
 ```
 
-</details>
+> There's also the "Fetch" options, which are the same as for the global refine command.
 
 Example:
 
@@ -352,24 +383,27 @@ The `rename` command will let you batch rename files like no other tool, serious
 3. print the resulting changes to the filenames and directories, and ask for confirmation
 4. if the user confirms, apply the changes
 
-<details><summary>refine rename --help</summary>
+> `$ refine rename --help`
 
 ```
 Rename files and directories using advanced regular expression rules
 
-Usage: refine rename [OPTIONS] [DIRS]...
+Usage: refine rename [DIRS]... [FETCH] [OPTIONS]
+
+Arguments:
+  [DIRS]...  Directories to scan
 
 Options:
-  -b, --strip-before <STR|REGEX>    Strip from the start of the filename; blanks nearby are automatically removed
-  -a, --strip-after <STR|REGEX>     Strip to the end of the filename; blanks nearby are automatically removed
-  -e, --strip-exact <STR|REGEX>     Strip all occurrences in the filename; blanks nearby are automatically removed
-  -r, --replace <STR|REGEX=STR|$N>  Replace all occurrences in the filename with another; blanks are not touched
+  -b, --strip-before <STR|REGEX>    Strip from the start of the filename; separators nearby are automatically removed
+  -a, --strip-after <STR|REGEX>     Strip to the end of the filename; separators nearby are automatically removed
+  -e, --strip-exact <STR|REGEX>     Strip all occurrences in the filename; separators nearby are automatically removed
+  -r, --replace <STR|REGEX=STR|$N>  Replace all occurrences in the filename with another; separators are not touched
   -c, --clashes <STR>               How to resolve clashes [default: forbid] [possible values: forbid, ignore, name-sequence]
   -y, --yes                         Skip the confirmation prompt, useful for automation
   -h, --help                        Print help
 ```
 
-</details>
+> There's also the "Fetch" options, which are the same as for the global refine command.
 
 Example:
 
@@ -394,12 +428,15 @@ It does not support any kind of parallel connections or API rate limiting by des
 4. split the results into Valid, Invalid, Failed, and Pending (in case you press Ctrl+C)
 5. print the invalid ones, along with a summary of the results
 
-<details><summary>refine probe --help</summary>
+> `$ refine probe --help`
 
 ```
 Probe filenames against a remote server
 
-Usage: refine probe [OPTIONS] --url <URL> [DIRS]...
+Usage: refine probe [DIRS]... [FETCH] [OPTIONS]
+
+Arguments:
+  [DIRS]...  Directories to scan
 
 Options:
   -p, --pick <REGEX>     Pick a subset of the files to probe
@@ -413,7 +450,7 @@ Options:
   -h, --help             Print help
 ```
 
-</details>
+> There's also the "Fetch" options, which are the same as for the global refine command.
 
 Example:
 
@@ -425,6 +462,8 @@ $ refine probe ~/media /Volumes/External --url 'https://example.com/$/' -r3 -el
 
 <details><summary>(click to expand)</summary>
 
+- 2.0.0 Mar 24, 2025: global support for COLORS; `list` command is greatly improved with support for listing directory entries, number of files and full sizes; new precise recursion feature; new global `--view` option; input paths can now be relative.
+  Behold the new `refine` command!
 - 1.4.0 Feb 28, 2025: new `probe` command; rebuild: new `--case` option to keep original case, rename: included support for handling clashes by inserting sequences in the filenames.
 - 1.3.1 Feb 04, 2025: rebuild: fix the last full mode change, to actually reset sequences.
 - 1.3.0 Jan 31, 2025: list: smarter list command, which hides full paths by default (with a flag for showing them if needed) and uses by default descending order for size and ascending for name and path (with a flag to reverse it if needed); join: change no_remove flag to parents (n -> p) and some clash options; rebuild: change simple_match flag to simple and fix full mode, which was not resetting sequences; general polishing.
