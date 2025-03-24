@@ -15,7 +15,7 @@ use std::rc::Rc;
 pub struct Fetcher {
     /// Effective input paths to scan, after deduplication and checking.
     dirs: Vec<Entry>,
-    depth: Depth,
+    recurse: Recurse,
     engine: Rc<Engine>,
 }
 
@@ -28,10 +28,11 @@ pub enum EntrySet {
     DirsStop, // join.
     /// Directories are chained with their content.
     DirsAndContent, // rename.
-    /// Contents are listed while recursing, and directories at the max depth.
+    /// Contents are listed while recursing, and change to directories at the max depth.
     ContentOverDirs, // list
 }
 
+#[derive(Debug)]
 pub enum Recurse {
     Full,
     Shallow,
@@ -54,12 +55,13 @@ impl Fetcher {
 
         Ok(Fetcher {
             dirs,
-            depth: recurse.into(),
+            recurse,
             engine: Rc::new(engine),
         })
     }
 
     pub fn fetch(self, es: EntrySet) -> impl Iterator<Item = Entry> {
+        let depth = self.recurse.into();
         self.dirs
             .into_iter()
             .flat_map(move |dir| entries(dir, depth, es, Rc::clone(&self.engine)))
