@@ -68,7 +68,7 @@ impl Refine for Rename {
                     .any(|g| g.len() > 1) // this should be way faster than using a hashmap as before.
             })
             .for_each(|g| {
-                eprintln!("warning: names clash in: {}/", g[0].entry.parent().unwrap());
+                eprintln!("warning: names clash in: {}", g[0].entry.parent().unwrap());
                 g.chunk_by(|m, n| m.new_name == n.new_name)
                     .filter(|g| g.len() > 1)
                     .for_each(|g| {
