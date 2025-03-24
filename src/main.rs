@@ -15,6 +15,9 @@ pub struct Args {
     cmd: Command,
     #[command(flatten)]
     input: Input,
+    /// Override the called command to just view the filtered input entries.
+    #[arg(long, global = true, help_heading = Some("Fetch"))]
+    view: bool,
 }
 
 fn main() -> Result<()> {
@@ -23,5 +26,11 @@ fn main() -> Result<()> {
     println!("Refine v{}", env!("CARGO_PKG_VERSION"));
     let args = Args::parse();
     let (fetcher, warnings) = args.input.try_into()?;
+    match args.view {
+        false => args.cmd.run(fetcher, warnings),
+        true => {
+            args.cmd.view(fetcher);
+            Ok(())
+        }
     }
 }

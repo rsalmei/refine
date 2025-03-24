@@ -51,6 +51,14 @@ impl<R: Refine> Runner for R {
     }
 }
 
+fn view(entries: impl Iterator<Item = Entry>) {
+    println!("\nentries seen by this command:\n");
+    let mut entries = entries.collect::<Vec<_>>();
+    entries.sort_unstable();
+    entries.iter().for_each(|e| println!("{e}"));
+    println!("\ntotal files: {}", entries.len());
+}
+
 impl Command {
     pub fn run(self, fetcher: Fetcher, warnings: Warnings) -> Result<()> {
         match self {
@@ -61,6 +69,18 @@ impl Command {
             Command::Rename(opt) => opt.run(fetcher, warnings),
             Command::Probe(opt) => opt.run(fetcher, warnings),
         }
+    }
+
+    pub fn view(self, fetcher: Fetcher) {
+        let handles = match &self {
+            Command::Dupes(_) => dupes::Dupes::HANDLES,
+            Command::Join(_) => join::Join::HANDLES,
+            Command::List(_) => list::List::HANDLES,
+            Command::Rebuild(_) => rebuild::Rebuild::HANDLES,
+            Command::Rename(_) => rename::Rename::HANDLES,
+            Command::Probe(_) => probe::Probe::HANDLES,
+        };
+        view(fetcher.fetch(handles));
     }
 }
 
