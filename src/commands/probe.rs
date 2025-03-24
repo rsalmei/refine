@@ -1,5 +1,5 @@
 use crate::commands::Refine;
-use crate::Warnings;
+use crate::entries::input::Warnings;
 use crate::entries::{Entry, EntrySet};
 use crate::utils::{self, display_abort};
 use Verdict::*;

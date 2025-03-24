@@ -1,7 +1,8 @@
 use crate::commands::Refine;
+use crate::entries::input::Warnings;
 use crate::entries::{Entry, EntrySet};
 use crate::media::{FileOps, NamingRules};
-use crate::{Warnings, utils};
+use crate::utils;
 use crate::{impl_new_name, impl_new_name_mut, impl_original_entry};
 use anyhow::Result;
 use clap::Args;
