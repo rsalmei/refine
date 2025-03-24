@@ -10,16 +10,16 @@ use std::iter;
 /// A set of rules that allows the user to customize filenames.
 #[derive(Debug, Args)]
 pub struct NamingRules {
-    /// Strip from the start of the filename; blanks nearby are automatically removed.
+    /// Strip from the start of the filename; separators nearby are automatically removed.
     #[arg(short = 'b', long, value_name = "STR|REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     strip_before: Vec<String>,
-    /// Strip to the end of the filename; blanks nearby are automatically removed.
+    /// Strip to the end of the filename; separators nearby are automatically removed.
     #[arg(short = 'a', long, value_name = "STR|REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     strip_after: Vec<String>,
-    /// Strip all occurrences in the filename; blanks nearby are automatically removed.
+    /// Strip all occurrences in the filename; separators nearby are automatically removed.
     #[arg(short = 'e', long, value_name = "STR|REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     strip_exact: Vec<String>,
-    /// Replace all occurrences in the filename with another; blanks are not touched.
+    /// Replace all occurrences in the filename with another; separators are not touched.
     #[arg(short = 'r', long, value_name = "STR|REGEX=STR|$N", allow_hyphen_values = true, value_parser = utils::parse_key_value::<String, String>)]
     replace: Vec<(String, String)>,
 }
