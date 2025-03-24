@@ -16,7 +16,7 @@ pub struct Fetcher {
     /// Effective input paths to scan, after deduplication and checking.
     dirs: Vec<Entry>,
     depth: Depth,
-    selector: Rc<Selector>,
+    engine: Rc<Engine>,
 }
 
 /// Denotes the set of entry types a command will process.
@@ -46,7 +46,7 @@ impl Fetcher {
 
     /// Reads entries from the given directories, with the given filtering rules and recursion.
     pub fn new(dirs: Vec<Entry>, recurse: Recurse, filter: Filter) -> Result<Self> {
-        let selector = filter.try_into()?; // compile regexes and check for errors before anything else.
+        let engine = filter.try_into()?; // compile regexes and check for errors before anything else.
 
         if dirs.is_empty() {
             return Err(anyhow!("no valid paths given"));
@@ -55,18 +55,18 @@ impl Fetcher {
         Ok(Fetcher {
             dirs,
             depth: recurse.into(),
-            selector: Rc::new(selector),
+            engine: Rc::new(engine),
         })
     }
 
     pub fn fetch(self, es: EntrySet) -> impl Iterator<Item = Entry> {
         self.dirs
             .into_iter()
-            .flat_map(move |dir| entries(dir, self.depth, es, Rc::clone(&self.selector)))
+            .flat_map(move |dir| entries(dir, depth, es, Rc::clone(&self.engine)))
     }
 }
 
-fn entries(dir: Entry, d: Depth, es: EntrySet, s: Rc<Selector>) -> Box<dyn Iterator<Item = Entry>> {
+fn entries(dir: Entry, d: Depth, es: EntrySet, e: Rc<Engine>) -> Box<dyn Iterator<Item = Entry>> {
     if !utils::is_running() {
         return Box::new(iter::empty());
     }
@@ -90,17 +90,17 @@ fn entries(dir: Entry, d: Depth, es: EntrySet, s: Rc<Selector>) -> Box<dyn Itera
             .flat_map(move |entry| {
                 use EntrySet::*;
                 let (d, rec) = d.inc();
-                match (entry.is_dir(), s.is_in(&entry), rec, es) {
+                match (entry.is_dir(), e.is_in(&entry), rec, es) {
                     (false, true, _, _) => Box::new(iter::once(entry)),
                     (true, true, false, DirsStop | DirsAndContent | ContentOverDirs) => {
                         Box::new(iter::once(entry))
                     }
                     (true, true, true, Files | ContentOverDirs) => {
-                        entries(entry, d, es, Rc::clone(&s))
+                        entries(entry, d, es, Rc::clone(&e))
                     }
                     (true, true, true, DirsStop) => Box::new(iter::once(entry)),
                     (true, true, true, DirsAndContent) => Box::new(
-                        iter::once(entry.clone()).chain(entries(entry, d, es, Rc::clone(&s))),
+                        iter::once(entry.clone()).chain(entries(entry, d, es, Rc::clone(&e))),
                     ),
                     _ => Box::new(iter::empty()),
                 }
