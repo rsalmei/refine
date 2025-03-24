@@ -1,4 +1,4 @@
-use super::{NewPath, OriginalPath};
+use super::{NewEntry, OriginalEntry};
 use std::io::Write;
 use std::path::Path;
 use std::{fs, io};
@@ -16,7 +16,7 @@ pub trait FileOps {
     fn cross_move_consuming(&mut self);
 }
 
-impl<M: OriginalPath + NewPath> FileOps for Vec<M> {
+impl<M: OriginalEntry + NewEntry> FileOps for Vec<M> {
     fn rename_move_consuming(&mut self) {
         files_op(self, silent, |p, q| fs::rename(p, q))
     }
@@ -31,23 +31,23 @@ impl<M: OriginalPath + NewPath> FileOps for Vec<M> {
 }
 
 fn files_op(
-    paths: &mut Vec<impl OriginalPath + NewPath>,
+    paths: &mut Vec<impl OriginalEntry + NewEntry>,
     notify: fn(&[u8]),
     op: fn(&Path, &Path) -> io::Result<()>,
 ) {
     paths.retain(|m| {
-        let target = m.new_path();
+        let target = m.new_entry();
         if target.exists() {
             notify(b"-\n");
-            eprintln!("file already exists: {:?} -> {target:?}", m.path());
+            eprintln!("file already exists: {} -> {target}", m.entry());
             notify(b"\n");
             return true;
         }
-        match op(m.path(), &target) {
+        match op(m.entry(), &target) {
             Ok(()) => false,
             Err(err) => {
                 notify(b"x\n");
-                eprintln!("error: {err}: {:?} -> {target:?}", m.path());
+                eprintln!("error: {err}: {} -> {target}", m.entry());
                 notify(b"\n");
                 true
             }

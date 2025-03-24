@@ -1,7 +1,9 @@
+mod naming;
 mod ops;
 
+use crate::entries::Entry;
+pub use naming::*;
 pub use ops::*;
-use std::path::{Path, PathBuf};
 
 pub trait NewName {
     fn new_name(&self) -> &str;
@@ -11,19 +13,19 @@ pub trait NewNameMut {
     fn new_name_mut(&mut self) -> &mut String;
 }
 
-pub trait OriginalPath {
-    /// The original path to the file.
-    fn path(&self) -> &Path;
+pub trait OriginalEntry {
+    /// The original entry of the file.
+    fn entry(&self) -> &Entry;
 }
 
-pub trait NewPath {
+pub trait NewEntry {
     /// The new path the file will be renamed to.
-    fn new_path(&self) -> PathBuf;
+    fn new_entry(&self) -> Entry;
 }
 
-impl<M: NewName + OriginalPath> NewPath for M {
-    fn new_path(&self) -> PathBuf {
-        self.path().with_file_name(self.new_name())
+impl<M: NewName + OriginalEntry> NewEntry for M {
+    fn new_entry(&self) -> Entry {
+        self.entry().with_file_name(self.new_name())
     }
 }
 
@@ -50,10 +52,10 @@ macro_rules! impl_new_name_mut {
 }
 
 #[macro_export]
-macro_rules! impl_original_path {
+macro_rules! impl_original_entry {
     ($t:ty) => {
-        impl $crate::media::OriginalPath for $t {
-            fn path(&self) -> &std::path::Path {
+        impl $crate::media::OriginalEntry for $t {
+            fn entry(&self) -> &$crate::entries::Entry {
                 &self.entry
             }
         }

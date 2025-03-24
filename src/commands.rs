@@ -5,78 +5,100 @@ mod probe;
 mod rebuild;
 mod rename;
 
-use crate::entries::{Entries, Entry, EntryKinds, Warnings};
+use crate::entries::input::Warnings;
+use crate::entries::{Entry, EntrySet, Fetcher};
 use anyhow::Result;
 use clap::Subcommand;
-use std::fmt;
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
     /// Find reasonably duplicated files by both size and filename.
+    #[command(override_usage = "refine dupes [DIRS]... [FETCH] [OPTIONS]")]
     Dupes(dupes::Dupes),
     /// Join files into a single directory with advanced conflict resolution.
+    #[command(override_usage = "refine join [DIRS]... [FETCH] [OPTIONS]")]
     Join(join::Join),
     /// List files from multiple directories sorted together.
+    #[command(override_usage = "refine list [DIRS]... [FETCH] [OPTIONS]")]
     List(list::List),
     /// Rebuild entire media collections intelligently.
+    #[command(override_usage = "refine rebuild [DIRS]... [FETCH] [OPTIONS]")]
     Rebuild(rebuild::Rebuild),
     /// Rename files and directories using advanced regular expression rules.
+    #[command(override_usage = "refine rename [DIRS]... [FETCH] [OPTIONS]")]
     Rename(rename::Rename),
     /// Probe filenames against a remote server.
+    #[command(override_usage = "refine probe [DIRS]... [FETCH] [OPTIONS]")]
     Probe(probe::Probe),
 }
 
 /// The common interface for Refine commands that work with media files.
 pub trait Refine {
-    type Media: TryFrom<Entry, Error: fmt::Display>;
+    type Media: TryFrom<Entry, Error = (anyhow::Error, Entry)>;
     const OPENING_LINE: &'static str;
-    const REQUIRE: EntryKinds;
+    const HANDLES: EntrySet;
 
-    /// Check the command options for issues that must abort the command before the opening line.
-    fn check(&self) -> Result<()> {
-        Ok(())
-    }
-    /// Tweak the command options to fix small issues after the opening line.
-    fn tweak(&mut self, _: &Warnings) {}
-    /// Actual command implementation.
+    /// Tweak the command options to fix small issues after the opening line, but before fetching
+    /// the entries and converting them to the proper Media type.
+    fn tweak(&mut self, _warnings: &Warnings) {}
+    /// Actual command implementation, called with the fetched media files.
     fn refine(&self, medias: Vec<Self::Media>) -> Result<()>;
 }
 
 trait Runner {
-    fn run(self, entries: Entries) -> Result<()>;
+    fn run(self, fetcher: Fetcher, w: Warnings) -> Result<()>;
 }
 
 impl<R: Refine> Runner for R {
-    fn run(mut self, entries: Entries) -> Result<()> {
-        self.check()?;
+    fn run(mut self, fetcher: Fetcher, warnings: Warnings) -> Result<()> {
         println!("=> {}\n", R::OPENING_LINE);
-        self.tweak(entries.warnings());
-        self.refine(gen_medias(entries.fetch(R::REQUIRE)))
+        self.tweak(&warnings);
+        self.refine(gen_medias(fetcher.fetch(R::HANDLES)))
     }
+}
+
+fn view(entries: impl Iterator<Item = Entry>) {
+    println!("\nentries seen by this command:\n");
+    let mut entries = entries.collect::<Vec<_>>();
+    entries.sort_unstable();
+    entries.iter().for_each(|e| println!("{e}"));
+    println!("\ntotal files: {}", entries.len());
 }
 
 impl Command {
-    pub fn run(self, entries: Entries) -> Result<()> {
+    pub fn run(self, fetcher: Fetcher, warnings: Warnings) -> Result<()> {
         match self {
-            Command::Dupes(options) => options.run(entries),
-            Command::Join(options) => options.run(entries),
-            Command::List(options) => options.run(entries),
-            Command::Rebuild(options) => options.run(entries),
-            Command::Rename(options) => options.run(entries),
-            Command::Probe(options) => options.run(entries),
+            Command::Dupes(opt) => opt.run(fetcher, warnings),
+            Command::Join(opt) => opt.run(fetcher, warnings),
+            Command::List(opt) => opt.run(fetcher, warnings),
+            Command::Rebuild(opt) => opt.run(fetcher, warnings),
+            Command::Rename(opt) => opt.run(fetcher, warnings),
+            Command::Probe(opt) => opt.run(fetcher, warnings),
         }
+    }
+
+    pub fn view(self, fetcher: Fetcher) {
+        let handles = match &self {
+            Command::Dupes(_) => dupes::Dupes::HANDLES,
+            Command::Join(_) => join::Join::HANDLES,
+            Command::List(_) => list::List::HANDLES,
+            Command::Rebuild(_) => rebuild::Rebuild::HANDLES,
+            Command::Rename(_) => rename::Rename::HANDLES,
+            Command::Probe(_) => probe::Probe::HANDLES,
+        };
+        view(fetcher.fetch(handles));
     }
 }
 
-fn gen_medias<T>(paths: impl Iterator<Item = Entry>) -> Vec<T>
+fn gen_medias<T>(entries: impl Iterator<Item = Entry>) -> Vec<T>
 where
-    T: TryFrom<Entry, Error: fmt::Display>,
+    T: TryFrom<Entry, Error = (anyhow::Error, Entry)>,
 {
-    paths
-        .map(|path| T::try_from(path))
+    entries
+        .map(|entry| T::try_from(entry))
         .inspect(|res| {
-            if let Err(err) = res {
-                eprintln!("error: load media: {err}");
+            if let Err((err, entry)) = res {
+                eprintln!("error: load media {entry}: {err}");
             }
         })
         .flatten()

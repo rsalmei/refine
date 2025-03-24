@@ -1,9 +1,9 @@
 use crate::commands::Refine;
-use crate::entries::{Entry, EntryKinds, Warnings};
-use crate::media::FileOps;
-use crate::naming::NamingRules;
+use crate::entries::input::Warnings;
+use crate::entries::{Entry, EntrySet};
+use crate::media::{FileOps, NamingRules};
 use crate::utils;
-use crate::{impl_new_name, impl_new_name_mut, impl_original_path};
+use crate::{impl_new_name, impl_new_name_mut, impl_original_entry};
 use anyhow::Result;
 use clap::Args;
 use clap::builder::NonEmptyStringValueParser;
@@ -54,8 +54,8 @@ static CASE_FN: OnceLock<fn(&str) -> String> = OnceLock::new();
 
 impl Refine for Rebuild {
     type Media = Media;
-    const OPENING_LINE: &'static str = "Rebuilding files...";
-    const REQUIRE: EntryKinds = EntryKinds::Files;
+    const OPENING_LINE: &'static str = "Rebuild filenames";
+    const HANDLES: EntrySet = EntrySet::Files;
 
     fn tweak(&mut self, warnings: &Warnings) {
         let f = match self.case {
@@ -74,7 +74,7 @@ impl Refine for Rebuild {
         let total_files = medias.len();
 
         // step: apply naming rules.
-        let warnings = self.naming_rules.apply(&mut medias)?;
+        let warnings = self.naming_rules.compile()?.apply(&mut medias);
 
         // step: extract and strip sequence numbers.
         medias.iter_mut().for_each(|m| {
@@ -154,12 +154,12 @@ impl Refine for Rebuild {
         utils::aborted()?;
 
         // step: settle changes, and display the results.
-        medias.retain(|m| m.new_name != m.entry.file_name().unwrap().to_str().unwrap());
+        medias.retain(|m| m.new_name != m.entry.file_name());
         medias
             .iter()
-            .for_each(|m| println!("{} --> {}", m.entry.display(), m.new_name));
+            .for_each(|m| println!("{} --> {}", m.entry, m.new_name));
 
-        // step: display receipt summary.
+        // step: display summary receipt.
         if !medias.is_empty() || warnings > 0 {
             println!();
         }
@@ -202,7 +202,7 @@ impl Refine for Rebuild {
 
 impl_new_name!(Media);
 impl_new_name_mut!(Media);
-impl_original_path!(Media);
+impl_original_entry!(Media);
 
 impl Media {
     /// The group name will either be the smart match or the new name.
@@ -212,14 +212,18 @@ impl Media {
 }
 
 impl TryFrom<Entry> for Media {
-    type Error = anyhow::Error;
+    type Error = (anyhow::Error, Entry);
 
-    fn try_from(entry: Entry) -> Result<Self> {
+    fn try_from(entry: Entry) -> Result<Self, Self::Error> {
         let (name, ext) = entry.filename_parts();
         Ok(Media {
             new_name: CASE_FN.get().unwrap()(name.trim()),
             ext: utils::intern(ext),
-            created: entry.metadata()?.created()?,
+            created: entry
+                .metadata()
+                .map_err(|err| (err.into(), entry.clone()))?
+                .created()
+                .map_err(|err| (err.into(), entry.clone()))?,
             seq: None, // can't be set here, because naming rules must run before it.
             smart_match: None,
             entry,

@@ -1,28 +1,25 @@
 mod commands;
 mod entries;
 mod media;
-mod naming;
 mod utils;
 
 use anyhow::Result;
 use clap::Parser;
 use commands::Command;
-use entries::{Entries, Filters};
-use std::path::PathBuf;
+use entries::input::Input;
 
 #[derive(Debug, Parser)]
-#[command(version, about, long_about = None, after_help = "For more information, see https://github.com/rsalmei/refine")]
+#[command(version, about, long_about = None, after_help = "For more information, see https://github.com/rsalmei/refine",
+    override_usage = "refine <COMMAND> [DIRS]... [FETCH] [OPTIONS]",
+)]
 pub struct Args {
-    /// Directories to scan.
-    #[arg(global = true, help_heading = Some("Global"))]
-    dirs: Vec<PathBuf>,
-    /// Do not recurse into subdirectories.
-    #[arg(short = 'w', long, global = true, help_heading = Some("Global"))]
-    shallow: bool,
-    #[command(flatten)]
-    filters: Filters,
     #[command(subcommand)]
     cmd: Command,
+    #[command(flatten)]
+    input: Input,
+    /// Bypass the command execution and preview the filter results to be processed.
+    #[arg(long, global = true, help_heading = Some("Fetch"))]
+    view: bool,
 }
 
 fn main() -> Result<()> {
@@ -30,6 +27,12 @@ fn main() -> Result<()> {
 
     println!("Refine v{}", env!("CARGO_PKG_VERSION"));
     let args = Args::parse();
-    let entries = Entries::with_filters(args.dirs, args.filters, args.shallow)?;
-    args.cmd.run(entries)
+    let (fetcher, warnings) = args.input.try_into()?;
+    match args.view {
+        false => args.cmd.run(fetcher, warnings),
+        true => {
+            args.cmd.view(fetcher);
+            Ok(())
+        }
+    }
 }

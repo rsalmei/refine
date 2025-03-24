@@ -1,5 +1,6 @@
 use crate::commands::Refine;
-use crate::entries::{Entry, EntryKinds, Warnings};
+use crate::entries::input::Warnings;
+use crate::entries::{Entry, EntrySet};
 use crate::utils::{self, display_abort};
 use Verdict::*;
 use anyhow::{Context, Result, anyhow};
@@ -76,10 +77,17 @@ enum Verdict {
 
 impl Refine for Probe {
     type Media = Media;
-    const OPENING_LINE: &'static str = "Checking files online...";
-    const REQUIRE: EntryKinds = EntryKinds::Files;
+    const OPENING_LINE: &'static str = "Probe files online";
+    const HANDLES: EntrySet = EntrySet::Files;
 
-    fn check(&self) -> Result<()> {
+    fn tweak(&mut self, _: &Warnings) {
+        if self.retries < 0 && self.errors == Errors::Last {
+            eprintln!("Displaying \"last\" error won't show anything with indefinite retries.\n");
+            self.errors = Errors::Never;
+        }
+    }
+
+    fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         // make sure the URL contains a single `$` placeholder.
         if self.url.bytes().filter(|&b| b == b'$').count() != 1 {
             return Err(anyhow!("URL must contain a single `$` placeholder"))
@@ -95,19 +103,6 @@ impl Refine for Probe {
             .call()
             .with_context(|| format!("invalid URL: {:?}", self.url))?;
 
-        Ok(())
-    }
-
-    fn tweak(&mut self, _: &Warnings) {
-        if self.retries < 0 && self.errors == Errors::Last {
-            println!(
-                "Can't show \"last\" error display for indefinite retries, switching to \"never\".\n"
-            );
-            self.errors = Errors::Never;
-        }
-    }
-
-    fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         // step: keep only unique file names (sequences were already removed).
         medias.sort_unstable_by(|m, n| m.name.cmp(&n.name));
         medias.dedup_by(|m, n| m.name == n.name);
@@ -119,9 +114,7 @@ impl Refine for Probe {
                 medias.retain(|m| re.is_match(&m.name));
                 println!("probing names matching {s:?}: {}", medias.len());
             }
-            None => {
-                println!("probing all names: {}", medias.len());
-            }
+            None => println!("probing all names: {}", medias.len()),
         }
 
         let total_names = medias.len();
@@ -151,7 +144,7 @@ impl Refine for Probe {
             medias.iter().for_each(|m| println!("  {}", m.name));
         }
 
-        // step: display receipt summary.
+        // step: display summary receipt.
         println!("\ntotal names: {total_names}");
         println!("  valid  : {valid}");
         println!("  invalid: {}", medias.len());
@@ -215,7 +208,7 @@ impl Probe {
 }
 
 impl TryFrom<Entry> for Media {
-    type Error = anyhow::Error;
+    type Error = (anyhow::Error, Entry);
 
     fn try_from(entry: Entry) -> Result<Self, Self::Error> {
         let (name, _, _) = entry.collection_parts();

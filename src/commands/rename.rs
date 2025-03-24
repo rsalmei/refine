@@ -1,9 +1,8 @@
 use crate::commands::Refine;
-use crate::entries::{Entry, EntryKinds};
-use crate::media::FileOps;
-use crate::naming::NamingRules;
+use crate::entries::{Entry, EntrySet};
+use crate::media::{FileOps, NamingRules};
 use crate::utils;
-use crate::{impl_new_name, impl_new_name_mut, impl_original_path};
+use crate::{impl_new_name, impl_new_name_mut, impl_original_entry};
 use anyhow::Result;
 use clap::{Args, ValueEnum};
 use std::cmp::Reverse;
@@ -43,13 +42,13 @@ pub struct Media {
 
 impl Refine for Rename {
     type Media = Media;
-    const OPENING_LINE: &'static str = "Renaming files...";
-    const REQUIRE: EntryKinds = EntryKinds::DirAndFiles;
+    const OPENING_LINE: &'static str = "Rename filenames";
+    const HANDLES: EntrySet = EntrySet::DirsAndContent;
 
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         // step: apply naming rules.
         let total = medias.len();
-        let mut warnings = self.naming_rules.apply(&mut medias)?;
+        let mut warnings = self.naming_rules.compile()?.apply(&mut medias);
 
         // step: re-include extension in the names.
         medias
@@ -69,17 +68,14 @@ impl Refine for Rename {
                     .any(|g| g.len() > 1) // this should be way faster than using a hashmap as before.
             })
             .for_each(|g| {
-                eprintln!(
-                    "warning: names clash in: {}/",
-                    g[0].entry.parent().unwrap().display()
-                );
+                eprintln!("warning: names clash in: {}", g[0].entry.parent().unwrap());
                 g.chunk_by(|m, n| m.new_name == n.new_name)
                     .filter(|g| g.len() > 1)
                     .for_each(|g| {
                         let k = &g[0].new_name;
                         let list = g
                             .iter()
-                            .map(|m| m.filename())
+                            .map(|m| m.entry.file_name())
                             .filter(|f| f != k)
                             .collect::<Vec<_>>();
                         warnings += list.len();
@@ -120,18 +116,12 @@ impl Refine for Rename {
         medias
             .chunk_by(|m, n| m.entry.parent() == n.entry.parent())
             .for_each(|g| {
-                println!("{}/:", g[0].entry.parent().unwrap().display());
-                g.iter().for_each(|m| {
-                    println!(
-                        "  {} --> {}{}",
-                        m.entry.display_filename(),
-                        m.new_name,
-                        m.entry.kind(),
-                    )
-                });
+                println!("{}", g[0].entry.parent().unwrap());
+                g.iter()
+                    .for_each(|m| println!("  {} --> {}", m.entry.display_filename(), m.new_name));
             });
 
-        // step: display receipt summary.
+        // step: display summary receipt.
         if !medias.is_empty() || warnings > 0 {
             println!();
         }
@@ -158,21 +148,18 @@ impl Refine for Rename {
 
 impl_new_name!(Media);
 impl_new_name_mut!(Media);
-impl_original_path!(Media);
+impl_original_entry!(Media);
 
 impl Media {
     fn is_changed(&self) -> bool {
-        self.new_name != self.filename()
-    }
-    fn filename(&self) -> &str {
-        self.entry.file_name().unwrap().to_str().unwrap()
+        self.new_name != self.entry.file_name()
     }
 }
 
 impl TryFrom<Entry> for Media {
-    type Error = anyhow::Error;
+    type Error = (anyhow::Error, Entry);
 
-    fn try_from(entry: Entry) -> Result<Self> {
+    fn try_from(entry: Entry) -> Result<Self, Self::Error> {
         let (name, ext) = entry.filename_parts();
         Ok(Media {
             new_name: name.trim().to_owned(),

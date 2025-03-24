@@ -1,4 +1,4 @@
-use crate::media::{NewNameMut, OriginalPath};
+use super::{NewNameMut, OriginalEntry};
 use crate::utils;
 use anyhow::{Context, Result};
 use clap::Args;
@@ -10,35 +10,32 @@ use std::iter;
 /// A set of rules that allows the user to customize filenames.
 #[derive(Debug, Args)]
 pub struct NamingRules {
-    /// Strip from the start of the filename; blanks nearby are automatically removed.
+    /// Strip from the start of the filename; separators nearby are automatically removed.
     #[arg(short = 'b', long, value_name = "STR|REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     strip_before: Vec<String>,
-    /// Strip to the end of the filename; blanks nearby are automatically removed.
+    /// Strip to the end of the filename; separators nearby are automatically removed.
     #[arg(short = 'a', long, value_name = "STR|REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     strip_after: Vec<String>,
-    /// Strip all occurrences in the filename; blanks nearby are automatically removed.
+    /// Strip all occurrences in the filename; separators nearby are automatically removed.
     #[arg(short = 'e', long, value_name = "STR|REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     strip_exact: Vec<String>,
-    /// Replace all occurrences in the filename with another; blanks are not touched.
+    /// Replace all occurrences in the filename with another; separators are not touched.
     #[arg(short = 'r', long, value_name = "STR|REGEX=STR|$N", allow_hyphen_values = true, value_parser = utils::parse_key_value::<String, String>)]
     replace: Vec<(String, String)>,
 }
 
 impl NamingRules {
-    /// Strip and replace parts of filenames based on the given rules.
-    ///
-    /// Return the number of warnings generated.
-    pub fn apply<M: NewNameMut + OriginalPath>(&self, medias: &mut Vec<M>) -> Result<usize> {
-        let rules = Rules::compile(
+    /// Compile this set of rules.
+    pub fn compile(&self) -> Result<Rules> {
+        Rules::compile(
             [&self.strip_before, &self.strip_after, &self.strip_exact],
             &self.replace,
-        )?;
-        rules.apply(medias)
+        )
     }
 }
 
 #[derive(Debug)]
-struct Rules<'r>(Vec<(Regex, &'r str)>);
+pub struct Rules<'r>(Vec<(Regex, &'r str)>);
 
 impl<'r> Rules<'r> {
     fn compile(
@@ -71,9 +68,10 @@ impl<'r> Rules<'r> {
         Ok(Rules(rules))
     }
 
-    fn apply<M: NewNameMut + OriginalPath>(&self, medias: &mut Vec<M>) -> Result<usize> {
+    /// Apply these rules to a list of media.
+    pub fn apply<M: NewNameMut + OriginalEntry>(&self, medias: &mut Vec<M>) -> usize {
         // this is just so that warnings are printed in a consistent order.
-        medias.sort_unstable_by(|m, n| m.path().cmp(n.path()));
+        medias.sort_unstable_by(|m, n| m.entry().cmp(n.entry()));
 
         // apply all rules in order.
         let total = medias.len();
@@ -88,20 +86,20 @@ impl<'r> Rules<'r> {
             });
 
             if name.is_empty() {
-                eprintln!("warning: rules cleared name: {}", m.path().display());
+                eprintln!("warning: rules cleared name: {}", m.entry());
                 return false;
             }
             *m.new_name_mut() = name;
             true
         });
-        Ok(total - medias.len())
+        total - medias.len()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::Path;
+    use crate::entries::{Entry, ROOT};
 
     const NO_STRIP: [&[&str]; 3] = [&[], &[], &[]];
     const NO_REPLACE: &[(&str, &str)] = &[];
@@ -114,63 +112,65 @@ mod tests {
             &mut self.0
         }
     }
-    impl OriginalPath for Media {
-        fn path(&self) -> &Path {
-            "".as_ref()
+    impl OriginalEntry for Media {
+        fn entry(&self) -> &Entry {
+            &ROOT
         }
     }
 
     #[test]
     fn strip_rules() {
         #[track_caller]
-        fn case(strip_rules: [&[&str]; 3], stem: &str, new_name: &str) {
+        fn case(rule: &[&str], idx: usize, stem: &str, new_name: &str) {
+            let mut strip_rules = [[""].as_ref(); 3];
+            strip_rules[idx] = rule;
             let mut medias = vec![Media(stem.to_owned())];
             let rules = Rules::compile(strip_rules, NO_REPLACE).unwrap();
-            let res = rules.apply(&mut medias);
-            assert_eq!(res.unwrap(), 0);
+            let warnings = rules.apply(&mut medias);
+            assert_eq!(warnings, 0);
             assert_eq!(medias[0].0, new_name);
         }
 
-        case([&["Before"], &[], &[]], "beforefoo", "foo");
-        case([&["Before"], &[], &[]], "before foo", "foo");
-        case([&["Before"], &[], &[]], "Before__foo", "foo");
-        case([&["before"], &[], &[]], "Before - foo", "foo");
-        case([&["before"], &[], &[]], "before.foo", "foo");
-        case([&["before"], &[], &[]], "Before\t.  foo", "foo");
+        case(&["Before"], 0, "beforefoo", "foo");
+        case(&["Before"], 0, "before foo", "foo");
+        case(&["Before"], 0, "Before__foo", "foo");
+        case(&["before"], 0, "Before - foo", "foo");
+        case(&["before"], 0, "before.foo", "foo");
+        case(&["before"], 0, "Before\t.  foo", "foo");
 
-        case([&[], &["After"], &[]], "fooafter", "foo");
-        case([&[], &["After"], &[]], "foo after", "foo");
-        case([&[], &["After"], &[]], "foo__After", "foo");
-        case([&[], &["after"], &[]], "foo - After", "foo");
-        case([&[], &["after"], &[]], "foo.after", "foo");
-        case([&[], &["after"], &[]], "foo\t. After", "foo");
+        case(&["After"], 1, "fooafter", "foo");
+        case(&["After"], 1, "foo after", "foo");
+        case(&["After"], 1, "foo__After", "foo");
+        case(&["after"], 1, "foo - After", "foo");
+        case(&["after"], 1, "foo.after", "foo");
+        case(&["after"], 1, "foo\t. After", "foo");
 
         // exact: {BOUND}+{rule}$
-        case([&[], &[], &["Exact"]], "foo exact", "foo");
-        case([&[], &[], &["Exact"]], "foo__Exact", "foo");
-        case([&[], &[], &["exact"]], "foo - Exact", "foo");
-        case([&[], &[], &["exact"]], "foo.exact", "foo");
-        case([&[], &[], &["exact"]], "foo\t. Exact", "foo");
+        case(&["Exact"], 2, "foo exact", "foo");
+        case(&["Exact"], 2, "foo__Exact", "foo");
+        case(&["exact"], 2, "foo - Exact", "foo");
+        case(&["exact"], 2, "foo.exact", "foo");
+        case(&["exact"], 2, "foo\t. Exact", "foo");
 
         // exact: ^{rule}{BOUND}+
-        case([&[], &[], &["Exact"]], "exact foo", "foo");
-        case([&[], &[], &["Exact"]], "Exact__foo", "foo");
-        case([&[], &[], &["exact"]], "Exact - foo", "foo");
-        case([&[], &[], &["exact"]], "exact.foo", "foo");
-        case([&[], &[], &["exact"]], "Exact\t.  foo", "foo");
+        case(&["Exact"], 2, "exact foo", "foo");
+        case(&["Exact"], 2, "Exact__foo", "foo");
+        case(&["exact"], 2, "Exact - foo", "foo");
+        case(&["exact"], 2, "exact.foo", "foo");
+        case(&["exact"], 2, "Exact\t.  foo", "foo");
 
         // exact: {BOUND}+{rule}
-        case([&[], &[], &["Exact"]], "foo exact bar", "foo bar");
-        case([&[], &[], &["Exact"]], "foo__Exact-bar", "foo-bar");
-        case([&[], &[], &["exact"]], "foo - Exact_bar", "foo_bar");
-        case([&[], &[], &["exact"]], "foo.exact.bar", "foo.bar");
-        case([&[], &[], &["exact"]], "foo\t.  Exact - bar", "foo - bar");
+        case(&["Exact"], 2, "foo exact bar", "foo bar");
+        case(&["Exact"], 2, "foo__Exact-bar", "foo-bar");
+        case(&["exact"], 2, "foo - Exact_bar", "foo_bar");
+        case(&["exact"], 2, "foo.exact.bar", "foo.bar");
+        case(&["exact"], 2, "foo\t.  Exact - bar", "foo - bar");
 
         // exact: {rule}
-        case([&[], &[], &["Exact"]], "fexactoo", "foo");
-        case([&[], &[], &["Exact"]], "fexactoExacto", "foo");
-        case([&[], &[], &["Exact"]], "fooExact bar", "foo bar");
-        case([&[], &[], &["exact"]], "Exactfoo bar", "foo bar");
+        case(&["Exact"], 2, "fexactoo", "foo");
+        case(&["Exact"], 2, "fexactoExacto", "foo");
+        case(&["Exact"], 2, "fooExact bar", "foo bar");
+        case(&["exact"], 2, "Exactfoo bar", "foo bar");
 
         // exact: unfortunate case, where I'd need lookahead to avoid it...
         // case([&[], &[], &["Exact"]], "foo Exactbar", "foo bar");
@@ -182,8 +182,8 @@ mod tests {
         fn case(replace_rules: &[(&str, &str)], stem: &str, new_name: &str) {
             let mut medias = vec![Media(stem.to_owned())];
             let rules = Rules::compile(NO_STRIP, replace_rules).unwrap();
-            let res = rules.apply(&mut medias);
-            assert_eq!(res.unwrap(), 0);
+            let warnings = rules.apply(&mut medias);
+            assert_eq!(warnings, 0);
             assert_eq!(medias[0].0, new_name);
         }
 
@@ -202,8 +202,8 @@ mod tests {
             Media("foobar".to_owned()),
         ];
         let rules = Rules::compile([&["e"], &["b"], &["c.*i"]], &[("on", "")]).unwrap();
-        let res = rules.apply(&mut medias);
-        assert_eq!(res.unwrap(), 4);
+        let warnings = rules.apply(&mut medias);
+        assert_eq!(warnings, 4);
         assert_eq!(medias, vec![Media("foo".to_owned())]);
     }
 }

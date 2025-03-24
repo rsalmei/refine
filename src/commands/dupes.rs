@@ -1,5 +1,5 @@
 use crate::commands::Refine;
-use crate::entries::{Entry, EntryKinds};
+use crate::entries::{Entry, EntrySet};
 use crate::utils::{self, display_abort};
 use anyhow::Result;
 use clap::Args;
@@ -26,7 +26,7 @@ pub struct Media {
 impl Refine for Dupes {
     type Media = Media;
     const OPENING_LINE: &'static str = "Detecting duplicate files...";
-    const REQUIRE: EntryKinds = EntryKinds::Files;
+    const HANDLES: EntrySet = EntrySet::Files;
 
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         // step: detect duplicates by size.
@@ -52,7 +52,7 @@ impl Refine for Dupes {
             },
         );
 
-        // step: display receipt summary.
+        // step: display summary receipt.
         let total = medias.len();
         println!("\ntotal files: {total}{}", display_abort(by_size == 0));
         println!("  by size: {by_size} dupes{}", display_abort(by_name == 0));
@@ -121,7 +121,7 @@ impl Media {
     }
 }
 
-fn words(entry: &Entry) -> Result<Box<[String]>> {
+fn words(entry: &Entry) -> Box<[String]> {
     let (name, _, _) = entry.collection_parts();
     let mut words = name
         .split(&[' ', '.', '-', '_'])
@@ -131,16 +131,19 @@ fn words(entry: &Entry) -> Result<Box<[String]>> {
         .collect::<Vec<_>>();
     words.sort_unstable();
     words.dedup();
-    Ok(words.into_boxed_slice())
+    words.into_boxed_slice()
 }
 
 impl TryFrom<Entry> for Media {
-    type Error = anyhow::Error;
+    type Error = (anyhow::Error, Entry);
 
-    fn try_from(entry: Entry) -> Result<Self> {
+    fn try_from(entry: Entry) -> Result<Self, Self::Error> {
         Ok(Media {
-            size: entry.metadata()?.len(),
-            words: words(&entry)?,
+            size: entry
+                .metadata()
+                .map_err(|err| (err.into(), entry.clone()))?
+                .len(),
+            words: words(&entry),
             entry, // I can use entry above before moving it here!
             sample: None,
         })

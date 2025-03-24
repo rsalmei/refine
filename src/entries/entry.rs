@@ -1,12 +1,16 @@
 use super::sequence::Sequence;
 use anyhow::{Result, anyhow};
 use std::cmp::Ordering;
+use std::convert::Into;
 use std::fmt::{self, Display};
+use std::hash::{Hash, Hasher};
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
+use std::sync::LazyLock;
+use yansi::{Paint, Style};
 
 /// A file or directory entry that is guaranteed to have a valid UTF-8 representation.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq)] // Hash, PartialEq, Ord, and PartialOrd are below.
 pub struct Entry {
     path: PathBuf,
     is_dir: bool,
@@ -14,34 +18,55 @@ pub struct Entry {
 
 /// Create a new entry from a path, checking that it has a valid UTF-8 representation.
 impl TryFrom<PathBuf> for Entry {
-    type Error = anyhow::Error;
+    type Error = (anyhow::Error, PathBuf);
 
-    fn try_from(path: PathBuf) -> Result<Self> {
-        let is_dir = path.is_dir();
+    fn try_from(pb: PathBuf) -> Result<Self, Self::Error> {
+        let is_dir = pb.is_dir();
         if is_dir {
-            path.file_name()
-                .ok_or_else(|| anyhow!("no dir name: {path:?}"))?
+            pb.file_name()
+                .unwrap_or_default() // the root dir has no name.
                 .to_str()
-                .ok_or_else(|| anyhow!("no UTF-8 dir name: {path:?}"))?;
+                .ok_or_else(|| (anyhow!("no UTF-8 dir name: {pb:?}"), pb.clone()))?;
         } else {
-            path.file_stem()
-                .ok_or_else(|| anyhow!("no file stem: {path:?}"))?
+            pb.file_stem()
+                .ok_or_else(|| (anyhow!("no file stem: {pb:?}"), pb.clone()))?
                 .to_str()
-                .ok_or_else(|| anyhow!("no UTF-8 file stem: {path:?}"))?;
-            path.extension()
+                .ok_or_else(|| (anyhow!("no UTF-8 file stem: {pb:?}"), pb.clone()))?;
+            pb.extension()
                 .unwrap_or_default()
                 .to_str()
-                .ok_or_else(|| anyhow!("no UTF-8 file extension: {path:?}"))?;
+                .ok_or_else(|| (anyhow!("no UTF-8 file extension: {pb:?}"), pb.clone()))?;
         }
-        Ok(Entry { path, is_dir })
+        // I could just check that the entire path is valid UTF-8, but I want to give better error messages.
+        if let Some(pp) = pb.parent() {
+            pp.to_str() // the root dir has no parent.
+                .ok_or_else(|| (anyhow!("no UTF-8 parent: {pp:?}"), pp.to_owned()))?;
+        }
+        Ok(Entry { path: pb, is_dir })
     }
 }
 
+pub static ROOT: LazyLock<Entry> = LazyLock::new(|| Entry::try_new("/", true).unwrap());
+
 impl Entry {
+    /// Create a new entry that, in case the path does not exist, will assume the given directory flag.
+    /// If it does exist, check that it has the correct directory flag or panic.
+    pub fn try_new(
+        path: impl Into<PathBuf>,
+        is_dir: bool,
+    ) -> Result<Self, (anyhow::Error, PathBuf)> {
+        let mut entry = Entry::try_from(path.into())?;
+        match entry.path.exists() {
+            true => assert_eq!(entry.is_dir, is_dir),
+            false => entry.is_dir = is_dir,
+        }
+        Ok(entry)
+    }
+
     /// Get the stem and extension from files, or name from directories.
     pub fn filename_parts(&self) -> (&str, &str) {
         match self.is_dir {
-            true => (self.path.file_name().unwrap().to_str().unwrap(), ""),
+            true => (self.file_name(), ""),
             false => (
                 self.path.file_stem().unwrap().to_str().unwrap(),
                 self.path.extension().unwrap_or_default().to_str().unwrap(),
@@ -70,10 +95,41 @@ impl Entry {
         self.is_dir
     }
 
-    pub fn kind(&self) -> &'static str {
-        match self.is_dir {
-            true => "/",
-            false => "",
+    /// Get the filename from entries directly as a &str.
+    pub fn file_name(&self) -> &str {
+        self.path
+            .file_name()
+            .map(|n| n.to_str().unwrap())
+            .unwrap_or_default()
+    }
+
+    pub fn to_str(&self) -> &str {
+        self.path.to_str().unwrap()
+    }
+
+    /// Get the parent directory as an entry, without checking UTF-8 again.
+    pub fn parent(&self) -> Option<Entry> {
+        self.path.parent().map(|p| Entry {
+            path: p.to_owned(),
+            is_dir: true,
+        })
+    }
+
+    /// Get a new entry with the given file name, without checking UTF-8 again.
+    pub fn with_file_name(&self, name: impl AsRef<str>) -> Entry {
+        let path = self.path.with_file_name(name.as_ref());
+        Entry {
+            is_dir: path.is_dir(),
+            path,
+        }
+    }
+
+    /// Get a new entry with the given name adjoined, without checking UTF-8 again.
+    pub fn join(&self, name: impl AsRef<str>) -> Entry {
+        let path = self.path.join(name.as_ref());
+        Entry {
+            is_dir: path.is_dir(),
+            path,
         }
     }
 
@@ -94,19 +150,46 @@ pub struct DisplayPath<'a>(&'a Entry);
 #[derive(Debug)]
 pub struct DisplayFilename<'a>(&'a Entry);
 
+const PAR_FILE: Style = Style::new().cyan();
+const PAR_DIR: Style = Style::new().yellow();
+const DIR: Style = PAR_DIR.bold();
+const FILE: Style = PAR_FILE.bold();
+
 impl Display for DisplayPath<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let entry = self.0;
-        let path = entry.path.display();
-        write!(f, "{path}{}", entry.kind())
+        let (par, sep) = entry
+            .path
+            .parent()
+            .map(|p| p.to_str().unwrap())
+            .map(|s| (s, if s == "/" { "" } else { "/" }))
+            .unwrap_or_default();
+        let name = entry.file_name();
+        let (dir, file, sep2, style) = match entry.is_dir {
+            true => (name, "", "/", PAR_DIR),
+            false => ("", name, "", PAR_FILE),
+        };
+        write!(
+            f,
+            "{}{}{}{}{}",
+            par.paint(style),
+            sep.paint(style),
+            dir.paint(DIR),
+            sep2.paint(DIR),
+            file.paint(FILE)
+        )
     }
 }
 
 impl Display for DisplayFilename<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let entry = self.0;
-        let file = entry.path.file_name().unwrap().to_str().unwrap();
-        write!(f, "{file}{}", entry.kind())
+        let name = entry.file_name();
+        let (style, kind) = match entry.is_dir {
+            true => (DIR, "/"),
+            false => (FILE, ""),
+        };
+        write!(f, "{}{}", name.paint(style), kind.paint(style))
     }
 }
 
@@ -135,6 +218,18 @@ impl AsRef<Path> for Entry {
     }
 }
 
+impl From<&Entry> for Entry {
+    fn from(entry: &Entry) -> Self {
+        entry.clone()
+    }
+}
+
+impl Hash for Entry {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.path.hash(state)
+    }
+}
+
 impl Ord for Entry {
     fn cmp(&self, other: &Self) -> Ordering {
         self.path.cmp(&other.path)
@@ -153,8 +248,6 @@ impl PartialEq for Entry {
     }
 }
 
-impl Eq for Entry {}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -162,7 +255,7 @@ mod tests {
     #[test]
     fn entry_creation() {
         #[track_caller]
-        fn case(p: impl AsRef<Path>) -> Result<Entry> {
+        fn case(p: impl AsRef<Path>) -> Result<Entry, (anyhow::Error, PathBuf)> {
             Entry::try_from(p.as_ref().to_owned())
         }
 
@@ -171,8 +264,6 @@ mod tests {
         case("foo.bar.baz").unwrap();
         case("foo/").unwrap();
         case("😃").unwrap();
-
-        case("a\0\0").unwrap_err();
     }
 
     #[test]
