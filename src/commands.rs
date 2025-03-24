@@ -13,16 +13,22 @@ use clap::Subcommand;
 #[derive(Debug, Subcommand)]
 pub enum Command {
     /// Find reasonably duplicated files by both size and filename.
+    #[command(override_usage = "refine dupes [DIRS]... [FETCH] [OPTIONS]")]
     Dupes(dupes::Dupes),
     /// Join files into a single directory with advanced conflict resolution.
+    #[command(override_usage = "refine join [DIRS]... [FETCH] [OPTIONS]")]
     Join(join::Join),
     /// List files from multiple directories sorted together.
+    #[command(override_usage = "refine list [DIRS]... [FETCH] [OPTIONS]")]
     List(list::List),
     /// Rebuild entire media collections intelligently.
+    #[command(override_usage = "refine rebuild [DIRS]... [FETCH] [OPTIONS]")]
     Rebuild(rebuild::Rebuild),
     /// Rename files and directories using advanced regular expression rules.
+    #[command(override_usage = "refine rename [DIRS]... [FETCH] [OPTIONS]")]
     Rename(rename::Rename),
     /// Probe filenames against a remote server.
+    #[command(override_usage = "refine probe [DIRS]... [FETCH] [OPTIONS]")]
     Probe(probe::Probe),
 }
 

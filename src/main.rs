@@ -9,7 +9,9 @@ use commands::Command;
 use entries::input::Input;
 
 #[derive(Debug, Parser)]
-#[command(version, about, long_about = None, after_help = "For more information, see https://github.com/rsalmei/refine")]
+#[command(version, about, long_about = None, after_help = "For more information, see https://github.com/rsalmei/refine",
+    override_usage = "refine <COMMAND> [DIRS]... [FETCH] [OPTIONS]",
+)]
 pub struct Args {
     #[command(subcommand)]
     cmd: Command,
