@@ -8,34 +8,34 @@ use regex::Regex;
 #[derive(Debug, Default, Args)]
 pub struct Filter {
     /// Include only files.
-    #[arg(short = 'F', long, global = true, conflicts_with = "only_dirs", help_heading = Some("Global"))]
+    #[arg(short = 'F', long, global = true, conflicts_with = "only_dirs", help_heading = Some("Fetch"))]
     only_files: bool,
     /// Include only directories.
-    #[arg(short = 'D', long, global = true, conflicts_with = "only_files", help_heading = Some("Global"))]
+    #[arg(short = 'D', long, global = true, conflicts_with = "only_files", help_heading = Some("Fetch"))]
     only_dirs: bool,
-    /// Include only these files (checked without extension) and directories.
-    #[arg(short = 'i', long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
+    /// Include only these files and directories.
+    #[arg(short = 'i', long, global = true, help_heading = Some("Fetch"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     include: Option<String>,
-    /// Exclude these files (checked without extension) and directories.
-    #[arg(short = 'x', long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
+    /// Exclude these files and directories.
+    #[arg(short = 'x', long, global = true, help_heading = Some("Fetch"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     exclude: Option<String>,
     /// Include only these directories.
-    #[arg(short = 'I', long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
+    #[arg(short = 'I', long, global = true, help_heading = Some("Fetch"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     dir_in: Option<String>,
     /// Exclude these directories.
-    #[arg(short = 'X', long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
+    #[arg(short = 'X', long, global = true, help_heading = Some("Fetch"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     dir_ex: Option<String>,
-    /// Include only these files (checked without extension).
-    #[arg(long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
+    /// Include only these files.
+    #[arg(long, global = true, help_heading = Some("Fetch"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     file_in: Option<String>,
-    /// Exclude these files (checked without extension).
-    #[arg(long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
+    /// Exclude these files.
+    #[arg(long, global = true, help_heading = Some("Fetch"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     file_ex: Option<String>,
     /// Include only these extensions.
-    #[arg(long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
+    #[arg(long, global = true, help_heading = Some("Fetch"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     ext_in: Option<String>,
     /// Exclude these extensions.
-    #[arg(long, global = true, help_heading = Some("Global"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
+    #[arg(long, global = true, help_heading = Some("Fetch"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     ext_ex: Option<String>,
 }
 
