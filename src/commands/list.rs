@@ -1,6 +1,7 @@
 use crate::commands::Refine;
-use crate::entries::{Entries, Entry, EntrySet, Recurse};
-use crate::{Warnings, utils};
+use crate::entries::input::Warnings;
+use crate::entries::{Entry, EntrySet, Fetcher, Recurse};
+use crate::utils;
 use anyhow::Result;
 use clap::{Args, ValueEnum};
 use human_repr::HumanCount;
@@ -132,9 +133,9 @@ impl TryFrom<Entry> for Media {
         let size_count = match (entry.is_dir(), CALC_DIR_SIZES.get().unwrap()) {
             (true, false) => None,
             (true, true) => {
-                let entries = Entries::single(&entry, Recurse::Full);
+                let fetcher = Fetcher::single(&entry, Recurse::Full);
                 let mut count = 0;
-                let sum = entries
+                let sum = fetcher
                     .fetch(EntrySet::Files)
                     .map(|e| {
                         count += 1;

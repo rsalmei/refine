@@ -5,8 +5,8 @@ mod probe;
 mod rebuild;
 mod rename;
 
-use crate::Warnings;
-use crate::entries::{Entries, Entry, EntrySet};
+use crate::entries::input::Warnings;
+use crate::entries::{Entry, EntrySet, Fetcher};
 use anyhow::Result;
 use clap::Subcommand;
 
@@ -40,26 +40,26 @@ pub trait Refine {
 }
 
 trait Runner {
-    fn run(self, entries: Entries, w: Warnings) -> Result<()>;
+    fn run(self, fetcher: Fetcher, w: Warnings) -> Result<()>;
 }
 
 impl<R: Refine> Runner for R {
-    fn run(mut self, entries: Entries, warnings: Warnings) -> Result<()> {
+    fn run(mut self, fetcher: Fetcher, warnings: Warnings) -> Result<()> {
         println!("=> {}\n", R::OPENING_LINE);
         self.tweak(&warnings);
-        self.refine(gen_medias(entries.fetch(R::HANDLES)))
+        self.refine(gen_medias(fetcher.fetch(R::HANDLES)))
     }
 }
 
 impl Command {
-    pub fn run(self, entries: Entries, warnings: Warnings) -> Result<()> {
+    pub fn run(self, fetcher: Fetcher, warnings: Warnings) -> Result<()> {
         match self {
-            Command::Dupes(options) => options.run(entries, warnings),
-            Command::Join(options) => options.run(entries, warnings),
-            Command::List(options) => options.run(entries, warnings),
-            Command::Rebuild(options) => options.run(entries, warnings),
-            Command::Rename(options) => options.run(entries, warnings),
-            Command::Probe(options) => options.run(entries, warnings),
+            Command::Dupes(opt) => opt.run(fetcher, warnings),
+            Command::Join(opt) => opt.run(fetcher, warnings),
+            Command::List(opt) => opt.run(fetcher, warnings),
+            Command::Rebuild(opt) => opt.run(fetcher, warnings),
+            Command::Rename(opt) => opt.run(fetcher, warnings),
+            Command::Probe(opt) => opt.run(fetcher, warnings),
         }
     }
 }

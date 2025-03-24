@@ -12,7 +12,7 @@ use std::rc::Rc;
 
 /// The object that fetches and filters entries from multiple directories.
 #[derive(Debug)]
-pub struct Entries {
+pub struct Fetcher {
     /// Effective input paths to scan, after deduplication and checking.
     dirs: Vec<Entry>,
     depth: Depth,
@@ -38,7 +38,7 @@ pub enum Recurse {
     UpTo(u32),
 }
 
-impl Entries {
+impl Fetcher {
     /// Reads all entries from a single directory.
     pub fn single(entry: impl Into<Entry>, recurse: Recurse) -> Self {
         Self::new(vec![entry.into()], recurse, Filter::default()).unwrap() // can't fail.
@@ -52,7 +52,7 @@ impl Entries {
             return Err(anyhow!("no valid paths given"));
         }
 
-        Ok(Entries {
+        Ok(Fetcher {
             dirs,
             depth: recurse.into(),
             selector: Rc::new(selector),

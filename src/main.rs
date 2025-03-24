@@ -22,5 +22,6 @@ fn main() -> Result<()> {
 
     println!("Refine v{}", env!("CARGO_PKG_VERSION"));
     let args = Args::parse();
+    let (fetcher, warnings) = args.input.try_into()?;
     }
 }
