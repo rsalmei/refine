@@ -179,44 +179,44 @@ All commands will:
 ### The global refine command (help)
 
 > `$ refine --help`
-
-```
-Refine your file collections using Rust!
-
-Usage: refine <COMMAND> [DIRS]... [FETCH] [OPTIONS]
-
-Commands:
-  dupes    Find reasonably duplicated files by both size and filename
-  join     Join files into a single directory with advanced conflict resolution
-  list     List files from multiple directories sorted together
-  rebuild  Rebuild entire media collections intelligently
-  rename   Rename files and directories using advanced regular expression rules
-  probe    Probe filenames against a remote server
-  help     Print this message or the help of the given subcommand(s)
-
-Arguments:
-  [DIRS]...  Directories to scan
-
-Options:
-  -h, --help     Print help
-  -V, --version  Print version
-
-Fetch:
-  -R, --recurse <INT>    The maximum recursion depth; use 0 for unlimited [default: 0]
-  -F, --only-files       Include only files
-  -D, --only-dirs        Include only directories
-  -i, --include <REGEX>  Include only these files and directories
-  -x, --exclude <REGEX>  Exclude these files and directories
-  -I, --dir-in <REGEX>   Include only these directories
-  -X, --dir-ex <REGEX>   Exclude these directories
-      --file-in <REGEX>  Include only these files
-      --file-ex <REGEX>  Exclude these files
-      --ext-in <REGEX>   Include only these extensions
-      --ext-ex <REGEX>   Exclude these extensions
-      --view             Bypass the command execution and preview the filter results to be processed
-
-For more information, see https://github.com/rsalmei/refine
-```
+>
+> ```
+> Refine your file collections using Rust!
+> 
+> Usage: refine <COMMAND> [DIRS]... [FETCH] [OPTIONS]
+> 
+> Commands:
+>   dupes    Find possibly duplicated files by both size and filename
+>   join     Join files into a single directory with advanced conflict resolution
+>   list     List files from multiple disjoint directories sorted together
+>   rebuild  Rebuild entire media collections' filenames intelligently
+>   rename   Rename files and directories in batch using advanced regex rules
+>   probe    Probe collections' filenames against a remote server
+>   help     Print this message or the help of the given subcommand(s)
+> 
+> Arguments:
+>   [DIRS]...  Directories to scan
+> 
+> Options:
+>   -h, --help     Print help
+>   -V, --version  Print version
+> 
+> Fetch:
+>   -R, --recurse <INT>    The maximum recursion depth; use 0 for unlimited [default: 0]
+>   -F, --only-files       Include only files
+>   -D, --only-dirs        Include only directories
+>   -i, --include <REGEX>  Include only these files and directories
+>   -x, --exclude <REGEX>  Exclude these files and directories
+>   -I, --dir-in <REGEX>   Include only these directories
+>   -X, --dir-ex <REGEX>   Exclude these directories
+>       --file-in <REGEX>  Include only these files
+>       --file-ex <REGEX>  Exclude these files
+>       --ext-in <REGEX>   Include only these extensions
+>       --ext-ex <REGEX>   Exclude these extensions
+>       --view             Bypass the command execution and preview the filter results to be processed
+> 
+> For more information, see https://github.com/rsalmei/refine
+> ```
 
 ### The `dupes` command
 
@@ -230,19 +230,19 @@ The `dupes` command will analyze and report the possibly duplicated files, eithe
 5. run 2. and 3. again, and print the results
 
 > `$ refine dupes --help`
-
-```
-Find reasonably duplicated files by both size and filename
-
-Usage: refine dupes [DIRS]... [FETCH] [OPTIONS]
-
-Arguments:
-  [DIRS]...  Directories to scan
-
-Options:
-  -s, --sample <INT>  Sample size in bytes (0 to disable) [default: 2048]
-  -h, --help          Print help
-```
+>
+> ```
+> Find reasonably duplicated files by both size and filename
+> 
+> Usage: refine dupes [DIRS]... [FETCH] [OPTIONS]
+> 
+> Arguments:
+>   [DIRS]...  Directories to scan
+> 
+> Options:
+>   -s, --sample <INT>  Sample size in bytes (0 to disable) [default: 2048]
+>   -h, --help          Print help
+> ```
 
 > There's also the "Fetch" options, which are the same as for the global refine command.
 
@@ -265,21 +265,21 @@ The `join` command will let you grab all files and directories in the given dire
 5. remove any empty parent directories when moving files
 
 > `$ refine join --help`
-
-```
-Join files into a single directory with advanced conflict resolution
-
-Usage: refine join [OPTIONS] [DIRS]...
-
-Options:
-  -t, --target <PATH>  The target directory; will be created if it doesn't exist [default: .]
-  -b, --by <STR>       The type of join to perform [default: move] [possible values: move, copy]
-  -c, --clashes <STR>  How to resolve clashes [default: name-sequence] [possible values: name-sequence, parent-name, name-parent, ignore]
-  -f, --force          Force joining already in place files and directories, i.e. in subdirectories of the target
-  -p, --parents        Do not remove empty parent directories after joining files
-  -y, --yes            Skip the confirmation prompt, useful for automation
-  -h, --help           Print help
-```
+>
+> ```
+> Join files into a single directory with advanced conflict resolution
+> 
+> Usage: refine join [OPTIONS] [DIRS]...
+> 
+> Options:
+>   -t, --target <PATH>  The target directory; will be created if it doesn't exist [default: .]
+>   -b, --by <STR>       The type of join to perform [default: move] [possible values: move, copy]
+>   -c, --clashes <STR>  How to resolve clashes [default: name-sequence] [possible values: name-sequence, parent-name, name-parent, ignore]
+>   -f, --force          Force joining already in place files and directories, i.e. in subdirectories of the target
+>   -p, --parents        Do not remove empty parent directories after joining files
+>   -y, --yes            Skip the confirmation prompt, useful for automation
+>   -h, --help           Print help
+> ```
 
 > There's also the "Fetch" options, which are the same as for the global refine command.
 
@@ -298,22 +298,22 @@ The `list` command will gather all the files in the given directories, sort them
 2. print the results
 
 > `$ refine list --help`
-
-```
-List files from multiple directories sorted together
-
-Usage: refine list [DIRS]... [FETCH] [OPTIONS]
-
-Arguments:
-  [DIRS]...  Directories to scan
-
-Options:
-  -b, --by <STR>      Sort by [default: size] [possible values: size, count, name, path]
-  -r, --rev           Reverse the default order (size/count:desc, name/path:asc)
-  -p, --paths         Show full file paths
-  -c, --no-calc-dirs  Do not calculate directory sizes
-  -h, --help          Print help
-```
+>
+> ```
+> List files from multiple directories sorted together
+> 
+> Usage: refine list [DIRS]... [FETCH] [OPTIONS]
+> 
+> Arguments:
+>   [DIRS]...  Directories to scan
+> 
+> Options:
+>   -b, --by <STR>      Sort by [default: size] [possible values: size, count, name, path]
+>   -r, --rev           Reverse the default order (size/count:desc, name/path:asc)
+>   -p, --paths         Show full file paths
+>   -c, --no-calc-dirs  Do not calculate directory sizes
+>   -h, --help          Print help
+> ```
 
 > There's also the "Fetch" options, which are the same as for the global refine command.
 
@@ -343,27 +343,27 @@ And don't worry as this tool is interactive, so you can review all changes befor
 9. if the user confirms, apply the changes
 
 > `$ refine rebuild --help`
-
-```
-Rebuild entire media collections intelligently
-
-Usage: refine rebuild [DIRS]... [FETCH] [OPTIONS]
-
-Arguments:
-  [DIRS]...  Directories to scan
-
-Options:
-  -b, --strip-before <STR|REGEX>    Strip from the start of the filename; separators nearby are automatically removed
-  -a, --strip-after <STR|REGEX>     Strip to the end of the filename; separators nearby are automatically removed
-  -e, --strip-exact <STR|REGEX>     Strip all occurrences in the filename; separators nearby are automatically removed
-  -r, --replace <STR|REGEX=STR|$N>  Replace all occurrences in the filename with another; separators are not touched
-  -s, --simple                      Disable smart matching, so "foo bar.mp4", "FooBar.mp4" and "foo__bar.mp4" are different
-  -f, --force <STR>                 Force to overwrite filenames (use the Global options to filter files)
-  -p, --partial                     Assume not all directories are available, which retains current sequences (but fixes gaps)
-  -c, --case                        Keep the original case of filenames, otherwise they are lowercased
-  -y, --yes                         Skip the confirmation prompt, useful for automation
-  -h, --help                        Print help
-```
+>
+> ```
+> Rebuild entire media collections intelligently
+> 
+> Usage: refine rebuild [DIRS]... [FETCH] [OPTIONS]
+> 
+> Arguments:
+>   [DIRS]...  Directories to scan
+> 
+> Options:
+>   -b, --strip-before <STR|REGEX>    Strip from the start of the filename; separators nearby are automatically removed
+>   -a, --strip-after <STR|REGEX>     Strip to the end of the filename; separators nearby are automatically removed
+>   -e, --strip-exact <STR|REGEX>     Strip all occurrences in the filename; separators nearby are automatically removed
+>   -r, --replace <STR|REGEX=STR|$N>  Replace all occurrences in the filename with another; separators are not touched
+>   -s, --simple                      Disable smart matching, so "foo bar.mp4", "FooBar.mp4" and "foo__bar.mp4" are different
+>   -f, --force <STR>                 Force to overwrite filenames (use the Global options to filter files)
+>   -p, --partial                     Assume not all directories are available, which retains current sequences (but fixes gaps)
+>   -c, --case                        Keep the original case of filenames, otherwise they are lowercased
+>   -y, --yes                         Skip the confirmation prompt, useful for automation
+>   -h, --help                        Print help
+> ```
 
 > There's also the "Fetch" options, which are the same as for the global refine command.
 
@@ -386,24 +386,24 @@ The `rename` command will let you batch rename files like no other tool, serious
 4. if the user confirms, apply the changes
 
 > `$ refine rename --help`
-
-```
-Rename files and directories using advanced regular expression rules
-
-Usage: refine rename [DIRS]... [FETCH] [OPTIONS]
-
-Arguments:
-  [DIRS]...  Directories to scan
-
-Options:
-  -b, --strip-before <STR|REGEX>    Strip from the start of the filename; separators nearby are automatically removed
-  -a, --strip-after <STR|REGEX>     Strip to the end of the filename; separators nearby are automatically removed
-  -e, --strip-exact <STR|REGEX>     Strip all occurrences in the filename; separators nearby are automatically removed
-  -r, --replace <STR|REGEX=STR|$N>  Replace all occurrences in the filename with another; separators are not touched
-  -c, --clashes <STR>               How to resolve clashes [default: forbid] [possible values: forbid, ignore, name-sequence]
-  -y, --yes                         Skip the confirmation prompt, useful for automation
-  -h, --help                        Print help
-```
+>
+> ```
+> Rename files and directories using advanced regular expression rules
+> 
+> Usage: refine rename [DIRS]... [FETCH] [OPTIONS]
+> 
+> Arguments:
+>   [DIRS]...  Directories to scan
+> 
+> Options:
+>   -b, --strip-before <STR|REGEX>    Strip from the start of the filename; separators nearby are automatically removed
+>   -a, --strip-after <STR|REGEX>     Strip to the end of the filename; separators nearby are automatically removed
+>   -e, --strip-exact <STR|REGEX>     Strip all occurrences in the filename; separators nearby are automatically removed
+>   -r, --replace <STR|REGEX=STR|$N>  Replace all occurrences in the filename with another; separators are not touched
+>   -c, --clashes <STR>               How to resolve clashes [default: forbid] [possible values: forbid, ignore, name-sequence]
+>   -y, --yes                         Skip the confirmation prompt, useful for automation
+>   -h, --help                        Print help
+> ```
 
 > There's also the "Fetch" options, which are the same as for the global refine command.
 
@@ -431,26 +431,26 @@ It does not support any kind of parallel connections or API rate limiting by des
 5. print the invalid ones, along with a summary of the results
 
 > `$ refine probe --help`
-
-```
-Probe filenames against a remote server
-
-Usage: refine probe [DIRS]... [FETCH] [OPTIONS]
-
-Arguments:
-  [DIRS]...  Directories to scan
-
-Options:
-  -p, --pick <REGEX>     Pick a subset of the files to probe
-  -u, --url <URL>        The URL to probe filenames against (use `$` as placeholder, e.g. https://example.com/$/)
-  -t, --timeout <INT>    The HTTP connection and read timeouts in milliseconds [default: 2000]
-  -n, --min-wait <INT>   The initial time to wait between retries in milliseconds [default: 1000]
-  -b, --backoff <FLOAT>  The factor by which to increase the time to wait between retries [default: 1.5]
-  -a, --max-wait <INT>   The maximum time to wait between retries in milliseconds [default: 5000]
-  -r, --retries <INT>    The maximum number of retries; use 0 to disable and -1 to retry indefinitely [default: -1]
-  -e, --errors <STR>     Specify when to display errors [default: each10] [possible values: never, last, always, each10]
-  -h, --help             Print help
-```
+>
+> ```
+> Probe filenames against a remote server
+> 
+> Usage: refine probe [DIRS]... [FETCH] [OPTIONS]
+> 
+> Arguments:
+>   [DIRS]...  Directories to scan
+> 
+> Options:
+>   -p, --pick <REGEX>     Pick a subset of the files to probe
+>   -u, --url <URL>        The URL to probe filenames against (use `$` as placeholder, e.g. https://example.com/$/)
+>   -t, --timeout <INT>    The HTTP connection and read timeouts in milliseconds [default: 2000]
+>   -n, --min-wait <INT>   The initial time to wait between retries in milliseconds [default: 1000]
+>   -b, --backoff <FLOAT>  The factor by which to increase the time to wait between retries [default: 1.5]
+>   -a, --max-wait <INT>   The maximum time to wait between retries in milliseconds [default: 5000]
+>   -r, --retries <INT>    The maximum number of retries; use 0 to disable and -1 to retry indefinitely [default: -1]
+>   -e, --errors <STR>     Specify when to display errors [default: each10] [possible values: never, last, always, each10]
+>   -h, --help             Print help
+> ```
 
 > There's also the "Fetch" options, which are the same as for the global refine command.
 
