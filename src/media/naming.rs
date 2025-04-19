@@ -122,7 +122,7 @@ mod tests {
     fn strip_rules() {
         #[track_caller]
         fn case(rule: &[&str], idx: usize, stem: &str, new_name: &str) {
-            let mut strip_rules = [[""].as_ref(); 3];
+            let mut strip_rules = [[].as_ref(); 3];
             strip_rules[idx] = rule;
             let mut medias = vec![Media(stem.to_owned())];
             let rules = Rules::compile(strip_rules, NO_REPLACE).unwrap();
