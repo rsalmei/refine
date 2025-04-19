@@ -18,7 +18,7 @@ pub struct Entry {
 
 /// Create a new entry from a path, checking that it has a valid UTF-8 representation.
 impl TryFrom<PathBuf> for Entry {
-    type Error = (anyhow::Error, PathBuf);
+    type Error = anyhow::Error;
 
     fn try_from(pb: PathBuf) -> Result<Self, Self::Error> {
         let is_dir = pb.is_dir();
@@ -26,21 +26,22 @@ impl TryFrom<PathBuf> for Entry {
             pb.file_name()
                 .unwrap_or_default() // the root dir has no name.
                 .to_str()
-                .ok_or_else(|| (anyhow!("no UTF-8 dir name: {pb:?}"), pb.clone()))?;
+                .ok_or_else(|| anyhow!("no UTF-8 dir name: {pb:?}"))?;
         } else {
             pb.file_stem()
-                .ok_or_else(|| (anyhow!("no file stem: {pb:?}"), pb.clone()))?
+                .ok_or_else(|| anyhow!("no file stem: {pb:?}"))?
                 .to_str()
-                .ok_or_else(|| (anyhow!("no UTF-8 file stem: {pb:?}"), pb.clone()))?;
+                .ok_or_else(|| anyhow!("no UTF-8 file stem: {pb:?}"))?;
             pb.extension()
                 .unwrap_or_default()
                 .to_str()
-                .ok_or_else(|| (anyhow!("no UTF-8 file extension: {pb:?}"), pb.clone()))?;
+                .ok_or_else(|| anyhow!("no UTF-8 file extension: {pb:?}"))?;
         }
         // I could just check that the entire path is valid UTF-8, but I want to give better error messages.
         if let Some(pp) = pb.parent() {
-            pp.to_str() // the root dir has no parent.
-                .ok_or_else(|| (anyhow!("no UTF-8 parent: {pp:?}"), pp.to_owned()))?;
+            // the root dir has no parent.
+            pp.to_str()
+                .ok_or_else(|| anyhow!("no UTF-8 parent: {pp:?}"))?;
         }
         Ok(Entry { path: pb, is_dir })
     }
@@ -51,14 +52,11 @@ pub static ROOT: LazyLock<Entry> = LazyLock::new(|| Entry::try_new("/", true).un
 impl Entry {
     /// Create a new entry that, in case the path does not exist, will assume the given directory flag.
     /// If it does exist, check that it has the correct directory flag or panic.
-    pub fn try_new(
-        path: impl Into<PathBuf>,
-        is_dir: bool,
-    ) -> Result<Self, (anyhow::Error, PathBuf)> {
         let mut entry = Entry::try_from(path.into())?;
         match entry.path.exists() {
             true => assert_eq!(entry.is_dir, is_dir),
             false => entry.is_dir = is_dir,
+    pub fn try_new(path: impl Into<PathBuf>, is_dir: bool) -> Result<Self, anyhow::Error> {
         }
         Ok(entry)
     }
@@ -255,7 +253,7 @@ mod tests {
     #[test]
     fn entry_creation() {
         #[track_caller]
-        fn case(p: impl AsRef<Path>) -> Result<Entry, (anyhow::Error, PathBuf)> {
+        fn case(p: impl AsRef<Path>) -> Result<Entry, anyhow::Error> {
             Entry::try_from(p.as_ref().to_owned())
         }
 
