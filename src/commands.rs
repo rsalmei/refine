@@ -12,22 +12,22 @@ use clap::Subcommand;
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
-    /// Find reasonably duplicated files by both size and filename.
+    /// Find possibly duplicated files by both size and filename.
     #[command(override_usage = "refine dupes [DIRS]... [FETCH] [OPTIONS]")]
     Dupes(dupes::Dupes),
     /// Join files into a single directory with advanced conflict resolution.
     #[command(override_usage = "refine join [DIRS]... [FETCH] [OPTIONS]")]
     Join(join::Join),
-    /// List files from multiple directories sorted together.
+    /// List files from multiple disjoint directories sorted together.
     #[command(override_usage = "refine list [DIRS]... [FETCH] [OPTIONS]")]
     List(list::List),
-    /// Rebuild entire media collections intelligently.
+    /// Rebuild entire media collections' filenames intelligently.
     #[command(override_usage = "refine rebuild [DIRS]... [FETCH] [OPTIONS]")]
     Rebuild(rebuild::Rebuild),
-    /// Rename files and directories using advanced regular expression rules.
+    /// Rename files and directories in batch using advanced regex rules.
     #[command(override_usage = "refine rename [DIRS]... [FETCH] [OPTIONS]")]
     Rename(rename::Rename),
-    /// Probe filenames against a remote server.
+    /// Probe collections' filenames against a remote server.
     #[command(override_usage = "refine probe [DIRS]... [FETCH] [OPTIONS]")]
     Probe(probe::Probe),
 }
@@ -35,6 +35,7 @@ pub enum Command {
 /// The common interface for Refine commands that work with media files.
 pub trait Refine {
     type Media: TryFrom<Entry, Error = (anyhow::Error, Entry)>;
+    /// The opening line to display when running the command.
     const OPENING_LINE: &'static str;
     /// The mode of traversal to use when fetching entries.
     const MODE: TraversalMode;
