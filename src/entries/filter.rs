@@ -41,7 +41,7 @@ pub struct Filter {
 
 /// The engine that applies the [Filter] rules to a collection of entries.
 #[derive(Debug)]
-pub struct Engine {
+pub struct EntryFilter {
     only_files: bool,
     only_dirs: bool,
     all: Constraint,
@@ -50,12 +50,12 @@ pub struct Engine {
     ext: Constraint,
 }
 
-impl Engine {
+impl EntryFilter {
     pub fn is_in(&self, entry: &Entry) -> bool {
-        self._is_included(entry).unwrap_or_default()
+        self.is_included(entry).unwrap_or_default()
     }
 
-    fn _is_included(&self, entry: &Entry) -> Option<bool> {
+    fn is_included(&self, entry: &Entry) -> Option<bool> {
         let (stem, ext) = entry.filename_parts();
         (!stem.starts_with('.')).then_some(())?; // exclude hidden files and directories.
 
@@ -100,11 +100,11 @@ impl TryFrom<[Param<'_>; 2]> for Constraint {
     }
 }
 
-impl TryFrom<Filter> for Engine {
+impl TryFrom<Filter> for EntryFilter {
     type Error = anyhow::Error;
 
     fn try_from(s: Filter) -> Result<Self, Self::Error> {
-        Ok(Engine {
+        Ok(EntryFilter {
             only_files: s.only_files,
             only_dirs: s.only_dirs,
             all: [(s.include, "include"), (s.exclude, "exclude")].try_into()?,

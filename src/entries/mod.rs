@@ -16,7 +16,7 @@ pub struct Fetcher {
     /// Effective input paths to scan, after deduplication and checking.
     dirs: Vec<Entry>,
     recurse: Recurse,
-    engine: Rc<Engine>,
+    filter: Rc<EntryFilter>,
 }
 
 /// The mode of traversal to use when fetching entries.
@@ -47,7 +47,7 @@ impl Fetcher {
 
     /// Reads entries from the given directories, with the given filtering rules and recursion.
     pub fn new(dirs: Vec<Entry>, recurse: Recurse, filter: Filter) -> Result<Self> {
-        let engine = filter.try_into()?; // compile regexes and check for errors before anything else.
+        let filter = filter.try_into()?; // compile regexes and check for errors before anything else.
 
         if dirs.is_empty() {
             return Err(anyhow!("no valid paths given"));
@@ -56,15 +56,15 @@ impl Fetcher {
         Ok(Fetcher {
             dirs,
             recurse,
-            engine: Rc::new(engine),
+            filter: Rc::new(filter),
         })
     }
 
-    pub fn fetch(self, es: EntrySet) -> impl Iterator<Item = Entry> {
+    pub fn fetch(self, mode: TraversalMode) -> impl Iterator<Item = Entry> {
         let depth = self.recurse.into();
         self.dirs
             .into_iter()
-            .flat_map(move |dir| entries(dir, depth, es, Rc::clone(&self.engine)))
+            .flat_map(move |dir| entries(dir, depth, mode, Rc::clone(&self.filter)))
     }
 }
 
