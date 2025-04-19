@@ -86,7 +86,7 @@ impl Dupes {
             })
             .map(|mut g| {
                 g.sort_unstable_by(|m, n| m.entry.cmp(&n.entry));
-                show(group(g[0]), g)
+                show(group(g[0]), g);
             })
             .count()
     }
@@ -127,7 +127,7 @@ fn words(entry: &Entry) -> Box<[String]> {
         .split(&[' ', '.', '-', '_'])
         .filter(|s| !s.is_empty())
         .filter(|s| !(s.len() == 1 && s.is_ascii())) // remove vowels.
-        .map(|s| s.to_lowercase())
+        .map(str::to_lowercase)
         .collect::<Vec<_>>();
     words.sort_unstable();
     words.dedup();
