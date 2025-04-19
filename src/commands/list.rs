@@ -1,6 +1,6 @@
 use crate::commands::Refine;
 use crate::entries::input::Warnings;
-use crate::entries::{Entry, EntrySet, Fetcher, Recurse};
+use crate::entries::{Entry, Fetcher, Recurse, TraversalMode};
 use crate::utils;
 use anyhow::Result;
 use clap::{Args, ValueEnum};
@@ -54,7 +54,7 @@ static CALC_DIR_SIZES: OnceLock<bool> = OnceLock::new();
 impl Refine for List {
     type Media = Media;
     const OPENING_LINE: &'static str = "List files";
-    const HANDLES: EntrySet = EntrySet::ContentOverDirs;
+    const MODE: TraversalMode = TraversalMode::ContentOverDirs;
 
     fn tweak(&mut self, _: &Warnings) {
         self.rev ^= ORDERING.iter().find(|(b, _)| *b == self.by).unwrap().1;

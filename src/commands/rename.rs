@@ -1,5 +1,5 @@
 use crate::commands::Refine;
-use crate::entries::{Entry, EntrySet};
+use crate::entries::{Entry, TraversalMode};
 use crate::media::{FileOps, NamingRules};
 use crate::utils;
 use crate::{impl_new_name, impl_new_name_mut, impl_original_entry};
@@ -43,7 +43,7 @@ pub struct Media {
 impl Refine for Rename {
     type Media = Media;
     const OPENING_LINE: &'static str = "Rename filenames";
-    const HANDLES: EntrySet = EntrySet::DirsAndContent;
+    const MODE: TraversalMode = TraversalMode::DirsAndContent;
 
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         // step: apply naming rules.

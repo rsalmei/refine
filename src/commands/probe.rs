@@ -1,6 +1,6 @@
 use crate::commands::Refine;
 use crate::entries::input::Warnings;
-use crate::entries::{Entry, EntrySet};
+use crate::entries::{Entry, TraversalMode};
 use crate::utils::{self, display_abort};
 use Verdict::*;
 use anyhow::{Context, Result, anyhow};
@@ -78,7 +78,7 @@ enum Verdict {
 impl Refine for Probe {
     type Media = Media;
     const OPENING_LINE: &'static str = "Probe files online";
-    const HANDLES: EntrySet = EntrySet::Files;
+    const MODE: TraversalMode = TraversalMode::Files;
 
     fn tweak(&mut self, _: &Warnings) {
         if self.retries < 0 && self.errors == Errors::Last {

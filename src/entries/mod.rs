@@ -19,9 +19,9 @@ pub struct Fetcher {
     engine: Rc<Engine>,
 }
 
-/// Denotes the set of entry types a command will process.
+/// The mode of traversal to use when fetching entries.
 #[derive(Debug, Copy, Clone)]
-pub enum EntrySet {
+pub enum TraversalMode {
     /// Only files.
     Files, // dupes, probe, and rebuild.
     /// Directories stop recursion because the dir itself is the output.
@@ -68,7 +68,12 @@ impl Fetcher {
     }
 }
 
-fn entries(dir: Entry, d: Depth, es: EntrySet, e: Rc<Engine>) -> Box<dyn Iterator<Item = Entry>> {
+fn entries(
+    dir: Entry,
+    depth: Depth,
+    mode: TraversalMode,
+    ef: Rc<EntryFilter>,
+) -> Box<dyn Iterator<Item = Entry>> {
     if !utils::is_running() {
         return Box::new(iter::empty());
     }
@@ -90,19 +95,19 @@ fn entries(dir: Entry, d: Depth, es: EntrySet, e: Rc<Engine>) -> Box<dyn Iterato
             })
             .flatten()
             .flat_map(move |entry| {
-                use EntrySet::*;
-                let (d, rec) = d.inc();
-                match (entry.is_dir(), e.is_in(&entry), rec, es) {
+                use TraversalMode::*;
+                let (d, rec) = depth.inc();
+                match (entry.is_dir(), ef.is_in(&entry), rec, mode) {
                     (false, true, _, _) => Box::new(iter::once(entry)),
                     (true, true, false, DirsStop | DirsAndContent | ContentOverDirs) => {
                         Box::new(iter::once(entry))
                     }
                     (true, true, true, Files | ContentOverDirs) => {
-                        entries(entry, d, es, Rc::clone(&e))
+                        entries(entry, d, mode, Rc::clone(&ef))
                     }
                     (true, true, true, DirsStop) => Box::new(iter::once(entry)),
                     (true, true, true, DirsAndContent) => Box::new(
-                        iter::once(entry.clone()).chain(entries(entry, d, es, Rc::clone(&e))),
+                        iter::once(entry.clone()).chain(entries(entry, d, mode, Rc::clone(&ef))),
                     ),
                     _ => Box::new(iter::empty()),
                 }

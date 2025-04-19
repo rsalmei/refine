@@ -1,5 +1,5 @@
 use crate::commands::Refine;
-use crate::entries::{Entry, EntrySet, Fetcher, ROOT, Recurse};
+use crate::entries::{Entry, Fetcher, ROOT, Recurse, TraversalMode};
 use crate::impl_original_entry;
 use crate::media::{FileOps, NewEntry, OriginalEntry};
 use crate::utils;
@@ -77,7 +77,7 @@ static SHARED: OnceLock<Shared> = OnceLock::new();
 impl Refine for Join {
     type Media = Media;
     const OPENING_LINE: &'static str = "Join files";
-    const HANDLES: EntrySet = EntrySet::DirsStop;
+    const MODE: TraversalMode = TraversalMode::DirsStop;
 
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         if self.target.is_file() {

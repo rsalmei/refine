@@ -6,7 +6,7 @@ mod rebuild;
 mod rename;
 
 use crate::entries::input::Warnings;
-use crate::entries::{Entry, EntrySet, Fetcher};
+use crate::entries::{Entry, Fetcher, TraversalMode};
 use anyhow::Result;
 use clap::Subcommand;
 
@@ -36,7 +36,8 @@ pub enum Command {
 pub trait Refine {
     type Media: TryFrom<Entry, Error = (anyhow::Error, Entry)>;
     const OPENING_LINE: &'static str;
-    const HANDLES: EntrySet;
+    /// The mode of traversal to use when fetching entries.
+    const MODE: TraversalMode;
 
     /// Tweak the command options to fix small issues after the opening line, but before fetching
     /// the entries and converting them to the proper Media type.
@@ -53,7 +54,7 @@ impl<R: Refine> Runner for R {
     fn run(mut self, fetcher: Fetcher, warnings: Warnings) -> Result<()> {
         println!("=> {}\n", R::OPENING_LINE);
         self.tweak(&warnings);
-        self.refine(gen_medias(fetcher.fetch(R::HANDLES)))
+        self.refine(gen_medias(fetcher.fetch(R::MODE)))
     }
 }
 
@@ -78,15 +79,15 @@ impl Command {
     }
 
     pub fn view(self, fetcher: Fetcher) {
-        let handles = match &self {
-            Command::Dupes(_) => dupes::Dupes::HANDLES,
-            Command::Join(_) => join::Join::HANDLES,
-            Command::List(_) => list::List::HANDLES,
-            Command::Rebuild(_) => rebuild::Rebuild::HANDLES,
-            Command::Rename(_) => rename::Rename::HANDLES,
-            Command::Probe(_) => probe::Probe::HANDLES,
+        let mode = match &self {
+            Command::Dupes(_) => dupes::Dupes::MODE,
+            Command::Join(_) => join::Join::MODE,
+            Command::List(_) => list::List::MODE,
+            Command::Rebuild(_) => rebuild::Rebuild::MODE,
+            Command::Rename(_) => rename::Rename::MODE,
+            Command::Probe(_) => probe::Probe::MODE,
         };
-        view(fetcher.fetch(handles));
+        view(fetcher.fetch(mode));
     }
 }
 
