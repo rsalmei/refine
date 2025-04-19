@@ -42,7 +42,7 @@ impl<'r> Rules<'r> {
         strip_rules: [&[impl AsRef<str> + Sized]; 3],
         replace_rules: &'r [(impl AsRef<str> + Sized, impl AsRef<str> + Sized)],
     ) -> Result<Rules<'r>> {
-        const BOUND: &str = r"[-_\.\s]";
+        const BOUND: &str = r"[-_.\s]";
         let before = |rule| format!("(?i)^.*{rule}{BOUND}*");
         let after = |rule| format!("(?i){BOUND}*{rule}.*$");
         let exactly = |rule| format!(r"(?i){BOUND}+{rule}$|^{rule}{BOUND}+|{BOUND}+{rule}|{rule}");
