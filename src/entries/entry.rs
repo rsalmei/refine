@@ -17,33 +17,34 @@ pub struct Entry {
 }
 
 /// Create a new entry from a path, checking that it has a valid UTF-8 representation.
-impl TryFrom<PathBuf> for Entry {
+impl TryFrom<&Path> for Entry {
     type Error = anyhow::Error;
 
-    fn try_from(pb: PathBuf) -> Result<Self, Self::Error> {
-        let is_dir = pb.is_dir();
+    fn try_from(p: &Path) -> Result<Self, Self::Error> {
+        let is_dir = p.is_dir();
         if is_dir {
-            pb.file_name()
+            p.file_name()
                 .unwrap_or_default() // the root dir has no name.
                 .to_str()
-                .ok_or_else(|| anyhow!("no UTF-8 dir name: {pb:?}"))?;
+                .ok_or_else(|| anyhow!("no UTF-8 dir name: {p:?}"))?;
         } else {
-            pb.file_stem()
-                .ok_or_else(|| anyhow!("no file stem: {pb:?}"))?
+            p.file_stem()
+                .ok_or_else(|| anyhow!("no file stem: {p:?}"))?
                 .to_str()
-                .ok_or_else(|| anyhow!("no UTF-8 file stem: {pb:?}"))?;
-            pb.extension()
+                .ok_or_else(|| anyhow!("no UTF-8 file stem: {p:?}"))?;
+            p.extension()
                 .unwrap_or_default()
                 .to_str()
-                .ok_or_else(|| anyhow!("no UTF-8 file extension: {pb:?}"))?;
+                .ok_or_else(|| anyhow!("no UTF-8 file extension: {p:?}"))?;
         }
         // I could just check that the entire path is valid UTF-8, but I want to give better error messages.
-        if let Some(pp) = pb.parent() {
+        if let Some(pp) = p.parent() {
             // the root dir has no parent.
             pp.to_str()
                 .ok_or_else(|| anyhow!("no UTF-8 parent: {pp:?}"))?;
         }
-        Ok(Entry { path: pb, is_dir })
+        let path = p.to_owned();
+        Ok(Entry { path, is_dir })
     }
 }
 
