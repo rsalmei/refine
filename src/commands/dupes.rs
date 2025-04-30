@@ -134,17 +134,14 @@ fn words(entry: &Entry) -> Box<[String]> {
     words.into_boxed_slice()
 }
 
-impl TryFrom<Entry> for Media {
-    type Error = (anyhow::Error, Entry);
+impl TryFrom<&Entry> for Media {
+    type Error = anyhow::Error;
 
-    fn try_from(entry: Entry) -> Result<Self, Self::Error> {
+    fn try_from(entry: &Entry) -> Result<Self, Self::Error> {
         Ok(Media {
-            size: entry
-                .metadata()
-                .map_err(|err| (err.into(), entry.clone()))?
-                .len(),
+            size: entry.metadata()?.len(),
             words: words(&entry),
-            entry, // I can use entry above before moving it here!
+            entry: entry.to_owned(),
             sample: None,
         })
     }

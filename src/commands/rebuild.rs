@@ -211,22 +211,18 @@ impl Media {
     }
 }
 
-impl TryFrom<Entry> for Media {
-    type Error = (anyhow::Error, Entry);
+impl TryFrom<&Entry> for Media {
+    type Error = anyhow::Error;
 
-    fn try_from(entry: Entry) -> Result<Self, Self::Error> {
+    fn try_from(entry: &Entry) -> Result<Self, Self::Error> {
         let (name, ext) = entry.filename_parts();
         Ok(Media {
             new_name: CASE_FN.get().unwrap()(name.trim()),
             ext: utils::intern(ext),
-            created: entry
-                .metadata()
-                .map_err(|err| (err.into(), entry.clone()))?
-                .created()
-                .map_err(|err| (err.into(), entry.clone()))?,
-            seq: None, // can't be set here, because naming rules must run before it.
+            created: entry.metadata()?.created()?,
+            seq: None, // can't be set here because naming rules must run before it.
             smart_match: None,
-            entry,
+            entry: entry.to_owned(),
         })
     }
 }

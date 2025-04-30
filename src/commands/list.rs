@@ -126,17 +126,17 @@ impl Refine for List {
     }
 }
 
-impl TryFrom<Entry> for Media {
-    type Error = (anyhow::Error, Entry);
+impl TryFrom<&Entry> for Media {
+    type Error = anyhow::Error;
 
-    fn try_from(entry: Entry) -> Result<Self, Self::Error> {
+    fn try_from(entry: &Entry) -> Result<Self, Self::Error> {
         let size_count = match (entry.is_dir(), CALC_DIR_SIZES.get().unwrap()) {
             (true, false) => None,
             (true, true) => {
-                let fetcher = Fetcher::single(&entry, Recurse::Full);
+                let fetcher = Fetcher::single(entry, Recurse::Full);
                 let mut count = 0;
                 let sum = fetcher
-                    .fetch(EntrySet::Files)
+                    .fetch(TraversalMode::Files)
                     .map(|e| {
                         count += 1;
                         e.metadata().map_or(0, |md| md.len())
@@ -145,13 +145,11 @@ impl TryFrom<Entry> for Media {
                 Some((sum, count))
             }
             (false, _) => {
-                let size = entry
-                    .metadata()
-                    .map_err(|err| (err.into(), entry.clone()))?
-                    .len();
+                let size = entry.metadata()?.len();
                 Some((size, 1))
             }
         };
+        let entry = entry.to_owned();
         Ok(Self { entry, size_count })
     }
 }

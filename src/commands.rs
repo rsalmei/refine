@@ -34,7 +34,7 @@ pub enum Command {
 
 /// The common interface for Refine commands that work with media files.
 pub trait Refine {
-    type Media: TryFrom<Entry, Error = (anyhow::Error, Entry)>;
+    type Media: for<'a> TryFrom<&'a Entry, Error = anyhow::Error>;
     /// The opening line to display when running the command.
     const OPENING_LINE: &'static str;
     /// The mode of traversal to use when fetching entries.
@@ -94,10 +94,10 @@ impl Command {
 
 fn gen_medias<T>(entries: impl Iterator<Item = Entry>) -> Vec<T>
 where
-    T: TryFrom<Entry, Error = (anyhow::Error, Entry)>,
+    T: for<'a> TryFrom<&'a Entry, Error = anyhow::Error>,
 {
     entries
-        .map(|entry| T::try_from(entry))
+        .map(|entry| T::try_from(&entry).map_err(|err| (err, entry)))
         .inspect(|res| {
             if let Err((err, entry)) = res {
                 eprintln!("error: load media {entry}: {err}");

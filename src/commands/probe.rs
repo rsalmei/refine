@@ -207,10 +207,10 @@ impl Probe {
     }
 }
 
-impl TryFrom<Entry> for Media {
-    type Error = (anyhow::Error, Entry);
+impl TryFrom<&Entry> for Media {
+    type Error = anyhow::Error;
 
-    fn try_from(entry: Entry) -> Result<Self, Self::Error> {
+    fn try_from(entry: &Entry) -> Result<Self, Self::Error> {
         let (name, _, _) = entry.collection_parts();
         Ok(Media {
             name: name.to_lowercase(),
