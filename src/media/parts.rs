@@ -1,6 +1,20 @@
 use regex::Regex;
 use std::sync::LazyLock;
 
+/// Split the name, sequence, and (future) the alias from collection media names.
+pub fn collection_parts(stem: &str) -> (&str, Option<usize>) {
+    // static RE: LazyLock<Regex> =
+    //     LazyLock::new(|| Regex::new(r"^(?<n>[^ ]*) \((?<a>.*)\)$").unwrap());
+
+    let seq = Sequence::from(stem);
+    let name = &stem[..seq.true_len];
+    // let (name, alias) = match RE.captures(name).map(|caps| caps.extract()) {
+    //     Some((name, [alias])) => (name, alias),
+    //     _ => (name, ""),
+    // };
+    (name, seq.num)
+}
+
 #[derive(Debug)]
 pub struct Sequence {
     pub num: Option<usize>,
@@ -28,6 +42,26 @@ impl<S: AsRef<str>> From<S> for Sequence {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn split_collection_parts() {
+        #[track_caller]
+        fn case(stem: &str, out: (&str, Option<usize>)) {
+            assert_eq!(out, collection_parts(stem))
+        }
+
+        case("foo", ("foo", None));
+        case("foo bar", ("foo bar", None));
+        case("foo bar - baz", ("foo bar - baz", None));
+        case("foo - 2025 - baz", ("foo - 2025 - baz", None));
+        case("foo-1.bar-2-baz", ("foo-1.bar", None));
+
+        case("foo-11", ("foo", Some(11)));
+        case("foo - bar - 22", ("foo", Some(22)));
+        case("foo - 2025 - 33", ("foo", Some(33)));
+        case("foo - 2025", ("foo", Some(2025)));
+        case("foo-1.bar-2", ("foo-1.bar", Some(2)));
+    }
 
     #[test]
     fn extract_sequence() {
