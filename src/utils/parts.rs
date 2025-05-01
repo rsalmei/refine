@@ -16,9 +16,9 @@ pub fn collection_parts(stem: &str) -> (&str, Option<usize>) {
 }
 
 #[derive(Debug)]
-pub struct Sequence {
-    pub num: Option<usize>,
-    pub true_len: usize,
+struct Sequence {
+    num: Option<usize>,
+    true_len: usize,
 }
 
 impl<S: AsRef<str>> From<S> for Sequence {

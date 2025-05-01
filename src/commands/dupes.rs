@@ -122,7 +122,8 @@ impl Media {
 }
 
 fn words(entry: &Entry) -> Box<[String]> {
-    let (name, _, _) = entry.collection_parts();
+    let (stem, _) = entry.filename_parts();
+    let (name, _) = utils::collection_parts(stem);
     let mut words = name
         .split(&[' ', '.', '-', '_'])
         .filter(|s| !s.is_empty())

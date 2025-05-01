@@ -78,7 +78,7 @@ impl Refine for Rebuild {
 
         // step: extract and strip sequence numbers.
         medias.iter_mut().for_each(|m| {
-            let (name, seq, _) = m.entry.collection_parts();
+            let (name, seq) = utils::collection_parts(&m.new_name);
             m.seq = seq;
             m.new_name.truncate(name.len()); // sequence numbers are always at the end.
         });
