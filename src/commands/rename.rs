@@ -1,6 +1,6 @@
 use crate::commands::Refine;
 use crate::entries::{Entry, TraversalMode};
-use crate::medias::{FileOps, NamingRules};
+use crate::medias::{FileOps, NamingSpec};
 use crate::utils;
 use crate::{impl_new_name, impl_new_name_mut, impl_original_entry};
 use anyhow::Result;
@@ -11,7 +11,7 @@ use std::fmt::Write;
 #[derive(Debug, Args)]
 pub struct Rename {
     #[command(flatten)]
-    naming_rules: NamingRules,
+    naming: NamingSpec,
     /// How to resolve clashes.
     #[arg(short = 'c', long, default_value_t = Clashes::Forbid, value_name = "STR", value_enum)]
     clashes: Clashes,
@@ -48,7 +48,7 @@ impl Refine for Rename {
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         // step: apply naming rules.
         let total = medias.len();
-        let mut warnings = self.naming_rules.compile()?.apply(&mut medias);
+        let mut warnings = self.naming.compile()?.apply(&mut medias);
 
         // step: re-include extension in the names.
         medias

@@ -6,7 +6,7 @@ use regex::Regex;
 
 /// A set of rules that allow the user to specify which files and directories to include or exclude.
 #[derive(Debug, Default, Args)]
-pub struct Filter {
+pub struct FilterSpec {
     /// Include only files.
     #[arg(short = 'F', long, global = true, conflicts_with = "only_dirs", help_heading = Some("Fetch"))]
     only_files: bool,
@@ -39,9 +39,9 @@ pub struct Filter {
     ext_ex: Option<String>,
 }
 
-/// The engine that applies the [Filter] rules to a collection of entries.
+/// The engine that applies the [FilterSpec] rules to a collection of entries.
 #[derive(Debug)]
-pub struct EntryFilter {
+pub struct FilterRules {
     only_files: bool,
     only_dirs: bool,
     all: Constraint,
@@ -50,7 +50,7 @@ pub struct EntryFilter {
     ext: Constraint,
 }
 
-impl EntryFilter {
+impl FilterRules {
     pub fn is_in(&self, entry: &Entry) -> bool {
         self.is_included(entry).unwrap_or_default()
     }
@@ -100,11 +100,11 @@ impl TryFrom<[Param<'_>; 2]> for Constraint {
     }
 }
 
-impl TryFrom<Filter> for EntryFilter {
+impl TryFrom<FilterSpec> for FilterRules {
     type Error = anyhow::Error;
 
-    fn try_from(s: Filter) -> Result<Self, Self::Error> {
-        Ok(EntryFilter {
+    fn try_from(s: FilterSpec) -> Result<Self, Self::Error> {
+        Ok(FilterRules {
             only_files: s.only_files,
             only_dirs: s.only_dirs,
             all: [(s.include, "include"), (s.exclude, "exclude")].try_into()?,

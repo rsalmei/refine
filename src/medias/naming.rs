@@ -9,7 +9,7 @@ use std::iter;
 
 /// A set of rules that allows the user to customize filenames.
 #[derive(Debug, Args)]
-pub struct NamingRules {
+pub struct NamingSpec {
     /// Strip from the start of the filename; separators nearby are automatically removed.
     #[arg(short = 'b', long, value_name = "STR|REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     strip_before: Vec<String>,
@@ -24,10 +24,10 @@ pub struct NamingRules {
     replace: Vec<(String, String)>,
 }
 
-impl NamingRules {
+impl NamingSpec {
     /// Compile this set of rules.
-    pub fn compile(&self) -> Result<Rules> {
-        Rules::compile(
+    pub fn compile(&self) -> Result<NamingRules> {
+        NamingRules::compile(
             [&self.strip_before, &self.strip_after, &self.strip_exact],
             &self.replace,
         )
@@ -35,13 +35,13 @@ impl NamingRules {
 }
 
 #[derive(Debug)]
-pub struct Rules<'r>(Vec<(Regex, &'r str)>);
+pub struct NamingRules<'r>(Vec<(Regex, &'r str)>);
 
-impl<'r> Rules<'r> {
+impl<'r> NamingRules<'r> {
     fn compile(
         strip_rules: [&[impl AsRef<str> + Sized]; 3],
         replace_rules: &'r [(impl AsRef<str> + Sized, impl AsRef<str> + Sized)],
-    ) -> Result<Rules<'r>> {
+    ) -> Result<NamingRules<'r>> {
         const BOUND: &str = r"[-_.\s]";
         let before = |rule| format!("(?i)^.*{rule}{BOUND}*");
         let after = |rule| format!("(?i){BOUND}*{rule}.*$");
@@ -65,7 +65,7 @@ impl<'r> Rules<'r> {
                     .map(|re| (re, to))
             })
             .collect::<Result<_>>()?;
-        Ok(Rules(rules))
+        Ok(NamingRules(rules))
     }
 
     /// Apply these rules to a list of media.
@@ -125,7 +125,7 @@ mod tests {
             let mut strip_rules = [[].as_ref(); 3];
             strip_rules[idx] = rule;
             let mut medias = vec![Media(stem.to_owned())];
-            let rules = Rules::compile(strip_rules, NO_REPLACE).unwrap();
+            let rules = NamingRules::compile(strip_rules, NO_REPLACE).unwrap();
             let warnings = rules.apply(&mut medias);
             assert_eq!(warnings, 0);
             assert_eq!(medias[0].0, new_name);
@@ -181,7 +181,7 @@ mod tests {
         #[track_caller]
         fn case(replace_rules: &[(&str, &str)], stem: &str, new_name: &str) {
             let mut medias = vec![Media(stem.to_owned())];
-            let rules = Rules::compile(NO_STRIP, replace_rules).unwrap();
+            let rules = NamingRules::compile(NO_STRIP, replace_rules).unwrap();
             let warnings = rules.apply(&mut medias);
             assert_eq!(warnings, 0);
             assert_eq!(medias[0].0, new_name);
@@ -201,7 +201,7 @@ mod tests {
             Media("refine".to_owned()),
             Media("foobar".to_owned()),
         ];
-        let rules = Rules::compile([&["e"], &["b"], &["c.*i"]], &[("on", "")]).unwrap();
+        let rules = NamingRules::compile([&["e"], &["b"], &["c.*i"]], &[("on", "")]).unwrap();
         let warnings = rules.apply(&mut medias);
         assert_eq!(warnings, 4);
         assert_eq!(medias, vec![Media("foo".to_owned())]);

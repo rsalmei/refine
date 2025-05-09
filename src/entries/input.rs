@@ -1,4 +1,4 @@
-use crate::entries::{Entry, Fetcher, Filter};
+use crate::entries::{Entry, Fetcher, FilterSpec};
 use anyhow::{Result, anyhow};
 use clap::Args;
 use std::path::PathBuf;
@@ -12,7 +12,7 @@ pub struct Input {
     #[arg(short = 'R', long, default_value_t = 0, value_name = "INT", global = true, help_heading = Some("Fetch"))]
     recurse: u32,
     #[command(flatten)]
-    filter: Filter,
+    filter: FilterSpec,
 }
 
 /// Information about the input paths, including warnings that were encountered while parsing them.

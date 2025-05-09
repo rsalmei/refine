@@ -1,6 +1,6 @@
 use crate::commands::Refine;
-use crate::medias::{FileOps, NamingRules};
 use crate::entries::{Entry, InputInfo, TraversalMode};
+use crate::medias::{FileOps, NamingSpec};
 use crate::utils;
 use crate::{impl_new_name, impl_new_name_mut, impl_original_entry};
 use anyhow::Result;
@@ -15,7 +15,7 @@ use std::time::SystemTime;
 #[derive(Debug, Args)]
 pub struct Rebuild {
     #[command(flatten)]
-    naming_rules: NamingRules,
+    naming: NamingSpec,
     /// Disable smart matching, so "foo bar.mp4", "FooBar.mp4" and "foo__bar.mp4" are different.
     #[arg(short = 's', long)]
     simple: bool,
@@ -73,7 +73,7 @@ impl Refine for Rebuild {
         let total_files = medias.len();
 
         // step: apply naming rules.
-        let warnings = self.naming_rules.compile()?.apply(&mut medias);
+        let warnings = self.naming.compile()?.apply(&mut medias);
 
         // step: extract and strip sequence numbers.
         medias.iter_mut().for_each(|m| {
