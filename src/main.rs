@@ -1,6 +1,6 @@
 mod commands;
 mod entries;
-mod media;
+mod medias;
 mod utils;
 
 use anyhow::Result;

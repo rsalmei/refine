@@ -1,7 +1,7 @@
 use crate::commands::Refine;
 use crate::entries::{Entry, Fetcher, ROOT, Recurse, TraversalMode};
 use crate::impl_original_entry;
-use crate::media::{FileOps, NewEntry, OriginalEntry};
+use crate::medias::{FileOps, NewEntry, OriginalEntry};
 use crate::utils;
 use anyhow::{Context, Result, anyhow};
 use clap::{Args, ValueEnum};

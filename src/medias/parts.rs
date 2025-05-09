@@ -2,7 +2,7 @@ use regex::Regex;
 use std::sync::LazyLock;
 
 /// Split the name, sequence, and (future) the alias from collection media names.
-pub fn collection_parts(stem: &str) -> (&str, Option<usize>) {
+fn collection_parts(&self) -> (&str, Option<usize>) {
     // static RE: LazyLock<Regex> =
     //     LazyLock::new(|| Regex::new(r"^(?<n>[^ ]*) \((?<a>.*)\)$").unwrap());
 

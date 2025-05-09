@@ -1,6 +1,6 @@
 use crate::commands::Refine;
 use crate::entries::{Entry, TraversalMode};
-use crate::media::{FileOps, NamingRules};
+use crate::medias::{FileOps, NamingRules};
 use crate::utils;
 use crate::{impl_new_name, impl_new_name_mut, impl_original_entry};
 use anyhow::Result;

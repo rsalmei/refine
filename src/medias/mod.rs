@@ -1,5 +1,6 @@
 mod naming;
 mod ops;
+mod parts;
 
 use crate::entries::Entry;
 pub use naming::*;
@@ -7,6 +8,9 @@ pub use ops::*;
 
 pub trait NewName {
     fn new_name(&self) -> &str;
+    fn collection_parts_new(&self) -> (&str, Option<usize>) {
+        parts::collection_parts(self.new_name())
+    }
 }
 
 pub trait NewNameMut {
@@ -16,6 +20,9 @@ pub trait NewNameMut {
 pub trait OriginalEntry {
     /// The original entry of the file.
     fn entry(&self) -> &Entry;
+    fn collection_parts_original(&self) -> (&str, Option<usize>) {
+        parts::collection_parts(self.entry().file_name())
+    }
 }
 
 pub trait NewEntry {
@@ -32,7 +39,7 @@ impl<M: NewName + OriginalEntry> NewEntry for M {
 #[macro_export]
 macro_rules! impl_new_name {
     ($t:ty) => {
-        impl $crate::media::NewName for $t {
+        impl $crate::medias::NewName for $t {
             fn new_name(&self) -> &str {
                 &self.new_name
             }
@@ -43,7 +50,7 @@ macro_rules! impl_new_name {
 #[macro_export]
 macro_rules! impl_new_name_mut {
     ($t:ty) => {
-        impl $crate::media::NewNameMut for $t {
+        impl $crate::medias::NewNameMut for $t {
             fn new_name_mut(&mut self) -> &mut String {
                 &mut self.new_name
             }
@@ -54,7 +61,7 @@ macro_rules! impl_new_name_mut {
 #[macro_export]
 macro_rules! impl_original_entry {
     ($t:ty) => {
-        impl $crate::media::OriginalEntry for $t {
+        impl $crate::medias::OriginalEntry for $t {
             fn entry(&self) -> &$crate::entries::Entry {
                 &self.entry
             }
