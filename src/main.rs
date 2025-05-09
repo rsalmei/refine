@@ -6,7 +6,7 @@ mod utils;
 use anyhow::Result;
 use clap::Parser;
 use commands::Command;
-use entries::input::Input;
+use entries::Input;
 
 #[derive(Debug, Parser)]
 #[command(version, about, long_about = None, after_help = "For more information, see https://github.com/rsalmei/refine",
@@ -27,9 +27,9 @@ fn main() -> Result<()> {
 
     println!("Refine v{}", env!("CARGO_PKG_VERSION"));
     let args = Args::parse();
-    let (fetcher, warnings) = args.input.try_into()?;
+    let (fetcher, info) = args.input.try_into()?;
     match args.view {
-        false => args.cmd.run(fetcher, warnings),
+        false => args.cmd.run(fetcher, info),
         true => {
             args.cmd.view(fetcher);
             Ok(())

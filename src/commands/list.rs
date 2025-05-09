@@ -1,6 +1,5 @@
 use crate::commands::Refine;
-use crate::entries::input::Warnings;
-use crate::entries::{Entry, Fetcher, Recurse, TraversalMode};
+use crate::entries::{Entry, Fetcher, InputInfo, Recurse, TraversalMode};
 use crate::utils;
 use crate::utils::natural_cmp;
 use anyhow::Result;
@@ -57,7 +56,7 @@ impl Refine for List {
     const OPENING_LINE: &'static str = "List files";
     const MODE: TraversalMode = TraversalMode::ContentOverDirs;
 
-    fn tweak(&mut self, _: &Warnings) {
+    fn tweak(&mut self, info: &InputInfo) {
         self.rev ^= ORDERING.iter().find(|(b, _)| *b == self.by).unwrap().1;
         if self.by == By::Path && !self.paths {
             self.paths = true;

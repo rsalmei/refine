@@ -15,24 +15,26 @@ pub struct Input {
     filter: Filter,
 }
 
-/// Warnings that were encountered while parsing the input paths.
+/// Information about the input paths, including warnings that were encountered while parsing them.
 #[derive(Debug)]
-pub struct Warnings {
+pub struct InputInfo {
+    /// The effective number of input paths to scan, after deduplication and checking.
+    pub num_paths: usize,
     /// Whether there were missing paths.
     pub missing: bool,
 }
 
-impl TryFrom<Input> for (Fetcher, Warnings) {
+impl TryFrom<Input> for (Fetcher, InputInfo) {
     type Error = anyhow::Error;
 
-    fn try_from(input: Input) -> Result<(Fetcher, Warnings)> {
-        let (dirs, warnings) = validate_dirs(input.dirs)?;
+    fn try_from(input: Input) -> Result<(Fetcher, InputInfo)> {
+        let (dirs, info) = validate_dirs(input.dirs)?;
         let fetcher = Fetcher::new(dirs, input.recurse.into(), input.filter)?;
-        Ok((fetcher, warnings))
+        Ok((fetcher, info))
     }
 }
 
-fn validate_dirs(mut dirs: Vec<PathBuf>) -> Result<(Vec<Entry>, Warnings)> {
+fn validate_dirs(mut dirs: Vec<PathBuf>) -> Result<(Vec<Entry>, InputInfo)> {
     if dirs.is_empty() {
         dirs = vec![".".into()]; // use the current directory if no paths are given.
     }
@@ -61,8 +63,9 @@ fn validate_dirs(mut dirs: Vec<PathBuf>) -> Result<(Vec<Entry>, Warnings)> {
         return Err(anyhow!("no valid paths given"));
     }
 
-    let warnings = Warnings {
+    let info = InputInfo {
+        num_paths: dirs.len(),
         missing: !missing.is_empty(),
     };
-    Ok((dirs, warnings))
+    Ok((dirs, info))
 }

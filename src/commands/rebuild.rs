@@ -1,7 +1,6 @@
 use crate::commands::Refine;
-use crate::entries::input::Warnings;
-use crate::entries::{Entry, TraversalMode};
 use crate::medias::{FileOps, NamingRules};
+use crate::entries::{Entry, InputInfo, TraversalMode};
 use crate::utils;
 use crate::{impl_new_name, impl_new_name_mut, impl_original_entry};
 use anyhow::Result;
@@ -57,14 +56,14 @@ impl Refine for Rebuild {
     const OPENING_LINE: &'static str = "Rebuild filenames";
     const MODE: TraversalMode = TraversalMode::Files;
 
-    fn tweak(&mut self, warnings: &Warnings) {
+    fn tweak(&mut self, info: &InputInfo) {
         let f = match self.case {
             false => str::to_lowercase,
             true => str::to_owned,
         };
         CASE_FN.set(f).unwrap();
 
-        if warnings.missing && !self.partial && self.force.is_none() {
+        if info.missing && !self.partial && self.force.is_none() {
             self.partial = true;
             eprintln!("Enabling partial mode due to missing directories.\n");
         }

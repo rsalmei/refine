@@ -1,6 +1,5 @@
 use crate::commands::Refine;
-use crate::entries::input::Warnings;
-use crate::entries::{Entry, TraversalMode};
+use crate::entries::{Entry, InputInfo, TraversalMode};
 use crate::utils::{self, display_abort};
 use Verdict::*;
 use anyhow::{Context, Result, anyhow};
@@ -80,7 +79,7 @@ impl Refine for Probe {
     const OPENING_LINE: &'static str = "Probe files online";
     const MODE: TraversalMode = TraversalMode::Files;
 
-    fn tweak(&mut self, _: &Warnings) {
+    fn tweak(&mut self, _: &InputInfo) {
         if self.retries < 0 && self.errors == Errors::Last {
             eprintln!("Displaying \"last\" error won't show anything with indefinite retries.\n");
             self.errors = Errors::Never;

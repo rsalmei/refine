@@ -5,8 +5,7 @@ mod probe;
 mod rebuild;
 mod rename;
 
-use crate::entries::input::Warnings;
-use crate::entries::{Entry, Fetcher, TraversalMode};
+use crate::entries::{Entry, Fetcher, InputInfo, TraversalMode};
 use crate::utils::natural_cmp;
 use anyhow::Result;
 use clap::Subcommand;
@@ -43,19 +42,19 @@ pub trait Refine {
 
     /// Tweak the command options to fix small issues after the opening line, but before fetching
     /// the entries and converting them to the proper Media type.
-    fn tweak(&mut self, _warnings: &Warnings) {}
+    fn tweak(&mut self, _: &InputInfo) {}
     /// Actual command implementation, called with the fetched media files.
     fn refine(&self, medias: Vec<Self::Media>) -> Result<()>;
 }
 
 trait Runner {
-    fn run(self, fetcher: Fetcher, w: Warnings) -> Result<()>;
+    fn run(self, fetcher: Fetcher, w: InputInfo) -> Result<()>;
 }
 
 impl<R: Refine> Runner for R {
-    fn run(mut self, fetcher: Fetcher, warnings: Warnings) -> Result<()> {
+    fn run(mut self, fetcher: Fetcher, info: InputInfo) -> Result<()> {
         println!("=> {}\n", R::OPENING_LINE);
-        self.tweak(&warnings);
+        self.tweak(&info);
         self.refine(gen_medias(fetcher.fetch(R::MODE)))
     }
 }
@@ -69,14 +68,14 @@ fn view(entries: impl Iterator<Item = Entry>) {
 }
 
 impl Command {
-    pub fn run(self, fetcher: Fetcher, warnings: Warnings) -> Result<()> {
+    pub fn run(self, fetcher: Fetcher, info: InputInfo) -> Result<()> {
         match self {
-            Command::Dupes(opt) => opt.run(fetcher, warnings),
-            Command::Join(opt) => opt.run(fetcher, warnings),
-            Command::List(opt) => opt.run(fetcher, warnings),
-            Command::Rebuild(opt) => opt.run(fetcher, warnings),
-            Command::Rename(opt) => opt.run(fetcher, warnings),
-            Command::Probe(opt) => opt.run(fetcher, warnings),
+            Command::Dupes(opt) => opt.run(fetcher, info),
+            Command::Join(opt) => opt.run(fetcher, info),
+            Command::List(opt) => opt.run(fetcher, info),
+            Command::Rebuild(opt) => opt.run(fetcher, info),
+            Command::Rename(opt) => opt.run(fetcher, info),
+            Command::Probe(opt) => opt.run(fetcher, info),
         }
     }
 

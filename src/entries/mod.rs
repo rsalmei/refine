@@ -1,11 +1,12 @@
 mod entry;
 mod filter;
-pub mod input;
+mod input;
 
 use crate::utils;
 use anyhow::{Result, anyhow};
 pub use entry::*;
 pub use filter::*;
+pub use input::*;
 use std::iter;
 use std::rc::Rc;
 
