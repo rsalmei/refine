@@ -7,6 +7,7 @@ mod rename;
 
 use crate::entries::input::Warnings;
 use crate::entries::{Entry, Fetcher, TraversalMode};
+use crate::utils::natural_cmp;
 use anyhow::Result;
 use clap::Subcommand;
 
@@ -62,7 +63,7 @@ impl<R: Refine> Runner for R {
 fn view(entries: impl Iterator<Item = Entry>) {
     println!("\nentries seen by this command:\n");
     let mut entries = entries.collect::<Vec<_>>();
-    entries.sort_unstable();
+    entries.sort_unstable_by(|e, f| natural_cmp(e.file_name(), f.file_name()));
     entries.iter().for_each(|e| println!("{e}"));
     println!("\ntotal files: {}", entries.len());
 }

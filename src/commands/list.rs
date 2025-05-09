@@ -2,6 +2,7 @@ use crate::commands::Refine;
 use crate::entries::input::Warnings;
 use crate::entries::{Entry, Fetcher, Recurse, TraversalMode};
 use crate::utils;
+use crate::utils::natural_cmp;
 use anyhow::Result;
 use clap::{Args, ValueEnum};
 use human_repr::HumanCount;
@@ -67,25 +68,27 @@ impl Refine for List {
 
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         // step: sort the files by size, count, name, or path.
-        let compare = match self.by {
-            By::Size => |m: &Media, n: &Media| {
+        let compare: fn(&Media, &Media) -> _ = match self.by {
+            By::Size => |m, n| {
                 m.size_count
                     .map(|(s, _)| s)
                     .cmp(&n.size_count.map(|(s, _)| s))
             },
-            By::Count => |m: &Media, n: &Media| {
+            By::Count => |m, n| {
                 m.size_count
                     .map(|(_, c)| c)
                     .cmp(&n.size_count.map(|(_, c)| c))
             },
-            By::Name => |m: &Media, n: &Media| m.entry.file_name().cmp(n.entry.file_name()),
-            By::Path => |m: &Media, n: &Media| m.entry.cmp(&n.entry),
+            By::Name => |m, n| natural_cmp(m.entry.file_name(), n.entry.file_name()),
+            By::Path => |_, _| Ordering::Equal, // bypass to the secondary sort.
         };
-        let compare: &dyn Fn(&Media, &Media) -> Ordering = match self.rev {
+        let compare: &dyn Fn(&_, &_) -> _ = match self.rev {
             false => &compare,
             true => &|m, n| compare(m, n).reverse(),
         };
-        medias.sort_unstable_by(|m, n| compare(m, n).then_with(|| m.entry.cmp(&n.entry)));
+        medias.sort_unstable_by(|m, n| {
+            compare(m, n).then_with(|| natural_cmp(m.entry.to_str(), n.entry.to_str())) // primary + secondary sort.
+        });
 
         // step: display the results.
         medias.iter().for_each(|m| {
