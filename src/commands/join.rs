@@ -81,10 +81,9 @@ impl Refine for Join {
 
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         if self.target.is_file() {
-            return Err(anyhow!("target must be a directory or not exist"))
-                .with_context(|| format!("invalid target: {:?}", self.target));
-        }
-        let target = Entry::try_new(&self.target, true).map_err(|(e, _)| e)?; // either a directory or doesn't exist.
+            return Err(anyhow!("invalid target: must be a directory or not exist"));
+        } // target is either a directory or doesn't exist.
+        let target = Entry::try_new(&self.target, true)?.resolve()?;
 
         let shared = Shared {
             target: target.clone(),
