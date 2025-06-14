@@ -75,7 +75,6 @@ impl Refine for Rebuild {
         // step: apply naming rules.
         let warnings = self.naming.compile()?.apply(&mut medias);
 
-
         // step: reset names if forcing a new one.
         if let Some(force) = &self.force {
             medias.iter_mut().for_each(|m| {
@@ -107,7 +106,7 @@ impl Refine for Rebuild {
                     .0
             }
         } else {
-            // smart matching which chooses the longest name, i.e. the one with the most space and _ characters.
+            // smart matching which chooses the longest name, i.e., the one with the most space and _ characters.
             |g: &[Media]| {
                 g.iter()
                     .enumerate()
@@ -124,7 +123,7 @@ impl Refine for Rebuild {
 
         // step: generate new names.
         medias.sort_unstable_by(|m, n| {
-            // unfortunately, some file systems have low resolution creation time, HFS+ for example, so seq is used to disambiguate `created`.
+            // unfortunately, some file systems have low-resolution creation time, HFS+ for example, so seq is used to disambiguate `created`.
             (m.group(), s_seq(m), m.created, m.seq).cmp(&(n.group(), s_seq(n), n.created, n.seq))
         });
         let mut total_names = 0;
@@ -152,7 +151,7 @@ impl Refine for Rebuild {
             .iter()
             .for_each(|m| println!("{} --> {}", m.entry, m.new_name));
 
-        // step: display summary receipt.
+        // step: display a summary receipt.
         if !medias.is_empty() || warnings > 0 {
             println!();
         }
@@ -163,7 +162,7 @@ impl Refine for Rebuild {
             return Ok(());
         }
 
-        // step: apply changes, if the user agrees.
+        // step: apply changes if the user agrees.
         if !self.yes {
             utils::prompt_yes_no("apply changes?")?;
         }

@@ -105,7 +105,7 @@ impl Refine for List {
             println!("{}", "".resetting());
         });
 
-        // step: display summary receipt.
+        // step: display a summary receipt.
         if !medias.is_empty() {
             println!();
         }

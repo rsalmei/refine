@@ -121,7 +121,7 @@ impl Refine for Rename {
                     .for_each(|m| println!("  {} --> {}", m.entry.display_filename(), m.new_name));
             });
 
-        // step: display summary receipt.
+        // step: display a summary receipt.
         if !medias.is_empty() || warnings > 0 {
             println!();
         }
@@ -132,7 +132,7 @@ impl Refine for Rename {
             return Ok(());
         }
 
-        // step: apply changes, if the user agrees.
+        // step: apply changes if the user agrees.
         if !self.yes {
             utils::prompt_yes_no("apply changes?")?;
         }
