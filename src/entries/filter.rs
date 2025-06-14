@@ -15,14 +15,14 @@ pub struct FilterSpec {
     only_dirs: bool,
     /// Include only these files and directories.
     #[arg(short = 'i', long, global = true, help_heading = Some("Fetch"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    include: Option<String>,
+    all_in: Option<String>,
     /// Exclude these files and directories.
     #[arg(short = 'x', long, global = true, help_heading = Some("Fetch"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    exclude: Option<String>,
-    /// Include only these directories.
+    all_ex: Option<String>,
+    /// Include only these immediate directories.
     #[arg(short = 'I', long, global = true, help_heading = Some("Fetch"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     dir_in: Option<String>,
-    /// Exclude these directories.
+    /// Exclude these immediate directories.
     #[arg(short = 'X', long, global = true, help_heading = Some("Fetch"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     dir_ex: Option<String>,
     /// Include only these full paths.
@@ -66,7 +66,7 @@ impl FilterRules {
         let (stem, ext) = entry.filename_parts();
         (!stem.starts_with('.')).then_some(())?; // exclude hidden files and directories.
 
-        let ret = self.all.is_match(stem)
+        let ret = self.all.is_match(entry.to_str())
             && match entry.is_dir() {
                 true => {
                     self.dir.is_match(entry.file_name())
@@ -86,7 +86,7 @@ impl FilterRules {
     }
 }
 
-/// A pair of regexes that check strings for inclusion or exclusion.
+/// A pair of regexes that check strings for inclusion and exclusion.
 #[derive(Debug)]
 pub struct Constraint {
     re_in: Option<Regex>,
@@ -120,7 +120,7 @@ impl TryFrom<FilterSpec> for FilterRules {
         Ok(FilterRules {
             only_files: s.only_files,
             only_dirs: s.only_dirs,
-            all: [(s.include, "include"), (s.exclude, "exclude")].try_into()?,
+            all: [(s.all_in, "all-in"), (s.all_ex, "all-ex")].try_into()?,
             dir: [(s.dir_in, "dir-in"), (s.dir_ex, "dir-ex")].try_into()?,
             path: [(s.path_in, "path-in"), (s.path_ex, "path-ex")].try_into()?,
             file: [(s.file_in, "file-in"), (s.file_ex, "file-ex")].try_into()?,
