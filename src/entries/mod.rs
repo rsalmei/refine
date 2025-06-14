@@ -107,6 +107,9 @@ fn entries(
                     (true, true, true, DirsAndContent) => Box::new(
                         iter::once(entry.clone()).chain(entries(entry, d, mode, Rc::clone(&fr))),
                     ),
+                    (true, _, true, _) if !entry.file_name().starts_with(".") => {
+                        entries(entry, d, mode, Rc::clone(&fr))
+                    }
                     _ => Box::new(iter::empty()),
                 }
             }),
