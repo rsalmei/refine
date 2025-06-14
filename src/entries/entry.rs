@@ -148,50 +148,77 @@ impl Entry {
         self.path.exists()
     }
 
-    pub fn display_path(&self) -> DisplayPath {
+    pub fn display_path(&self) -> impl Display {
         DisplayPath(self)
     }
 
-    pub fn display_filename(&self) -> DisplayFilename {
+    pub fn display_filename(&self) -> impl Display {
         DisplayFilename(self)
+    }
+
+    pub fn resolve(&self) -> Result<Entry> {
+        let mut it = self.path.components();
+        let mut res = match it.next().unwrap() {
+            Component::Normal(x) if x == "~" => {
+                dirs::home_dir().ok_or_else(|| anyhow!("no home dir"))?
+            }
+            Component::Normal(x) => {
+                let mut dir = env::current_dir()?;
+                dir.push(x);
+                dir
+            }
+            Component::CurDir => env::current_dir()?,
+            Component::ParentDir => {
+                let mut dir = env::current_dir()?;
+                dir.pop();
+                dir
+            }
+            x => PathBuf::from(x.as_os_str()),
+        };
+        for comp in it {
+            match comp {
+                Component::RootDir => res.push(comp), // windows might have returned Prefix above, so RootDir comes here.
+                Component::Normal(_) => res.push(comp),
+                Component::ParentDir => {
+                    if !res.pop() {
+                        return Err(anyhow!("invalid path: {self}"));
+                    }
+                }
+                _ => unreachable!(),
+            }
+        }
+        Entry::try_new(res, self.is_dir) // the paths prepended above are NOT guaranteed to be valid UTF-8.
     }
 }
 
-/// A [Display] implementation for [Entry] that prints its full path.
+/// A [Display] implementation for [Entry] that print its full path.
 #[derive(Debug)]
 pub struct DisplayPath<'a>(&'a Entry);
 
-/// A [Display] implementation for [Entry] that prints only its file name.
+/// A [Display] implementation for [Entry] that print only its file name.
 #[derive(Debug)]
 pub struct DisplayFilename<'a>(&'a Entry);
 
-const PAR_FILE: Style = Style::new().cyan();
-const PAR_DIR: Style = Style::new().yellow();
-const DIR: Style = PAR_DIR.bold();
-const FILE: Style = PAR_FILE.bold();
+const DIR_STYLE: (Style, Style) = {
+    let parent_dir: Style = Style::new().yellow();
+    (parent_dir, parent_dir.bold())
+};
+const FILE_STYLE: (Style, Style) = {
+    let parent_file = Style::new().cyan();
+    (parent_file, parent_file.bold())
+};
 
 impl Display for DisplayPath<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let entry = self.0;
-        let (par, sep) = entry
-            .path
-            .parent()
-            .map(|p| p.to_str().unwrap())
-            .map(|s| (s, if s == "/" { "" } else { "/" }))
-            .unwrap_or_default();
-        let name = entry.file_name();
-        let (dir, file, sep2, style) = match entry.is_dir {
-            true => (name, "", "/", PAR_DIR),
-            false => ("", name, "", PAR_FILE),
-        };
+        let (parent, name, symbol) = display_parts(entry);
+        let (p_style, n_style) = if entry.is_dir { DIR_STYLE } else { FILE_STYLE };
         write!(
             f,
-            "{}{}{}{}{}",
-            par.paint(style),
-            sep.paint(style),
-            dir.paint(DIR),
-            sep2.paint(DIR),
-            file.paint(FILE)
+            "{}{}{}",
+            parent.paint(p_style),
+            name.paint(n_style),
+            symbol.paint(n_style)
         )
     }
 }
@@ -199,13 +226,28 @@ impl Display for DisplayPath<'_> {
 impl Display for DisplayFilename<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let entry = self.0;
-        let name = entry.file_name();
-        let (style, kind) = match entry.is_dir {
-            true => (DIR, "/"),
-            false => (FILE, ""),
-        };
-        write!(f, "{}{}", name.paint(style), kind.paint(style))
+        let (_, name, symbol) = display_parts(entry);
+        let (_, style) = if entry.is_dir { DIR_STYLE } else { FILE_STYLE };
+        write!(f, "{}{}", name.paint(style), symbol.paint(style))
     }
+}
+
+/// Get the parent directory, name, and directory symbol for an entry.
+/// They are used by [DisplayPath] and [DisplayFilename] implementations, which style them.
+fn display_parts(entry: &Entry) -> (&str, &str, &str) {
+    let full = entry.to_str();
+    let (parent, name) = match entry.path.file_name().map(|s| s.to_str().unwrap()) {
+        Some(name) => {
+            let pos = full.rfind(name).unwrap();
+            (&full[..pos], name)
+        }
+        None => ("", full),
+    };
+    let dir_id = match entry.is_dir && !name.ends_with('/') {
+        true => "/",
+        false => "",
+    };
+    (parent, name, dir_id)
 }
 
 impl Display for Entry {
