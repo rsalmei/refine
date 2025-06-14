@@ -95,20 +95,21 @@ impl Entry {
         }
     }
 
-    /// Get the name, aliases, sequence, and extension from collection media names.
-    pub fn collection_parts(&self) -> (&str, &str, Option<Vec<&str>>, Option<usize>) {
+    /// Get the name, aliases, sequence, comment, and extension from collection media names.
+    pub fn collection_parts(&self) -> (&str, Option<Vec<&str>>, Option<usize>, &str, &str) {
         // regex: name~24 or name+alias1,alias2~24 or just name.
         static RE: LazyLock<Regex> =
-            LazyLock::new(|| Regex::new(r"^(\w+)(?:\+(\w+(?:,\w+)*))?~(\d+)$").unwrap());
+            LazyLock::new(|| Regex::new(r"^(\w+)(?:\+(\w+(?:,\w+)*))?~(\d+)(?: (.+))?$").unwrap());
 
         let (stem, ext) = self.filename_parts();
         let Some(caps) = RE.captures(stem) else {
-            return (stem, ext, None, None);
+            return (stem, None, None, "", ext);
         };
         let name = caps.get(1).unwrap().as_str(); // regex guarantees name is present.
         let aliases = caps.get(2).map(|m| m.as_str().split(',').collect());
         let seq = caps.get(3).and_then(|m| m.as_str().parse().ok());
-        (name, ext, aliases, seq)
+        let comment = caps.get(4).map_or("", |m| m.as_str());
+        (name, aliases, seq, comment, ext)
     }
 
     /// Return a cached directory flag, which does not touch the filesystem again.
@@ -341,47 +342,64 @@ mod tests {
     #[test]
     fn collection_parts() {
         #[track_caller]
-        fn case(base: &str, out: (&str, Option<Vec<&str>>, Option<usize>)) {
-            let (name, aliases, seq) = out;
-            let entry = Entry::try_new(base, false).unwrap();
-            let out = (name, "", aliases, seq);
+        fn case(base: &str, out: (&str, Option<Vec<&str>>, Option<usize>, &str)) {
+            let (name, aliases, seq, comment) = out;
+            let entry = Entry::try_new(format!("{}.ext", base), false).unwrap();
+            let out = (name, aliases, seq, comment, "ext");
             assert_eq!(out, entry.collection_parts());
         }
 
-        // name.
-        case("foo", ("foo", None, None));
-        case("foo bar", ("foo bar", None, None));
-        case("foo bar - baz", ("foo bar - baz", None, None));
-        case("foo - 2025 - 24", ("foo - 2025 - 24", None, None));
-        case("_foo_-24", ("_foo_-24", None, None));
-        case("foo ~ 24", ("foo ~ 24", None, None));
-        case("foo~ 24", ("foo~ 24", None, None));
-        case("foo+bar", ("foo+bar", None, None));
-        case("foo+bar,baz", ("foo+bar,baz", None, None));
-        case("foo+bar ~ 24", ("foo+bar ~ 24", None, None));
-        case("foo ~24", ("foo ~24", None, None));
-        case("foo bar~24", ("foo bar~24", None, None));
-        case("foo bar ~24", ("foo bar ~24", None, None));
-        case("_foo_ ~24", ("_foo_ ~24", None, None));
-        case("foo - 33~24", ("foo - 33~24", None, None));
-        case("foo+ ~24", ("foo+ ~24", None, None));
-        case("foo+ asd~24", ("foo+ asd~24", None, None));
-        case("foo+asd ~24", ("foo+asd ~24", None, None));
-        case("foo+~24", ("foo+~24", None, None));
-        case("foo+,~24", ("foo+,~24", None, None));
-        case("foo+bar,~24", ("foo+bar,~24", None, None));
+        // stem only.
+        case("foo", ("foo", None, None, ""));
+        case("foo bar", ("foo bar", None, None, ""));
+        case("foo bar - baz", ("foo bar - baz", None, None, ""));
+        case("foo - 2025 - 24", ("foo - 2025 - 24", None, None, ""));
+        case("_foo_-24", ("_foo_-24", None, None, ""));
+        case("foo ~ 24", ("foo ~ 24", None, None, ""));
+        case("foo~ 24", ("foo~ 24", None, None, ""));
+        case("foo+bar", ("foo+bar", None, None, ""));
+        case("foo+bar,baz", ("foo+bar,baz", None, None, ""));
+        case("foo+bar ~ 24", ("foo+bar ~ 24", None, None, ""));
+        case("foo ~24", ("foo ~24", None, None, ""));
+        case("foo bar~24", ("foo bar~24", None, None, ""));
+        case("foo bar ~24", ("foo bar ~24", None, None, ""));
+        case("_foo_ ~24", ("_foo_ ~24", None, None, ""));
+        case("foo - 33~24", ("foo - 33~24", None, None, ""));
+        case("foo+ ~24", ("foo+ ~24", None, None, ""));
+        case("foo+ asd~24", ("foo+ asd~24", None, None, ""));
+        case("foo+asd ~24", ("foo+asd ~24", None, None, ""));
+        case("foo+~24", ("foo+~24", None, None, ""));
+        case("foo+,~24", ("foo+,~24", None, None, ""));
+        case("foo+bar,~24", ("foo+bar,~24", None, None, ""));
+        case("foo+bar,~24 cool", ("foo+bar,~24 cool", None, None, ""));
 
         // name and seq.
-        case("foo~24", ("foo", None, Some(24)));
-        case("foo_~24", ("foo_", None, Some(24)));
-        case("__foo~24", ("__foo", None, Some(24)));
-        case("_foo__~24", ("_foo__", None, Some(24)));
+        case("foo~24", ("foo", None, Some(24), ""));
+        case("foo_~24", ("foo_", None, Some(24), ""));
+        case("__foo~24", ("__foo", None, Some(24), ""));
+        case("_foo__~24", ("_foo__", None, Some(24), ""));
 
         // name, aliases and seq.
-        case("foo+bar~24", ("foo", Some(vec!["bar"]), Some(24)));
+        case("foo+bar~24", ("foo", Some(vec!["bar"]), Some(24), ""));
         case(
             "foo+bar,baz~24",
-            ("foo", Some(vec!["bar", "baz"]), Some(24)),
+            ("foo", Some(vec!["bar", "baz"]), Some(24), ""),
+        );
+
+        // name, seq, and comment.
+        case("foo~24 cool", ("foo", None, Some(24), "cool"));
+        case("foo_~24 nice!", ("foo_", None, Some(24), "nice!"));
+        case("__foo~24 ?why?", ("__foo", None, Some(24), "?why?"));
+        case("_foo__~24 - cut", ("_foo__", None, Some(24), "- cut"));
+
+        // name, aliases, seq, and comment.
+        case(
+            "foo+bar~24 seen 3 times",
+            ("foo", Some(vec!["bar"]), Some(24), "seen 3 times"),
+        );
+        case(
+            "foo+bar,baz~24 with comment!",
+            ("foo", Some(vec!["bar", "baz"]), Some(24), "with comment!"),
         );
     }
 
