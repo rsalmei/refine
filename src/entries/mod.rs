@@ -22,14 +22,14 @@ pub struct Fetcher {
 /// The mode of traversal to use when fetching entries.
 #[derive(Debug, Copy, Clone)]
 pub enum TraversalMode {
-    /// Only files.
-    Files, // dupes, probe, and rebuild.
-    /// Directories stop recursion because the dir itself is the output.
-    DirsStop, // join.
-    /// Directories are chained with their content.
-    DirsAndContent, // rename.
-    /// Contents are listed while recursing, and change to directories at the max depth.
-    ContentOverDirs, // list
+    /// Only files (dupes, probe, and rebuild).
+    Files,
+    /// Directories stop recursion because the dir itself is the output (join).
+    DirsStop,
+    /// Directories are chained with their content (rename).
+    DirsAndContent,
+    /// Contents are listed while recursing, and change to directories at the max depth (list).
+    ContentOverDirs,
 }
 
 #[derive(Debug)]
