@@ -1,4 +1,4 @@
-use super::{NewEntry, OriginalEntry};
+use super::{NewEntry, SourceEntry};
 use std::io::Write;
 use std::path::Path;
 use std::{fs, io};
@@ -31,7 +31,7 @@ impl<M: OriginalEntry + NewEntry> FileOps for Vec<M> {
 }
 
 fn files_op(
-    paths: &mut Vec<impl OriginalEntry + NewEntry>,
+    paths: &mut Vec<impl SourceEntry + NewEntry>,
     notify: fn(&[u8]),
     op: fn(&Path, &Path) -> io::Result<()>,
 ) {

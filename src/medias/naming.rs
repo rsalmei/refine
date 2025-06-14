@@ -1,4 +1,4 @@
-use super::{NewNameMut, OriginalEntry};
+use super::{NewNameMut, SourceEntry};
 use crate::utils;
 use anyhow::{Context, Result};
 use clap::Args;
@@ -68,10 +68,13 @@ impl<'r> NamingRules<'r> {
         Ok(NamingRules(rules))
     }
 
-    /// Apply these rules to a list of media.
-    pub fn apply<M: NewNameMut + OriginalEntry>(&self, medias: &mut Vec<M>) -> usize {
+    /// Apply these rules to a list of media, consuming the entries that got their names cleared.
+    ///
+    /// The [NewNameMut] is used as the starting point, and is mutated in place.
+    /// It returns the number of entries that were cleared by the rules.
+    pub fn apply(&self, medias: &mut Vec<impl SourceEntry + NewNameMut>) -> usize {
         // this is just so that warnings are printed in a consistent order.
-        medias.sort_unstable_by(|m, n| m.entry().cmp(n.entry()));
+        medias.sort_unstable_by(|m, n| m.src_entry().cmp(n.src_entry()));
 
         // apply all rules in order.
         let total = medias.len();
@@ -86,7 +89,7 @@ impl<'r> NamingRules<'r> {
             });
 
             if name.is_empty() {
-                eprintln!("warning: rules cleared name: {}", m.entry());
+                eprintln!("warning: rules cleared name: {}", m.src_entry());
                 return false;
             }
             *m.new_name_mut() = name;
@@ -112,8 +115,8 @@ mod tests {
             &mut self.0
         }
     }
-    impl OriginalEntry for Media {
-        fn entry(&self) -> &Entry {
+    impl SourceEntry for Media {
+        fn src_entry(&self) -> &Entry {
             &ROOT
         }
     }

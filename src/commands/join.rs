@@ -1,7 +1,7 @@
 use crate::commands::Refine;
 use crate::entries::{Entry, Fetcher, ROOT, Recurse, TraversalMode};
-use crate::impl_original_entry;
-use crate::medias::{FileOps, NewEntry, OriginalEntry};
+use crate::impl_source_entry;
+use crate::medias::{FileOps, NewEntry, SourceEntry};
 use crate::utils;
 use anyhow::{Context, Result, anyhow};
 use clap::{Args, ValueEnum};
@@ -257,13 +257,13 @@ impl Media {
     }
 }
 
-impl_original_entry!(Media);
+impl_source_entry!(Media);
 
 impl NewEntry for Media {
     fn new_entry(&self) -> Entry {
         let name = self.new_name.as_ref().map(|s| s.as_ref());
         let path = &SHARED.get().unwrap().target;
-        path.join(name.unwrap_or_else(|| self.entry().file_name()))
+        path.join(name.unwrap_or_else(|| self.src_entry().file_name()))
     }
 }
 
