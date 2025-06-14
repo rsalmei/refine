@@ -6,6 +6,7 @@ use crate::utils;
 use anyhow::{Context, Result, anyhow};
 use clap::{Args, ValueEnum};
 use std::collections::HashSet;
+use std::fmt::Display;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::OnceLock;
@@ -97,7 +98,7 @@ impl Refine for Join {
         if target.exists() {
             // if target happens to be inside any input path and is not empty, this will dup the files.
             let fetcher = Fetcher::single(&target, Recurse::Shallow);
-            let in_target = fetcher.fetch(Join::HANDLES).collect::<Vec<_>>();
+            let in_target = fetcher.fetch(Join::MODE).collect::<Vec<_>>();
             target_names.extend(in_target.iter().map(|e| e.file_name().to_string()));
             medias.extend(in_target.into_iter().map(|entry| Media {
                 entry,
@@ -118,27 +119,27 @@ impl Refine for Join {
             .filter(|g| g.len() > 1)
             .for_each(|g| {
                 clashes += g.len() - 1; // one is (or will be) in target, the others are clashes.
-                let (name, ext) = g[0].entry.filename_parts();
-                let (name, ext) = (name.to_owned(), ext.to_owned()); // g must not be borrowed.
+                let (stem, ext) = g[0].entry.filename_parts();
+                let (stem, ext) = (stem.to_owned(), ext.to_owned()); // g must not be borrowed.
                 let dot = if ext.is_empty() { "" } else { "." };
                 match self.clashes {
                     Clashes::NameSequence => {
                         let mut seq = 2..;
                         g.iter_mut().skip(1).for_each(|m| {
                             let new_name = (&mut seq)
-                                .map(|i| format!("{name}-{i}{dot}{ext}"))
+                                .map(|i| format!("{stem}-{i}{dot}{ext}"))
                                 .find(|s| target_names.iter().all(|t| s != t))
                                 .unwrap();
                             m.new_name = Some(new_name);
-                        })
+                        });
                     }
                     Clashes::ParentName | Clashes::NameParent => g.iter_mut().for_each(|m| {
                         let par = m.entry.parent().unwrap_or(ROOT.clone());
                         let par = par.file_name();
                         if let Clashes::ParentName = self.clashes {
-                            m.new_name = Some(format!("{par}-{name}{dot}{ext}"));
+                            m.new_name = Some(format!("{par}-{stem}{dot}{ext}"));
                         } else {
-                            m.new_name = Some(format!("{name}-{par}{dot}{ext}"));
+                            m.new_name = Some(format!("{stem}-{par}{dot}{ext}"));
                         }
                     }),
                     Clashes::Ignore => g.iter_mut().for_each(|m| m.skip = Skip::Yes),
@@ -173,12 +174,16 @@ impl Refine for Join {
             println!();
         }
         println!("total entries: {total}");
-        println!("  clashes: {clashes}");
+        let resolved: &dyn Display = if clashes > 0 { &self.clashes } else { &"" };
+        println!("  clashes: {clashes}{}", resolved);
         println!("  in place: {in_place}");
+        println!("\njoin [by {:?}] to: {target}", self.by);
+
+        // step: ask for confirmation.
         if medias.is_empty() {
+            println!("nothing to do");
             return Ok(());
         }
-        println!("\njoin [by {:?}] to: {target}", self.by);
         if !self.yes {
             utils::prompt_yes_no("apply changes?")?;
         }
@@ -237,6 +242,17 @@ impl Refine for Join {
             (false, By::Copy) => println!("found {} errors", medias.len()),
         }
         Ok(())
+    }
+}
+
+impl Display for Clashes {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Clashes::NameSequence => write!(f, " (resolved by name-sequence)"),
+            Clashes::ParentName => write!(f, " (resolved by parent-name)"),
+            Clashes::NameParent => write!(f, " (resolved by name-parent)"),
+            Clashes::Ignore => write!(f, " (ignored)"),
+        }
     }
 }
 
