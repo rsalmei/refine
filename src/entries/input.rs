@@ -47,7 +47,7 @@ fn validate_dirs(mut dirs: Vec<PathBuf>) -> Result<(Vec<Entry>, InputInfo)> {
 
     let (dirs, missing) = dirs
         .into_iter()
-        .map(|pb| Entry::try_from(&*pb).map_err(|err| (pb, err)))
+        .map(|pb| Entry::try_from(pb.clone()).map_err(|err| (pb, err)))
         .inspect(|res| {
             if let Err((pb, err)) = res {
                 eprintln!("warning: invalid directory {pb:?}: {err}");

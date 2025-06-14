@@ -17,33 +17,32 @@ pub struct Entry {
 }
 
 /// Create a new entry from a path, checking that it has a valid UTF-8 representation.
-impl TryFrom<&Path> for Entry {
+impl TryFrom<PathBuf> for Entry {
     type Error = anyhow::Error;
 
-    fn try_from(p: &Path) -> Result<Self, Self::Error> {
-        let is_dir = p.is_dir();
+    fn try_from(path: PathBuf) -> Result<Self, Self::Error> {
+        let is_dir = path.is_dir();
         if is_dir {
-            p.file_name()
+            path.file_name()
                 .unwrap_or_default() // the root dir has no name.
                 .to_str()
-                .ok_or_else(|| anyhow!("no UTF-8 dir name: {p:?}"))?;
+                .ok_or_else(|| anyhow!("no UTF-8 dir name: {path:?}"))?;
         } else {
-            p.file_stem()
-                .ok_or_else(|| anyhow!("no file stem: {p:?}"))?
+            path.file_stem()
+                .ok_or_else(|| anyhow!("no file stem: {path:?}"))?
                 .to_str()
-                .ok_or_else(|| anyhow!("no UTF-8 file stem: {p:?}"))?;
-            p.extension()
+                .ok_or_else(|| anyhow!("no UTF-8 file stem: {path:?}"))?;
+            path.extension()
                 .unwrap_or_default()
                 .to_str()
-                .ok_or_else(|| anyhow!("no UTF-8 file extension: {p:?}"))?;
+                .ok_or_else(|| anyhow!("no UTF-8 file extension: {path:?}"))?;
         }
         // I could just check that the entire path is valid UTF-8, but I want to give better error messages.
-        if let Some(pp) = p.parent() {
+        if let Some(pp) = path.parent() {
             // the root dir has no parent.
             pp.to_str()
                 .ok_or_else(|| anyhow!("no UTF-8 parent: {pp:?}"))?;
         }
-        let path = p.to_owned();
         Ok(Entry { path, is_dir })
     }
 }
@@ -53,13 +52,22 @@ pub static ROOT: LazyLock<Entry> = LazyLock::new(|| Entry::try_new("/", true).un
 impl Entry {
     /// Create a new entry that, in case the path does not exist, will assume the given directory flag.
     /// If it does exist, check that it has the correct directory flag or panic.
-        let mut entry = Entry::try_from(path.into())?;
-        match entry.path.exists() {
-            true => assert_eq!(entry.is_dir, is_dir),
-            false => entry.is_dir = is_dir,
     pub fn try_new(path: impl Into<PathBuf>, is_dir: bool) -> Result<Self, anyhow::Error> {
+        let path = path.into();
+        if path.to_str().is_none() {
+            return Err(anyhow!("invalid UTF-8 path: {path:?}"));
         }
-        Ok(entry)
+
+        // panic if the entry exists and the directory flag doesn't match.
+        // it should never happen in normal program logic, so if it does it's a bug.
+        match path.try_exists() {
+            Ok(true) => assert_eq!(path.is_dir(), is_dir, "is_dir error in {path:?}: {is_dir}"),
+            Ok(false) => {} // the path was verified to not exist, cool.
+            Err(err) => println!("warning: couldn't verify {path:?}: {err}"),
+        }
+
+        Ok(Entry { path, is_dir })
+    }
     }
 
     /// Get the stem and extension from files, or name from directories.
