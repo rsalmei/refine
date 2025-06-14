@@ -342,21 +342,37 @@ mod tests {
     fn collection_parts() {
         #[track_caller]
         fn case(p: impl AsRef<Path>, out: (&str, Option<usize>, &str)) {
+
+    #[test]
+    fn fn_display_parts() {
+        #[track_caller]
+        fn case(p: impl Into<PathBuf>, is_dir: bool, out: (&str, &str, &str)) {
             let entry = Entry {
-                path: p.as_ref().to_owned(),
-                is_dir: false,
+                path: p.into(),
+                is_dir,
             };
-            assert_eq!(out, entry.collection_parts())
+            assert_eq!(out, display_parts(&entry));
         }
 
-        case("foo", ("foo", None, ""));
-        case("foo.bar", ("foo", None, "bar"));
-        case("foo.bar.baz", ("foo.bar", None, "baz"));
-        case("foo-1.bar.baz", ("foo-1.bar", None, "baz"));
+        // Directory cases (fixed)
+        case(".", true, ("", ".", "/"));
+        case("..", true, ("", "..", "/"));
+        case("/", true, ("", "/", ""));
+        case("./", true, ("", "./", ""));
+        case("../", true, ("", "../", ""));
+        case("dir", true, ("", "dir", "/"));
+        case("dir/", true, ("", "dir", "/"));
+        case("dir/.", true, ("", "dir", "/"));
+        case("./dir", true, ("./", "dir", "/"));
+        case("./dir/", true, ("./", "dir", "/"));
+        case("./dir/.", true, ("./", "dir", "/"));
 
-        case("foo-1", ("foo", Some(1), ""));
-        case("foo-1.bar", ("foo", Some(1), "bar"));
-        case("foo.bar-1.baz", ("foo.bar", Some(1), "baz"));
-        case("foo-1.bar-2.baz", ("foo-1.bar", Some(2), "baz"));
+        // File cases
+        case("file.txt", false, ("", "file.txt", ""));
+        case("./file.txt", false, ("./", "file.txt", ""));
+        case("dir/file.txt", false, ("dir/", "file.txt", ""));
+        case("./dir/file.txt", false, ("./dir/", "file.txt", ""));
+        case(".hidden", false, ("", ".hidden", ""));
+        case("./dir/.hidden", false, ("./dir/", ".hidden", ""));
     }
 }
