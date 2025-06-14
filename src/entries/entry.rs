@@ -2,10 +2,11 @@ use anyhow::{Result, anyhow};
 use regex::Regex;
 use std::cmp::Ordering;
 use std::convert::Into;
+use std::env;
 use std::fmt::{self, Display};
+use std::fs::Metadata;
 use std::hash::{Hash, Hasher};
-use std::ops::{Deref, DerefMut};
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::sync::LazyLock;
 use yansi::{Paint, Style};
 
@@ -68,6 +69,19 @@ impl Entry {
 
         Ok(Entry { path, is_dir })
     }
+
+    /// Create a new entry with the given name adjoined without checking UTF-8 again.
+    pub fn join(&self, name: impl AsRef<str>) -> Entry {
+        let path = self.path.join(name.as_ref());
+        let is_dir = path.is_dir();
+        Entry { path, is_dir }
+    }
+
+    /// Create a new entry with the given name without checking UTF-8 again.
+    pub fn with_file_name(&self, name: impl AsRef<str>) -> Entry {
+        let path = self.path.with_file_name(name.as_ref());
+        let is_dir = path.is_dir();
+        Entry { path, is_dir }
     }
 
     /// Get the stem and extension from files, or name from directories.
@@ -97,7 +111,7 @@ impl Entry {
         (name, ext, aliases, seq)
     }
 
-    /// Return a cached directory flag, without touching the filesystem again.
+    /// Return a cached directory flag, which does not touch the filesystem again.
     pub fn is_dir(&self) -> bool {
         self.is_dir
     }
@@ -122,22 +136,16 @@ impl Entry {
         })
     }
 
-    /// Get a new entry with the given file name, without checking UTF-8 again.
-    pub fn with_file_name(&self, name: impl AsRef<str>) -> Entry {
-        let path = self.path.with_file_name(name.as_ref());
-        Entry {
-            is_dir: path.is_dir(),
-            path,
-        }
+    pub fn metadata(&self) -> Result<Metadata> {
+        self.path.metadata().map_err(Into::into)
     }
 
-    /// Get a new entry with the given name adjoined, without checking UTF-8 again.
-    pub fn join(&self, name: impl AsRef<str>) -> Entry {
-        let path = self.path.join(name.as_ref());
-        Entry {
-            is_dir: path.is_dir(),
-            path,
-        }
+    pub fn starts_with(&self, prefix: impl AsRef<Path>) -> bool {
+        self.path.starts_with(prefix)
+    }
+
+    pub fn exists(&self) -> bool {
+        self.path.exists()
     }
 
     pub fn display_path(&self) -> DisplayPath {
