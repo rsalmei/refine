@@ -1,5 +1,5 @@
-use super::sequence::Sequence;
 use anyhow::{Result, anyhow};
+use regex::Regex;
 use std::cmp::Ordering;
 use std::convert::Into;
 use std::fmt::{self, Display};
@@ -73,20 +73,20 @@ impl Entry {
         }
     }
 
-    /// Get the name, sequence, and extension from collection medias.
-    pub fn collection_parts(&self) -> (&str, Option<usize>, &str) {
-        // static RE: LazyLock<Regex> =
-        //     LazyLock::new(|| Regex::new(r"^(?<n>[^ ]*) \((?<a>.*)\)$").unwrap());
+    /// Get the name, aliases, sequence, and extension from collection media names.
+    pub fn collection_parts(&self) -> (&str, &str, Option<Vec<&str>>, Option<usize>) {
+        // regex: name~24 or name+alias1,alias2~24 or just name.
+        static RE: LazyLock<Regex> =
+            LazyLock::new(|| Regex::new(r"^(\w+)(?:\+(\w+(?:,\w+)*))?~(\d+)$").unwrap());
 
-        assert!(!self.is_dir, "not a file: {self}");
         let (stem, ext) = self.filename_parts();
-        let seq = Sequence::from(stem);
-        let name = &stem[..seq.true_len];
-        // let (name, alias) = match RE.captures(name).map(|caps| caps.extract()) {
-        //     Some((name, [alias])) => (name, alias),
-        //     _ => (name, ""),
-        // };
-        (name, seq.num, ext)
+        let Some(caps) = RE.captures(stem) else {
+            return (stem, ext, None, None);
+        };
+        let name = caps.get(1).unwrap().as_str(); // regex guarantees name is present.
+        let aliases = caps.get(2).map(|m| m.as_str().split(',').collect());
+        let seq = caps.get(3).and_then(|m| m.as_str().parse().ok());
+        (name, ext, aliases, seq)
     }
 
     /// Return a cached directory flag, without touching the filesystem again.

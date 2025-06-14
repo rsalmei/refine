@@ -75,12 +75,6 @@ impl Refine for Rebuild {
         // step: apply naming rules.
         let warnings = self.naming.compile()?.apply(&mut medias);
 
-        // step: extract and strip sequence numbers.
-        medias.iter_mut().for_each(|m| {
-            let (name, seq) = utils::collection_parts(&m.new_name);
-            m.seq = seq;
-            m.new_name.truncate(name.len()); // sequence numbers are always at the end.
-        });
 
         // step: reset names if forcing a new one.
         if let Some(force) = &self.force {
@@ -214,7 +208,7 @@ impl TryFrom<&Entry> for Media {
     type Error = anyhow::Error;
 
     fn try_from(entry: &Entry) -> Result<Self, Self::Error> {
-        let (name, ext) = entry.filename_parts();
+        let (name, ext, _, seq) = entry.collection_parts();
         Ok(Media {
             new_name: CASE_FN.get().unwrap()(name.trim()),
             ext: utils::intern(ext),

@@ -1,6 +1,5 @@
 mod naming;
 mod ops;
-mod parts;
 
 use crate::entries::Entry;
 pub use naming::*;
@@ -18,9 +17,6 @@ pub trait NewEntry {
 
 pub trait NewName {
     fn new_name(&self) -> &str;
-    fn collection_parts_new(&self) -> (&str, Option<usize>) {
-        parts::collection_parts(self.new_name())
-    }
 }
 
 pub trait NewNameMut {

@@ -210,8 +210,7 @@ impl TryFrom<&Entry> for Media {
     type Error = anyhow::Error;
 
     fn try_from(entry: &Entry) -> Result<Self, Self::Error> {
-        let (stem, _) = entry.filename_parts();
-        let (name, _) = utils::collection_parts(stem);
+        let (name, _, _, _) = entry.collection_parts();
         Ok(Media {
             name: name.to_owned(),
             verdict: Pending,
