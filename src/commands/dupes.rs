@@ -10,8 +10,8 @@ use std::io::{self, Read};
 
 #[derive(Debug, Args)]
 pub struct Dupes {
-    /// Sample size in bytes (0 to disable).
-    #[arg(short = 's', long, default_value_t = 2 * 1024, value_name = "INT")]
+    /// Sample size in kbytes (0 to disable).
+    #[arg(short = 's', long, default_value_t = 4, value_name = "INT")]
     sample: usize,
 }
 
@@ -76,7 +76,7 @@ impl Dupes {
             .filter(|g| g.len() > 1)
             .flat_map(|g| {
                 g.iter_mut().for_each(|m| {
-                    m.cache_sample(self.sample); // warm up samples for groups with at least 2 files.
+                    m.cache_sample(self.sample * 1024); // warm up samples for groups with at least 2 files.
                 });
                 let mut split = HashMap::with_capacity(g.len());
                 g.iter()
