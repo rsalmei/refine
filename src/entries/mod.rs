@@ -16,7 +16,7 @@ pub struct Fetcher {
     /// Effective input paths to scan, after deduplication and checking.
     dirs: Vec<Entry>,
     recurse: Recurse,
-    filter: Rc<EntryFilter>,
+    filter_rules: Rc<FilterRules>,
 }
 
 /// The mode of traversal to use when fetching entries.
@@ -42,21 +42,19 @@ pub enum Recurse {
 impl Fetcher {
     /// Reads all entries from a single directory.
     pub fn single(entry: impl Into<Entry>, recurse: Recurse) -> Self {
-        Self::new(vec![entry.into()], recurse, Filter::default()).unwrap() // can't fail.
+        Self::new(vec![entry.into()], recurse, FilterSpec::default()).unwrap() // can't fail.
     }
 
     /// Reads entries from the given directories, with the given filtering rules and recursion.
-    pub fn new(dirs: Vec<Entry>, recurse: Recurse, filter: Filter) -> Result<Self> {
+    pub fn new(dirs: Vec<Entry>, recurse: Recurse, filter: FilterSpec) -> Result<Self> {
         let filter = filter.try_into()?; // compile regexes and check for errors before anything else.
-
         if dirs.is_empty() {
             return Err(anyhow!("no valid paths given"));
         }
-
         Ok(Fetcher {
             dirs,
             recurse,
-            filter: Rc::new(filter),
+            filter_rules: Rc::new(filter),
         })
     }
 
@@ -64,7 +62,7 @@ impl Fetcher {
         let depth = self.recurse.into();
         self.dirs
             .into_iter()
-            .flat_map(move |dir| entries(dir, depth, mode, Rc::clone(&self.filter)))
+            .flat_map(move |dir| entries(dir, depth, mode, Rc::clone(&self.filter_rules)))
     }
 }
 
@@ -72,7 +70,7 @@ fn entries(
     dir: Entry,
     depth: Depth,
     mode: TraversalMode,
-    ef: Rc<EntryFilter>,
+    fr: Rc<FilterRules>,
 ) -> Box<dyn Iterator<Item = Entry>> {
     if !utils::is_running() {
         return Box::new(iter::empty());
@@ -97,8 +95,8 @@ fn entries(
             .flat_map(move |entry| {
                 use TraversalMode::*;
                 let (d, rec) = depth.inc();
-                match (entry.is_dir(), ef.is_in(&entry), rec, mode) {
                     (false, true, _, _) => Box::new(iter::once(entry)),
+                match (entry.is_dir(), fr.is_in(&entry), rec, mode) {
                     (true, true, false, DirsStop | DirsAndContent | ContentOverDirs) => {
                         Box::new(iter::once(entry))
                     }
@@ -107,7 +105,7 @@ fn entries(
                     }
                     (true, true, true, DirsStop) => Box::new(iter::once(entry)),
                     (true, true, true, DirsAndContent) => Box::new(
-                        iter::once(entry.clone()).chain(entries(entry, d, mode, Rc::clone(&ef))),
+                        iter::once(entry.clone()).chain(entries(entry, d, mode, Rc::clone(&fr))),
                     ),
                     _ => Box::new(iter::empty()),
                 }
