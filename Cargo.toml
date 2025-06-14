@@ -20,3 +20,4 @@ regex = "1.11"
 ctrlc = "3"
 ureq = "3"
 yansi = { version = "1" }
+dirs = "6"
