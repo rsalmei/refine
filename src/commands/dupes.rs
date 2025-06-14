@@ -25,7 +25,7 @@ pub struct Media {
 
 impl Refine for Dupes {
     type Media = Media;
-    const OPENING_LINE: &'static str = "Detecting duplicate files...";
+    const OPENING_LINE: &'static str = "Detect duplicate files";
     const MODE: TraversalMode = TraversalMode::Files;
 
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
