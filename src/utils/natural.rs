@@ -4,25 +4,26 @@ use std::sync::LazyLock;
 
 static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\d+)|(\D+)").unwrap());
 
-pub fn natural_cmp(a: &str, b: &str) -> Ordering {
+/// Compare two strings in a natural order, case-insensitive.
+pub fn natural_cmp(a: impl AsRef<str>, b: impl AsRef<str>) -> Ordering {
     let chunks = |x| {
         RE.captures_iter(x).map(|cap| {
             if let Some(m) = cap.get(1) {
                 (true, m.as_str()) // numeric chunk (still as str, as it might not be necessary to parse).
             } else {
-                (false, cap.get(2).unwrap().as_str()) // text chunk.
+                (false, cap.get(2).unwrap().as_str()) // text chunk, guaranteed.
             }
         })
     };
-    let mut a_it = chunks(a);
-    let mut b_it = chunks(b);
+    let mut a_it = chunks(a.as_ref());
+    let mut b_it = chunks(b.as_ref());
 
     for ((a_is_num, a_val), (b_is_num, b_val)) in a_it.by_ref().zip(b_it.by_ref()) {
         match (a_is_num, b_is_num) {
             // both chunks are numeric.
             (true, true) => {
-                let num_a = a_val.parse::<u64>().unwrap_or(0); // regex guarantees they're parsable,
-                let num_b = b_val.parse::<u64>().unwrap_or(0); // but they might not fit an u64...
+                let num_a = a_val.parse::<u64>().unwrap_or_default(); // regex guarantees they're parsable,
+                let num_b = b_val.parse::<u64>().unwrap_or_default(); // but they might not fit an u64...
                 match num_a.cmp(&num_b) {
                     Ordering::Equal => match a_val.len().cmp(&b_val.len()) {
                         Ordering::Equal => {}
