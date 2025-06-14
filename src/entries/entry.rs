@@ -256,22 +256,9 @@ impl Display for Entry {
     }
 }
 
-impl Deref for Entry {
-    type Target = PathBuf;
-    fn deref(&self) -> &PathBuf {
-        &self.path
-    }
-}
-
-impl DerefMut for Entry {
-    fn deref_mut(&mut self) -> &mut PathBuf {
-        &mut self.path
-    }
-}
-
 impl AsRef<Path> for Entry {
     fn as_ref(&self) -> &Path {
-        self.deref()
+        &self.path
     }
 }
 
