@@ -42,10 +42,10 @@ impl<'r> NamingRules<'r> {
         strip_rules: [&[impl AsRef<str> + Sized]; 3],
         replace_rules: &'r [(impl AsRef<str> + Sized, impl AsRef<str> + Sized)],
     ) -> Result<NamingRules<'r>> {
-        const BOUND: &str = r"[-_.\s]";
+        const BOUND: &str = r"[-_.\s,]";
         let before = |rule| format!("(?i)^.*{rule}{BOUND}*");
         let after = |rule| format!("(?i){BOUND}*{rule}.*$");
-        let exactly = |rule| format!(r"(?i){BOUND}+{rule}$|^{rule}{BOUND}+|{BOUND}+{rule}|{rule}");
+        let exactly = |rule| format!(r"(?i){BOUND}+{rule}|{rule}{BOUND}+|{rule}");
         let replace = |rule| format!(r"(?i){rule}");
 
         let rules = strip_rules
@@ -79,12 +79,10 @@ impl<'r> NamingRules<'r> {
         // apply all rules in order.
         let total = medias.len();
         medias.retain_mut(|m| {
-            let mut changed = false;
             let mut name = std::mem::take(m.new_name_mut());
             self.0.iter().for_each(|(re, to)| {
                 if let Cow::Owned(x) = re.replace_all(&name, *to) {
-                    changed = true;
-                    name = x
+                    name = x;
                 }
             });
 
@@ -172,11 +170,9 @@ mod tests {
         // exact: {rule}
         case(&["Exact"], 2, "fexactoo", "foo");
         case(&["Exact"], 2, "fexactoExacto", "foo");
-        case(&["Exact"], 2, "fooExact bar", "foo bar");
+        case(&["Exact"], 2, "fooExact bar", "foobar");
+        case(&["Exact"], 2, "foo Exactbar", "foobar");
         case(&["exact"], 2, "Exactfoo bar", "foo bar");
-
-        // exact: unfortunate case, where I'd need lookahead to avoid it...
-        // case([&[], &[], &["Exact"]], "foo Exactbar", "foo bar");
     }
 
     #[test]
