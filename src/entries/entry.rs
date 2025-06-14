@@ -299,8 +299,8 @@ mod tests {
     #[test]
     fn entry_creation() {
         #[track_caller]
-        fn case(p: impl AsRef<Path>) -> Result<Entry, anyhow::Error> {
-            Entry::try_from(p.as_ref().to_owned())
+        fn case(p: impl Into<PathBuf>) -> Result<Entry, anyhow::Error> {
+            Entry::try_from(p.into())
         }
 
         case("foo").unwrap();
@@ -313,9 +313,9 @@ mod tests {
     #[test]
     fn filename_parts() {
         #[track_caller]
-        fn case(p: impl AsRef<Path>, is_dir: bool, out: (&str, &str)) {
+        fn case(p: impl Into<PathBuf>, is_dir: bool, out: (&str, &str)) {
             let entry = Entry {
-                path: p.as_ref().to_owned(),
+                path: p.into(),
                 is_dir,
             };
             assert_eq!(out, entry.filename_parts())
@@ -325,9 +325,17 @@ mod tests {
         case("foo.bar", false, ("foo", "bar"));
         case("foo.bar.baz", false, ("foo.bar", "baz"));
 
+        case(".foo", false, (".foo", ""));
+        case(".foo.bar", false, (".foo", "bar"));
+        case(".foo.bar.baz", false, (".foo.bar", "baz"));
+
         case("foo", true, ("foo", ""));
         case("foo.bar", true, ("foo.bar", ""));
         case("foo.bar.baz", true, ("foo.bar.baz", ""));
+
+        case(".foo", true, (".foo", ""));
+        case(".foo.bar", true, (".foo.bar", ""));
+        case(".foo.bar.baz", true, (".foo.bar.baz", ""));
     }
 
     #[test]
