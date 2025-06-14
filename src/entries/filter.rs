@@ -25,6 +25,12 @@ pub struct FilterSpec {
     /// Exclude these directories.
     #[arg(short = 'X', long, global = true, help_heading = Some("Fetch"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     dir_ex: Option<String>,
+    /// Include only these full paths.
+    #[arg(long, global = true, help_heading = Some("Fetch"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
+    path_in: Option<String>,
+    /// Exclude these full paths.
+    #[arg(long, global = true, help_heading = Some("Fetch"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
+    path_ex: Option<String>,
     /// Include only these files.
     #[arg(long, global = true, help_heading = Some("Fetch"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     file_in: Option<String>,
@@ -46,6 +52,7 @@ pub struct FilterRules {
     only_dirs: bool,
     all: Constraint,
     dir: Constraint,
+    path: Constraint,
     file: Constraint,
     ext: Constraint,
 }
@@ -61,11 +68,17 @@ impl FilterRules {
 
         let ret = self.all.is_match(stem)
             && match entry.is_dir() {
-                true => self.dir.is_match(entry.to_str()) && !self.only_files,
+                true => {
+                    self.dir.is_match(entry.file_name())
+                        && self.path.is_match(entry.to_str())
+                        && !self.only_files
+                }
                 false => {
+                    let parent = entry.parent()?;
                     self.file.is_match(stem)
                         && self.ext.is_match(ext)
-                        && self.dir.is_match(entry.parent()?.to_str())
+                        && self.dir.is_match(parent.file_name())
+                        && self.path.is_match(parent.to_str())
                         && !self.only_dirs
                 }
             };
@@ -109,6 +122,7 @@ impl TryFrom<FilterSpec> for FilterRules {
             only_dirs: s.only_dirs,
             all: [(s.include, "include"), (s.exclude, "exclude")].try_into()?,
             dir: [(s.dir_in, "dir-in"), (s.dir_ex, "dir-ex")].try_into()?,
+            path: [(s.path_in, "path-in"), (s.path_ex, "path-ex")].try_into()?,
             file: [(s.file_in, "file-in"), (s.file_ex, "file-ex")].try_into()?,
             ext: [(s.ext_in, "ext-in"), (s.ext_ex, "ext-ex")].try_into()?,
         })
