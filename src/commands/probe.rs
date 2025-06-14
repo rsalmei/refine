@@ -124,7 +124,7 @@ impl Refine for Probe {
             .http_status_as_error(false)
             .build()
             .into();
-        for media in &mut *medias {
+        for media in &mut medias {
             print!("  {}: ", media.name);
             stdout().flush()?;
             media.verdict = match self.probe_one(&media.name, &client) {
@@ -210,7 +210,7 @@ impl TryFrom<&Entry> for Media {
     type Error = anyhow::Error;
 
     fn try_from(entry: &Entry) -> Result<Self, Self::Error> {
-        let (name, _, _, _) = entry.collection_parts();
+        let (name, _, _, _, _) = entry.collection_parts();
         Ok(Media {
             name: name.to_owned(),
             verdict: Pending,
