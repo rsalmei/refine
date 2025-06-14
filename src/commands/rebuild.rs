@@ -1,7 +1,7 @@
 use crate::commands::Refine;
 use crate::entries::{Entry, InputInfo, TraversalMode};
 use crate::medias::{FileOps, NamingSpec};
-use crate::utils;
+use crate::utils::{self, PromptError};
 use crate::{impl_new_name, impl_new_name_mut, impl_source_entry};
 use anyhow::Result;
 use clap::Args;
@@ -73,6 +73,31 @@ impl Refine for Rebuild {
 
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         let total_files = medias.len();
+
+        // detect if migration is needed.
+        static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(\w+)-(\d+)$").unwrap());
+        if medias
+            .iter()
+            .any(|m| m.seq.is_none() && RE.is_match(m.entry.filename_parts().0))
+        {
+            eprintln!("warning: detected old-style filenames.");
+            match utils::prompt_yes_no(r#"migrate to new style "name+alias~9"?"#) {
+                Ok(()) => {
+                    medias.iter_mut().for_each(|m| {
+                        if let Some(caps) = RE.captures(m.entry.filename_parts().0) {
+                            m.new_name.truncate(caps[1].len()); // truncate to the actual name length.
+                            m.seq = caps[2].parse().ok(); // find the actual sequence number.
+                        }
+                    });
+                }
+                Err(PromptError::No) => {
+                    eprintln!("filenames might be inconsistent.");
+                }
+                Err(err) => {
+                    return Err(err.into());
+                }
+            }
+        }
 
         // step: apply naming rules.
         let warnings = self.naming.compile()?.apply(&mut medias);
