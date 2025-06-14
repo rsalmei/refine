@@ -180,8 +180,8 @@ impl Refine for Rebuild {
             let temp = format!("__refine+{}__", m.new_name);
             let dest = m.entry.with_file_name(&temp);
             match fs::rename(&m.entry, &dest) {
-                Ok(()) => m.entry.set_file_name(&temp),
-                Err(err) => eprintln!("error: {err:?}: {:?} --> {temp:?}", m.entry),
+                Ok(()) => m.entry = dest,
+                Err(err) => eprintln!("error: {err}: {} --> {temp:?}", m.entry),
             }
         });
         FileOps::rename_move(&mut medias);
