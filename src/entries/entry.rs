@@ -341,7 +341,49 @@ mod tests {
     #[test]
     fn collection_parts() {
         #[track_caller]
-        fn case(p: impl AsRef<Path>, out: (&str, Option<usize>, &str)) {
+        fn case(base: &str, out: (&str, Option<Vec<&str>>, Option<usize>)) {
+            let (name, aliases, seq) = out;
+            let entry = Entry::try_new(base, false).unwrap();
+            let out = (name, "", aliases, seq);
+            assert_eq!(out, entry.collection_parts());
+        }
+
+        // name.
+        case("foo", ("foo", None, None));
+        case("foo bar", ("foo bar", None, None));
+        case("foo bar - baz", ("foo bar - baz", None, None));
+        case("foo - 2025 - 24", ("foo - 2025 - 24", None, None));
+        case("_foo_-24", ("_foo_-24", None, None));
+        case("foo ~ 24", ("foo ~ 24", None, None));
+        case("foo~ 24", ("foo~ 24", None, None));
+        case("foo+bar", ("foo+bar", None, None));
+        case("foo+bar,baz", ("foo+bar,baz", None, None));
+        case("foo+bar ~ 24", ("foo+bar ~ 24", None, None));
+        case("foo ~24", ("foo ~24", None, None));
+        case("foo bar~24", ("foo bar~24", None, None));
+        case("foo bar ~24", ("foo bar ~24", None, None));
+        case("_foo_ ~24", ("_foo_ ~24", None, None));
+        case("foo - 33~24", ("foo - 33~24", None, None));
+        case("foo+ ~24", ("foo+ ~24", None, None));
+        case("foo+ asd~24", ("foo+ asd~24", None, None));
+        case("foo+asd ~24", ("foo+asd ~24", None, None));
+        case("foo+~24", ("foo+~24", None, None));
+        case("foo+,~24", ("foo+,~24", None, None));
+        case("foo+bar,~24", ("foo+bar,~24", None, None));
+
+        // name and seq.
+        case("foo~24", ("foo", None, Some(24)));
+        case("foo_~24", ("foo_", None, Some(24)));
+        case("__foo~24", ("__foo", None, Some(24)));
+        case("_foo__~24", ("_foo__", None, Some(24)));
+
+        // name, aliases and seq.
+        case("foo+bar~24", ("foo", Some(vec!["bar"]), Some(24)));
+        case(
+            "foo+bar,baz~24",
+            ("foo", Some(vec!["bar", "baz"]), Some(24)),
+        );
+    }
 
     #[test]
     fn fn_display_parts() {
