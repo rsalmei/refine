@@ -128,12 +128,12 @@ impl Refine for Rebuild {
             // unfortunately, some file systems have low-resolution creation time, HFS+ for example, so seq is used to disambiguate `created`.
             (m.group(), s_seq(m), m.created, m.seq).cmp(&(n.group(), s_seq(n), n.created, n.seq))
         });
-        let mut total_names = 0;
+        let mut unique_names = 0;
         medias
             .chunk_by_mut(|m, n| m.group() == n.group())
             .for_each(|g| {
-                total_names += 1;
-                let base = g[name_idx(g)].new_name.clone(); // must be cloned because `g` will be modified below.
+                unique_names += 1;
+                let base = std::mem::take(&mut g[name_idx(g)].new_name); // must be taken because `g` will be modified below.
                 let mut seq = p_seq(&g[0]).unwrap_or(1); // the minimum found for this group will be the first.
                 g.iter_mut().for_each(|m| {
                     let (dot, ext) = match m.ext.is_empty() {
@@ -157,7 +157,7 @@ impl Refine for Rebuild {
         if !medias.is_empty() || warnings > 0 {
             println!();
         }
-        println!("total files: {total_files} ({total_names} names)");
+        println!("total files: {total_files} ({unique_names} unique names)");
         println!("  changes: {}", medias.len());
         println!("  warnings: {warnings}");
         if medias.is_empty() {
