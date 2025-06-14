@@ -62,6 +62,10 @@ impl Refine for List {
             self.paths = true;
             eprintln!("Enabling full file paths due to path sorting.\n");
         }
+        if info.num_paths > 1 && !self.paths {
+            self.paths = true;
+            eprintln!("Enabling full file paths due to multiple input paths.\n");
+        }
         CALC_DIR_SIZES.set(!self.no_calc_dirs).unwrap();
     }
 
