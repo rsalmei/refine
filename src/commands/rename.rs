@@ -46,8 +46,9 @@ impl Refine for Rename {
     const MODE: TraversalMode = TraversalMode::DirsAndContent;
 
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
+        let total_files = medias.len();
+
         // step: apply naming rules.
-        let total = medias.len();
         let mut warnings = self.naming.compile()?.apply(&mut medias);
 
         // step: re-include extension in the names.
@@ -110,8 +111,10 @@ impl Refine for Rename {
 
         // step: display the results by parent directory.
         medias.sort_unstable_by(|m, n| {
-            (Reverse(m.entry.components().count()), &m.entry)
-                .cmp(&(Reverse(n.entry.components().count()), &n.entry))
+            // requires a post-order like traversal to avoid move errors.
+            // but since I couldn't find a way to do that, I just reverse the order.
+            // that way, the deepest directories are processed first, before their parents.
+            (Reverse(m.entry.parent()), &m.entry).cmp(&(Reverse(n.entry.parent()), &n.entry))
         });
         medias
             .chunk_by(|m, n| m.entry.parent() == n.entry.parent())
@@ -125,7 +128,7 @@ impl Refine for Rename {
         if !medias.is_empty() || warnings > 0 {
             println!();
         }
-        println!("total files: {total}");
+        println!("total files: {total_files}");
         println!("  changes: {}", medias.len());
         println!("  warnings: {warnings}");
         if medias.is_empty() {
@@ -160,9 +163,9 @@ impl TryFrom<&Entry> for Media {
     type Error = anyhow::Error;
 
     fn try_from(entry: &Entry) -> Result<Self, Self::Error> {
-        let (name, ext) = entry.filename_parts();
+        let (stem, ext) = entry.filename_parts();
         Ok(Media {
-            new_name: name.trim().to_owned(),
+            new_name: stem.trim().to_owned(),
             ext: utils::intern(ext),
             entry: entry.to_owned(),
         })
