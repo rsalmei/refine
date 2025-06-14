@@ -136,7 +136,7 @@ impl Refine for Rename {
         if !self.yes {
             utils::prompt_yes_no("apply changes?")?;
         }
-        medias.rename_move_consuming();
+        FileOps::rename_move(&mut medias);
 
         match medias.is_empty() {
             true => println!("done"),

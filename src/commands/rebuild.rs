@@ -167,7 +167,7 @@ impl Refine for Rebuild {
         if !self.yes {
             utils::prompt_yes_no("apply changes?")?;
         }
-        medias.rename_move_consuming();
+        FileOps::rename_move(&mut medias);
         if medias.is_empty() {
             println!("done");
             return Ok(());
@@ -183,7 +183,7 @@ impl Refine for Rebuild {
                 Err(err) => eprintln!("error: {err:?}: {:?} --> {temp:?}", m.entry),
             }
         });
-        medias.rename_move_consuming();
+        FileOps::rename_move(&mut medias);
 
         match medias.is_empty() {
             true => println!("done"),

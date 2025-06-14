@@ -196,15 +196,15 @@ impl Refine for Join {
         // step: apply changes, if the user agrees.
         fs::create_dir_all(&target).with_context(|| format!("creating {target:?}"))?;
         match self.by {
-            By::Move => medias.rename_move_consuming(),
-            By::Copy => medias.copy_consuming(),
+            By::Move => FileOps::rename_move(&mut medias),
+            By::Copy => FileOps::copy(&mut medias),
         };
 
         // step: recover from CrossDevice errors.
         if !medias.is_empty() {
             if let By::Move = self.by {
                 println!("attempting to fix {} errors", medias.len());
-                medias.cross_move_consuming();
+                FileOps::cross_move(&mut medias);
             }
         }
 
