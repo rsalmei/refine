@@ -43,6 +43,8 @@ pub struct Media {
     smart_match: Option<String>,
     /// The sequence number, which will be kept in partial mode and disambiguate `created` in all modes.
     seq: Option<usize>,
+    /// A comment for the file.
+    comment: String,
     /// A cached version of the file extension.
     ext: &'static str,
     /// The creation time of the file.
@@ -138,7 +140,7 @@ impl Refine for Rebuild {
                         true => ("", ""),
                         false => (".", m.ext),
                     };
-                    m.new_name = format!("{base}-{seq}{dot}{ext}");
+                    m.new_name = format!("{base}~{seq} {}{dot}{ext}", m.comment);
                     seq += 1; // fixes gaps even in partial mode.
                 });
             });
@@ -207,13 +209,14 @@ impl TryFrom<&Entry> for Media {
     type Error = anyhow::Error;
 
     fn try_from(entry: &Entry) -> Result<Self, Self::Error> {
-        let (name, ext, _, seq) = entry.collection_parts();
+        let (name, _, seq, comment, ext) = entry.collection_parts();
         Ok(Media {
             new_name: CASE_FN.get().unwrap()(name.trim()),
+            smart_match: None,
+            seq,
+            comment: comment.to_string(),
             ext: utils::intern(ext),
             created: entry.metadata()?.created()?,
-            seq: None, // can't be set here because naming rules must run before it.
-            smart_match: None,
             entry: entry.to_owned(),
         })
     }
