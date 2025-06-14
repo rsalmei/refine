@@ -165,7 +165,7 @@ impl Refine for Rebuild {
                         true => ("", ""),
                         false => (".", m.ext),
                     };
-                    m.new_name = format!("{base}~{seq} {}{dot}{ext}", m.comment);
+                    m.new_name = format!("{base}~{seq}{}{dot}{ext}", m.comment);
                     seq += 1; // fixes gaps even in partial mode.
                 });
             });

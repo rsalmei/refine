@@ -99,7 +99,7 @@ impl Entry {
     pub fn collection_parts(&self) -> (&str, Option<Vec<&str>>, Option<usize>, &str, &str) {
         // regex: name~24 or name+alias1,alias2~24 or just name.
         static RE: LazyLock<Regex> =
-            LazyLock::new(|| Regex::new(r"^(\w+)(?:\+(\w+(?:,\w+)*))?~(\d+)(?: (.+))?$").unwrap());
+            LazyLock::new(|| Regex::new(r"^(\w+)(?:\+(\w+(?:,\w+)*))?~(\d+)(.+)?$").unwrap());
 
         let (stem, ext) = self.filename_parts();
         let Some(caps) = RE.captures(stem) else {
@@ -387,19 +387,20 @@ mod tests {
         );
 
         // name, seq, and comment.
-        case("foo~24 cool", ("foo", None, Some(24), "cool"));
-        case("foo_~24 nice!", ("foo_", None, Some(24), "nice!"));
-        case("__foo~24 ?why?", ("__foo", None, Some(24), "?why?"));
-        case("_foo__~24 - cut", ("_foo__", None, Some(24), "- cut"));
+        case("foo~24cool", ("foo", None, Some(24), "cool"));
+        case("foo~24 cool", ("foo", None, Some(24), " cool"));
+        case("foo_~24-nice!", ("foo_", None, Some(24), "-nice!"));
+        case("__foo~24 ?why?", ("__foo", None, Some(24), " ?why?"));
+        case("_foo__~24 - cut", ("_foo__", None, Some(24), " - cut"));
 
         // name, aliases, seq, and comment.
         case(
             "foo+bar~24 seen 3 times",
-            ("foo", Some(vec!["bar"]), Some(24), "seen 3 times"),
+            ("foo", Some(vec!["bar"]), Some(24), " seen 3 times"),
         );
         case(
             "foo+bar,baz~24 with comment!",
-            ("foo", Some(vec!["bar", "baz"]), Some(24), "with comment!"),
+            ("foo", Some(vec!["bar", "baz"]), Some(24), " with comment!"),
         );
     }
 
