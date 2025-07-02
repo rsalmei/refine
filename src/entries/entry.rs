@@ -6,6 +6,7 @@ use std::env;
 use std::fmt::{self, Display};
 use std::fs::Metadata;
 use std::hash::{Hash, Hasher};
+use std::ops::Deref;
 use std::path::{Component, Path, PathBuf};
 use std::sync::LazyLock;
 use yansi::{Paint, Style};
@@ -141,14 +142,6 @@ impl Entry {
         self.path.metadata().map_err(Into::into)
     }
 
-    pub fn starts_with(&self, prefix: impl AsRef<Path>) -> bool {
-        self.path.starts_with(prefix)
-    }
-
-    pub fn exists(&self) -> bool {
-        self.path.exists()
-    }
-
     pub fn display_path(&self) -> impl Display {
         DisplayPath(self)
     }
@@ -257,15 +250,17 @@ impl Display for Entry {
     }
 }
 
-impl AsRef<Path> for Entry {
-    fn as_ref(&self) -> &Path {
+impl Deref for Entry {
+    type Target = Path;
+
+    fn deref(&self) -> &Self::Target {
         &self.path
     }
 }
 
-impl From<&Entry> for Entry {
-    fn from(entry: &Entry) -> Self {
-        entry.clone()
+impl AsRef<Path> for Entry {
+    fn as_ref(&self) -> &Path {
+        &self.path
     }
 }
 
