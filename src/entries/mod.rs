@@ -98,7 +98,7 @@ fn entries(
                 use TraversalMode::*;
                 if !entry.is_dir() {
                     // files that pass the filter are always included in any mode.
-                    return if fr.is_in(&entry) && !entry.starts_with(".") {
+                    return if fr.is_in(&entry) && !entry.file_name().starts_with(".") {
                         Box::new(iter::once(entry)) as Box<dyn Iterator<Item = _>>
                     } else {
                         Box::new(iter::empty())
@@ -115,7 +115,7 @@ fn entries(
                         iter::once(entry.clone()).chain(entries(entry, d, mode, Rc::clone(&fr))),
                     ),
                     // recurse into dirs if depth available, to find more matching entries deeper in the hierarchy.
-                    (_, (_, Some(d))) if !entry.starts_with(".") => {
+                    (_, (_, Some(d))) if !entry.file_name().starts_with(".") => {
                         entries(entry, d, mode, Rc::clone(&fr))
                     }
                     _ => Box::new(iter::empty()),
