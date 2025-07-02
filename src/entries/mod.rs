@@ -42,8 +42,8 @@ pub enum Recurse {
 
 impl Fetcher {
     /// Reads all entries from a single directory.
-    pub fn single(entry: impl Into<Entry>, recurse: Recurse) -> Self {
-        Self::new(vec![entry.into()], recurse, FilterSpec::default()).unwrap() // can't fail.
+    pub fn single(entry: &Entry, recurse: Recurse) -> Self {
+        Self::new(vec![entry.to_owned()], recurse, FilterSpec::default()).unwrap() // can't fail.
     }
 
     /// Reads entries from the given directories, with the given filtering rules and recursion.
