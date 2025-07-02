@@ -16,7 +16,7 @@ pub struct Fetcher {
     /// Effective input paths to scan, after deduplication and checking.
     dirs: Vec<Entry>,
     recurse: Recurse,
-    filter_rules: Rc<FilterRules>,
+    filter_rules: FilterRules,
 }
 
 /// The mode of traversal to use when fetching entries.
@@ -32,6 +32,7 @@ pub enum TraversalMode {
     ContentOverDirs,
 }
 
+/// The friendly recursion mode for fetching entries.
 #[derive(Debug)]
 pub enum Recurse {
     Full,
@@ -47,22 +48,23 @@ impl Fetcher {
 
     /// Reads entries from the given directories, with the given filtering rules and recursion.
     pub fn new(dirs: Vec<Entry>, recurse: Recurse, filter: FilterSpec) -> Result<Self> {
-        let filter = filter.try_into()?; // compile regexes and check for errors before anything else.
+        let filter_rules = filter.try_into()?; // compile regexes and check for errors before anything else.
         if dirs.is_empty() {
             return Err(anyhow!("no valid paths given"));
         }
         Ok(Fetcher {
             dirs,
             recurse,
-            filter_rules: Rc::new(filter),
+            filter_rules,
         })
     }
 
     pub fn fetch(self, mode: TraversalMode) -> impl Iterator<Item = Entry> {
         let depth = self.recurse.into();
+        let fr = Rc::new(self.filter_rules);
         self.dirs
             .into_iter()
-            .flat_map(move |dir| entries(dir, depth, mode, Rc::clone(&self.filter_rules)))
+            .flat_map(move |dir| entries(dir, depth, mode, Rc::clone(&fr)))
     }
 }
 
@@ -94,20 +96,26 @@ fn entries(
             .flatten()
             .flat_map(move |entry| {
                 use TraversalMode::*;
-                let (d, rec) = depth.inc();
-                    (false, true, _, _) => Box::new(iter::once(entry)),
-                match (entry.is_dir(), fr.is_in(&entry), rec, mode) {
-                    (true, true, false, DirsStop | DirsAndContent | ContentOverDirs) => {
+                if !entry.is_dir() {
+                    // files that pass the filter are always included in any mode.
+                    return if fr.is_in(&entry) && !entry.starts_with(".") {
+                        Box::new(iter::once(entry)) as Box<dyn Iterator<Item = _>>
+                    } else {
+                        Box::new(iter::empty())
+                    };
+                }
+                // if the entry is a directory, it's much more complicated.
+                match (fr.is_in(&entry), (mode, depth.deeper())) {
+                    // cases that the directory is yielded and not recursed into.
+                    (true, (DirsAndContent | ContentOverDirs, None) | (DirsStop, _)) => {
                         Box::new(iter::once(entry))
                     }
-                    (true, true, true, Files | ContentOverDirs) => {
-                        entries(entry, d, mode, Rc::clone(&ef))
-                    }
-                    (true, true, true, DirsStop) => Box::new(iter::once(entry)),
-                    (true, true, true, DirsAndContent) => Box::new(
+                    // the directory is yielded with its content and recursed into.
+                    (true, (DirsAndContent, Some(d))) => Box::new(
                         iter::once(entry.clone()).chain(entries(entry, d, mode, Rc::clone(&fr))),
                     ),
-                    (true, _, true, _) if !entry.file_name().starts_with(".") => {
+                    // recurse into dirs if depth available, to find more matching entries deeper in the hierarchy.
+                    (_, (_, Some(d))) if !entry.starts_with(".") => {
                         entries(entry, d, mode, Rc::clone(&fr))
                     }
                     _ => Box::new(iter::empty()),
@@ -141,16 +149,17 @@ impl From<Recurse> for Depth {
     }
 }
 
+/// Used to track the depth of recursion when fetching entries.
 #[derive(Debug, Copy, Clone)]
 struct Depth {
-    max: u32,
     curr: u32,
+    max: u32,
 }
 
 impl Depth {
-    fn inc(self) -> (Self, bool) {
-        let Depth { max, curr } = self;
+    fn deeper(self) -> Option<Self> {
+        let Depth { curr, max } = self;
         let curr = curr + 1;
-        (Depth { max, curr }, curr < max || max == 0)
+        (curr < max || max == 0).then_some(Depth { curr, max })
     }
 }
