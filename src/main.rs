@@ -17,8 +17,8 @@ pub struct Args {
     cmd: Command,
     #[command(flatten)]
     input: Input,
-    /// Bypass the command execution and preview the filter results to be processed.
-    #[arg(long, global = true, help_heading = Some("Fetch"))]
+    /// Bypass the command execution and preview the entries to be processed.
+    #[arg(long, global = true)]
     view: bool,
 }
 
