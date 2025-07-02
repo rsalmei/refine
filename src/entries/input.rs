@@ -10,7 +10,7 @@ pub struct Input {
     dirs: Vec<PathBuf>,
     /// The maximum recursion depth; use 0 for unlimited.
     #[arg(short = 'R', long, default_value_t = 0, value_name = "INT", global = true, help_heading = Some("Fetch"))]
-    recurse: u32,
+    recursion: u32,
     #[command(flatten)]
     filter: FilterSpec,
 }
@@ -29,7 +29,7 @@ impl TryFrom<Input> for (Fetcher, InputInfo) {
 
     fn try_from(input: Input) -> Result<(Fetcher, InputInfo)> {
         let (dirs, info) = validate_dirs(input.dirs)?;
-        let fetcher = Fetcher::new(dirs, input.recurse.into(), input.filter)?;
+        let fetcher = Fetcher::new(dirs, input.recursion.into(), input.filter)?;
         Ok((fetcher, info))
     }
 }
