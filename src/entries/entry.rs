@@ -339,7 +339,7 @@ mod tests {
         #[track_caller]
         fn case(base: &str, out: (&str, Option<&str>, Option<usize>, &str)) {
             let (name, alias, seq, comment) = out;
-            let entry = Entry::try_new(format!("{}.ext", base), false).unwrap();
+            let entry = Entry::try_new(format!("{base}.ext"), false).unwrap();
             let out = (name, alias, seq, comment, "ext");
             assert_eq!(out, entry.collection_parts());
         }
