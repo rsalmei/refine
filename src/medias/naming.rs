@@ -5,7 +5,7 @@ use clap::Args;
 use clap::builder::NonEmptyStringValueParser;
 use regex::Regex;
 use std::borrow::Cow;
-use std::iter;
+use std::sync::LazyLock;
 
 /// A set of rules that allows the user to customize filenames.
 #[derive(Debug, Args)]
@@ -52,6 +52,13 @@ impl NamingRules {
         const SEP: &str = r"[-\s.,@]";
         let before = |rule| format!("^.*{rule}{C}*{SEP}*");
         let after = |rule| format!("{SEP}*{O}*{rule}.*$");
+        let exact = |rule| {
+            static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\w$").unwrap());
+            let b = if RE.is_match(rule) { r"\b" } else { r"\B" };
+            format!(
+                r"^{O}*{rule}{C}*{SEP}+|{SEP}+{O}*{rule}{C}*$|{SEP}+{O}*{rule}{C}*{b}|{O}*{rule}{C}*"
+            )
+        };
         let replace_key = |rule: &str| rule.to_owned();
         let downgrade_key = |rule| format!(r"^{rule}{SEP}+(.+)$");
         let downgrade_value = |val| format!(r"$1 - {val}");
@@ -71,7 +78,7 @@ impl NamingRules {
                 .iter()
                 .map(|(k, v)| (k.as_ref(), downgrade_value(v.as_ref())))
                 .collect()])
-            .zip([before, after, exactly, replace_key, downgrade_key])
+            .zip([before, after, exact, replace_key, downgrade_key])
             .flat_map(|(g, f)| g.into_iter().map(move |(k, v)| (k, v, f)))
             .map(|(rule, to, f)| {
                 Regex::new(&format!(
