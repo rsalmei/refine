@@ -175,7 +175,7 @@ impl Refine for Join {
         }
         println!("total entries: {total}");
         let resolved: &dyn Display = if clashes > 0 { &self.clashes } else { &"" };
-        println!("  clashes: {clashes}{}", resolved);
+        println!("  clashes: {clashes}{resolved}");
         println!("  in place: {in_place}");
         println!("\njoin [by {:?}] to: {target}", self.by);
 
