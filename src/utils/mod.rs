@@ -90,6 +90,6 @@ where
 {
     let pos = s
         .find('=')
-        .ok_or_else(|| anyhow!("invalid key=value: {s:?}"))?;
+        .ok_or_else(|| anyhow!("missing =value in: {s:?}"))?;
     Ok((s[..pos].parse()?, s[pos + 1..].parse()?))
 }
