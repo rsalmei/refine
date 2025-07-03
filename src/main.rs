@@ -6,7 +6,8 @@ mod utils;
 use anyhow::Result;
 use clap::Parser;
 use commands::Command;
-use entries::Input;
+use entries::{Entry, Input};
+use utils::natural_cmp;
 
 #[derive(Debug, Parser)]
 #[command(version, about, long_about = None, after_help = "For more information, see https://github.com/rsalmei/refine",
@@ -15,11 +16,11 @@ use entries::Input;
 pub struct Args {
     #[command(subcommand)]
     cmd: Command,
+    /// Just show the entries that would be processed, without running the command.
+    #[arg(long, global = true)]
+    show: bool,
     #[command(flatten)]
     input: Input,
-    /// Bypass the command execution and preview the entries to be processed.
-    #[arg(long, global = true)]
-    view: bool,
 }
 
 fn main() -> Result<()> {
@@ -28,11 +29,23 @@ fn main() -> Result<()> {
     println!("Refine v{}", env!("CARGO_PKG_VERSION"));
     let args = Args::parse();
     let (fetcher, info) = args.input.try_into()?;
-    match args.view {
+    match args.show {
         false => args.cmd.run(fetcher, info),
         true => {
-            args.cmd.view(fetcher);
+            let mode = args.cmd.traversal_mode();
+            show(fetcher.fetch(mode));
             Ok(())
         }
+    }
+}
+
+fn show(entries: impl Iterator<Item = Entry>) {
+    println!("\nthis command will process:\n");
+    let mut entries = entries.collect::<Vec<_>>();
+    entries.sort_unstable_by(|e, f| natural_cmp(e.to_str(), f.to_str()));
+    entries.iter().for_each(|e| println!("{e}"));
+    match entries.len() {
+        0 => println!("no entries found"),
+        n => println!("\nentries found: {n}"),
     }
 }

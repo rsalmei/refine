@@ -6,7 +6,6 @@ mod rebuild;
 mod rename;
 
 use crate::entries::{Entry, Fetcher, InputInfo, TraversalMode};
-use crate::utils::natural_cmp;
 use anyhow::Result;
 use clap::Subcommand;
 
@@ -59,14 +58,6 @@ impl<R: Refine> Runner for R {
     }
 }
 
-fn view(entries: impl Iterator<Item = Entry>) {
-    println!("\nentries seen by this command:\n");
-    let mut entries = entries.collect::<Vec<_>>();
-    entries.sort_unstable_by(|e, f| natural_cmp(e.file_name(), f.file_name()));
-    entries.iter().for_each(|e| println!("{e}"));
-    println!("\ntotal files: {}", entries.len());
-}
-
 impl Command {
     pub fn run(self, fetcher: Fetcher, info: InputInfo) -> Result<()> {
         match self {
@@ -79,16 +70,15 @@ impl Command {
         }
     }
 
-    pub fn view(self, fetcher: Fetcher) {
-        let mode = match &self {
+    pub fn traversal_mode(&self) -> TraversalMode {
+        match &self {
             Command::Dupes(_) => dupes::Dupes::MODE,
             Command::Join(_) => join::Join::MODE,
             Command::List(_) => list::List::MODE,
             Command::Rebuild(_) => rebuild::Rebuild::MODE,
             Command::Rename(_) => rename::Rename::MODE,
             Command::Probe(_) => probe::Probe::MODE,
-        };
-        view(fetcher.fetch(mode));
+        }
     }
 }
 
