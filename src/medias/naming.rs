@@ -22,6 +22,9 @@ pub struct NamingSpec {
     /// Replace all occurrences in the filename with another; separators are not touched.
     #[arg(short = 'r', long, value_name = "STR|REGEX=STR|$N", allow_hyphen_values = true, value_parser = utils::parse_key_value::<String, String>)]
     replace: Vec<(String, String)>,
+    /// recipe: Downgrade some prefix to a suffix; use {S} if needed.
+    #[arg(short = 'w', long, value_name = "STR|REGEX=STR", allow_hyphen_values = true, value_parser = utils::parse_key_value::<String, String>)]
+    downgrade: Vec<(String, String)>,
 }
 
 impl NamingSpec {
@@ -30,34 +33,44 @@ impl NamingSpec {
         NamingRules::compile(
             [&self.strip_before, &self.strip_after, &self.strip_exact],
             &self.replace,
+            &self.downgrade,
         )
     }
 }
 
 #[derive(Debug)]
-pub struct NamingRules<'r>(Vec<(Regex, &'r str)>);
+pub struct NamingRules(Vec<(Regex, String)>);
 
-impl<'r> NamingRules<'r> {
+impl NamingRules {
     fn compile(
-        strip_rules: [&[impl AsRef<str> + Sized]; 3],
-        replace_rules: &'r [(impl AsRef<str> + Sized, impl AsRef<str> + Sized)],
-    ) -> Result<NamingRules<'r>> {
         const BOUND: &str = r"[-_.\s,]";
         let before = |rule| format!("(?i)^.*{rule}{BOUND}*");
         let after = |rule| format!("(?i){BOUND}*{rule}.*$");
+        strip_rules: [&[impl AsRef<str>]; 3],
+        replace_rules: &[(impl AsRef<str>, impl AsRef<str>)],
+        downgrade_rules: &[(impl AsRef<str>, impl AsRef<str>)],
+    ) -> Result<NamingRules> {
         let exactly = |rule| format!(r"(?i){BOUND}+{rule}|{rule}{BOUND}+|{rule}");
         let replace = |rule| format!(r"(?i){rule}");
+        let downgrade_key = |rule| format!(r"^{rule}{SEP}+(.+)$");
+        let downgrade_value = |val| format!(r"$1 - {val}");
 
         let rules = strip_rules
             .into_iter()
-            .map(|g| g.iter().map(|r| (r.as_ref(), "")).collect::<Vec<_>>())
-            .chain(iter::once(
-                replace_rules
-                    .iter()
-                    .map(|(k, v)| (k.as_ref(), v.as_ref()))
-                    .collect(),
-            ))
-            .zip([before, after, exactly, replace])
+            .map(|g| {
+                g.iter()
+                    .map(|r| (r.as_ref(), String::new()))
+                    .collect::<Vec<_>>()
+            })
+            .chain([replace_rules
+                .iter()
+                .map(|(k, v)| (k.as_ref(), v.as_ref().to_owned()))
+                .collect()])
+            .chain([downgrade_rules
+                .iter()
+                .map(|(k, v)| (k.as_ref(), downgrade_value(v.as_ref())))
+                .collect()])
+            .zip([before, after, exactly, replace_key, downgrade_key])
             .flat_map(|(g, f)| g.into_iter().map(move |(k, v)| (k, v, f)))
             .map(|(rule, to, f)| {
                 Regex::new(&f(rule))
@@ -81,7 +94,7 @@ impl<'r> NamingRules<'r> {
         medias.retain_mut(|m| {
             let mut name = std::mem::take(m.new_name_mut());
             self.0.iter().for_each(|(re, to)| {
-                if let Cow::Owned(x) = re.replace_all(&name, *to) {
+                if let Cow::Owned(x) = re.replace_all(&name, to) {
                     name = x;
                 }
             });
