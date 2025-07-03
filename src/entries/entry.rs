@@ -23,7 +23,7 @@ impl TryFrom<PathBuf> for Entry {
     type Error = anyhow::Error;
 
     fn try_from(path: PathBuf) -> Result<Self, Self::Error> {
-        let is_dir = path.is_dir();
+        let is_dir = path.metadata()?.is_dir(); // verify that the path exists and is a directory.
         if is_dir {
             path.file_name()
                 .unwrap_or_default() // the root dir has no name.

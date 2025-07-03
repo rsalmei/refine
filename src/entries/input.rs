@@ -15,13 +15,13 @@ pub struct Input {
     filter: FilterSpec,
 }
 
-/// Information about the input paths, including warnings that were encountered while parsing them.
+/// Information about the input paths provided by the user.
 #[derive(Debug)]
 pub struct InputInfo {
-    /// The effective number of input paths to scan, after deduplication and checking.
-    pub num_paths: usize,
-    /// Whether there were missing paths.
-    pub missing: bool,
+    /// The effective number of paths to scan, after deduplication and validation.
+    pub num_valid: usize,
+    /// Whether there were invalid/not found paths.
+    pub has_invalid: bool,
 }
 
 impl TryFrom<Input> for (Fetcher, InputInfo) {
@@ -45,27 +45,30 @@ fn validate_dirs(mut dirs: Vec<PathBuf>) -> Result<(Vec<Entry>, InputInfo)> {
         eprintln!("warning: {} duplicated directories ignored", n - dirs.len());
     }
 
-    let (dirs, missing) = dirs
+    let n = dirs.len();
+    let dirs = dirs
         .into_iter()
         .map(|pb| Entry::try_from(pb.clone()).map_err(|err| (pb, err)))
-        .inspect(|res| {
-            if let Err((pb, err)) = res {
-                eprintln!("warning: invalid directory {pb:?}: {err}");
+        .filter_map(|res| match res {
+            Ok(entry) if entry.is_dir() => Some(entry),
+            Ok(entry) => {
+                eprintln!("warning: {entry} is not a directory, skipping");
+                None
+            }
+            Err((pb, err)) => {
+                eprintln!("warning: invalid path {pb:?}: {err}");
+                None
             }
         })
-        .flatten()
-        .partition::<Vec<_>, _>(|entry| entry.is_dir());
+        .collect::<Vec<_>>();
 
-    missing
-        .iter()
-        .for_each(|entry| eprintln!("warning: directory not found: {entry}"));
     if dirs.is_empty() {
         return Err(anyhow!("no valid paths given"));
     }
 
     let info = InputInfo {
-        num_paths: dirs.len(),
-        missing: !missing.is_empty(),
+        num_valid: dirs.len(),
+        has_invalid: n != dirs.len(),
     };
     Ok((dirs, info))
 }

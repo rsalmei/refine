@@ -58,14 +58,14 @@ impl Refine for Rebuild {
     const OPENING_LINE: &'static str = "Rebuild collection filenames";
     const MODE: TraversalMode = TraversalMode::Files;
 
-    fn tweak(&mut self, info: &InputInfo) {
+    fn tweak(&mut self, input: &InputInfo) {
         let f = match self.case {
             false => str::to_lowercase,
             true => str::to_owned,
         };
         CASE_FN.set(f).unwrap();
 
-        if info.missing && !self.partial && self.force.is_none() {
+        if input.has_invalid && !self.partial && self.force.is_none() {
             self.partial = true;
             eprintln!("Enabling partial mode due to missing directories.\n");
         }
