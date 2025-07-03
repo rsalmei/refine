@@ -10,16 +10,16 @@ use std::iter;
 /// A set of rules that allows the user to customize filenames.
 #[derive(Debug, Args)]
 pub struct NamingSpec {
-    /// Strip from the start of the filename; separators nearby are automatically removed.
+    /// Strip from the start till occurrence; includes separators nearby, use {S} if needed.
     #[arg(short = 'b', long, value_name = "STR|REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     strip_before: Vec<String>,
-    /// Strip to the end of the filename; separators nearby are automatically removed.
+    /// Strip from occurrence till the end; includes separators nearby, use {S} if needed.
     #[arg(short = 'a', long, value_name = "STR|REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     strip_after: Vec<String>,
-    /// Strip all occurrences in the filename; separators nearby are automatically removed.
+    /// Strip exact occurrences; includes separators nearby, use {S} if needed.
     #[arg(short = 'e', long, value_name = "STR|REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     strip_exact: Vec<String>,
-    /// Replace all occurrences in the filename with another; separators are not touched.
+    /// Replace occurrences in the filename; separators are not touched, use {S} if needed.
     #[arg(short = 'r', long, value_name = "STR|REGEX=STR|$N", allow_hyphen_values = true, value_parser = utils::parse_key_value::<String, String>)]
     replace: Vec<(String, String)>,
     /// recipe: Downgrade some prefix to a suffix; use {S} if needed.
@@ -73,9 +73,12 @@ impl NamingRules {
             .zip([before, after, exactly, replace_key, downgrade_key])
             .flat_map(|(g, f)| g.into_iter().map(move |(k, v)| (k, v, f)))
             .map(|(rule, to, f)| {
-                Regex::new(&f(rule))
-                    .with_context(|| format!("compiling regex: {rule:?}"))
-                    .map(|re| (re, to))
+                Regex::new(&format!(
+                    "(?i){}",
+                    f(rule).replace("{S}", "{S}*").replace("{S}", SEP)
+                ))
+                .with_context(|| format!("compiling regex: {rule:?}"))
+                .map(|re| (re, to))
             })
             .collect::<Result<_>>()?;
         Ok(NamingRules(rules))
