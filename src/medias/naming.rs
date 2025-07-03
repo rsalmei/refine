@@ -43,15 +43,16 @@ pub struct NamingRules(Vec<(Regex, String)>);
 
 impl NamingRules {
     fn compile(
-        const BOUND: &str = r"[-_.\s,]";
-        let before = |rule| format!("(?i)^.*{rule}{BOUND}*");
-        let after = |rule| format!("(?i){BOUND}*{rule}.*$");
         strip_rules: [&[impl AsRef<str>]; 3],
         replace_rules: &[(impl AsRef<str>, impl AsRef<str>)],
         downgrade_rules: &[(impl AsRef<str>, impl AsRef<str>)],
     ) -> Result<NamingRules> {
-        let exactly = |rule| format!(r"(?i){BOUND}+{rule}|{rule}{BOUND}+|{rule}");
-        let replace = |rule| format!(r"(?i){rule}");
+        const O: &str = r"[(\[{]"; // enclosing opening.
+        const C: &str = r"[)\]}]"; // enclosing closing.
+        const SEP: &str = r"[-\s.,@]";
+        let before = |rule| format!("^.*{rule}{C}*{SEP}*");
+        let after = |rule| format!("{SEP}*{O}*{rule}.*$");
+        let replace_key = |rule: &str| rule.to_owned();
         let downgrade_key = |rule| format!(r"^{rule}{SEP}+(.+)$");
         let downgrade_value = |val| format!(r"$1 - {val}");
 
