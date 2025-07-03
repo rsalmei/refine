@@ -11,7 +11,7 @@ use clap::Subcommand;
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
-    /// Find possibly duplicated files by both size and filename.
+    /// Find possibly duplicated files by both size/sample and filename similarity.
     #[command(override_usage = "refine dupes [DIRS]... [FETCH] [OPTIONS]")]
     Dupes(dupes::Dupes),
     /// Join files into a single directory with advanced conflict resolution.
