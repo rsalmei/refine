@@ -128,6 +128,7 @@ mod tests {
 
     const NO_STRIP: [&[&str]; 3] = [&[], &[], &[]];
     const NO_REPLACE: &[(&str, &str)] = &[];
+    const NO_DOWNGRADE: &[(&str, &str)] = &[];
 
     /// A dummy type that expects it is always changed.
     #[derive(Debug, PartialEq)]
@@ -150,52 +151,57 @@ mod tests {
             let mut strip_rules = [[].as_ref(); 3];
             strip_rules[idx] = rule;
             let mut medias = vec![Media(stem.to_owned())];
-            let rules = NamingRules::compile(strip_rules, NO_REPLACE).unwrap();
+            let rules = NamingRules::compile(strip_rules, NO_REPLACE, NO_DOWNGRADE).unwrap();
             let warnings = rules.apply(&mut medias);
             assert_eq!(warnings, 0);
             assert_eq!(medias[0].0, new_name);
         }
 
         case(&["Before"], 0, "beforefoo", "foo");
+        case(&["Before"], 0, "Before__foo", "__foo");
         case(&["Before"], 0, "before foo", "foo");
-        case(&["Before"], 0, "Before__foo", "foo");
         case(&["before"], 0, "Before - foo", "foo");
         case(&["before"], 0, "before.foo", "foo");
         case(&["before"], 0, "Before\t.  foo", "foo");
 
         case(&["After"], 1, "fooafter", "foo");
+        case(&["After"], 1, "foo__After", "foo__");
         case(&["After"], 1, "foo after", "foo");
-        case(&["After"], 1, "foo__After", "foo");
         case(&["after"], 1, "foo - After", "foo");
         case(&["after"], 1, "foo.after", "foo");
         case(&["after"], 1, "foo\t. After", "foo");
 
         // exact: {BOUND}+{rule}$
+        case(&["Exact"], 2, "foo__Exact", "foo__");
         case(&["Exact"], 2, "foo exact", "foo");
-        case(&["Exact"], 2, "foo__Exact", "foo");
         case(&["exact"], 2, "foo - Exact", "foo");
         case(&["exact"], 2, "foo.exact", "foo");
         case(&["exact"], 2, "foo\t. Exact", "foo");
 
         // exact: ^{rule}{BOUND}+
+        case(&["Exact"], 2, "Exact__foo", "__foo");
         case(&["Exact"], 2, "exact foo", "foo");
-        case(&["Exact"], 2, "Exact__foo", "foo");
         case(&["exact"], 2, "Exact - foo", "foo");
         case(&["exact"], 2, "exact.foo", "foo");
         case(&["exact"], 2, "Exact\t.  foo", "foo");
 
         // exact: {BOUND}+{rule}
+        case(&["Exact"], 2, "foo__Exactbar", "foo__bar");
         case(&["Exact"], 2, "foo exact bar", "foo bar");
-        case(&["Exact"], 2, "foo__Exact-bar", "foo-bar");
-        case(&["exact"], 2, "foo - Exact_bar", "foo_bar");
         case(&["exact"], 2, "foo.exact.bar", "foo.bar");
         case(&["exact"], 2, "foo\t.  Exact - bar", "foo - bar");
+
+        // exact: new boundaries
+        case(&["exact"], 2, "foo - Exactbar", "foo - bar");
+        case(&["Exact"], 2, "foo__Exact bar", "foo__ bar");
+        case(&["Exact"], 2, "fooExact bar", "foo bar");
+        case(&["(exact)"], 2, "foo - (Exact)bar", "foo - bar");
+        case(&["(Exact)"], 2, "foo__(Exact) bar", "foo__ bar");
+        case(&["Exact"], 2, "foo(Exact) bar", "foo bar");
 
         // exact: {rule}
         case(&["Exact"], 2, "fexactoo", "foo");
         case(&["Exact"], 2, "fexactoExacto", "foo");
-        case(&["Exact"], 2, "fooExact bar", "foobar");
-        case(&["Exact"], 2, "foo Exactbar", "foobar");
         case(&["exact"], 2, "Exactfoo bar", "foo bar");
     }
 
@@ -204,7 +210,7 @@ mod tests {
         #[track_caller]
         fn case(replace_rules: &[(&str, &str)], stem: &str, new_name: &str) {
             let mut medias = vec![Media(stem.to_owned())];
-            let rules = NamingRules::compile(NO_STRIP, replace_rules).unwrap();
+            let rules = NamingRules::compile(NO_STRIP, replace_rules, NO_DOWNGRADE).unwrap();
             let warnings = rules.apply(&mut medias);
             assert_eq!(warnings, 0);
             assert_eq!(medias[0].0, new_name);
@@ -216,6 +222,60 @@ mod tests {
     }
 
     #[test]
+    fn downgrade_rules() {
+        #[track_caller]
+        fn case(downgrade_rules: &[(&str, &str)], stem: &str, new_name: &str) {
+            let mut medias = vec![Media(stem.to_owned())];
+            let rules = NamingRules::compile(NO_STRIP, NO_REPLACE, downgrade_rules).unwrap();
+            let warnings = rules.apply(&mut medias);
+            assert_eq!(warnings, 0);
+            assert_eq!(medias[0].0, new_name);
+        }
+
+        case(
+            &[("God.?of.?War", "God of War")],
+            "other things",
+            "other things",
+        );
+        case(
+            &[("God.?of.?War", "God of War")],
+            "God of War media",
+            "media - God of War",
+        );
+        case(
+            &[("God.?of.?War", "God of War")],
+            "godofwar -  media",
+            "media - God of War",
+        );
+
+        case(
+            &[("God{S}of{S}War", "God of War")],
+            "other things",
+            "other things",
+        );
+        case(
+            &[("God{S}of{S}War", "God of War")],
+            "God of War media",
+            "media - God of War",
+        );
+        case(
+            &[("God{S}of{S}War", "God of War")],
+            "godofwar media",
+            "media - God of War",
+        );
+        case(
+            &[("God{S}of{S}War", "God of War")],
+            "God-of-War media",
+            "media - God of War",
+        );
+        case(
+            &[("God{S}of{S}War", "God of War")],
+            "godofwar -  media",
+            "media - God of War",
+        );
+    }
+
+    #[test]
     fn cleared() {
         let mut medias = vec![
             Media("file".to_owned()),
@@ -224,7 +284,8 @@ mod tests {
             Media("refine".to_owned()),
             Media("foobar".to_owned()),
         ];
-        let rules = NamingRules::compile([&["e"], &["b"], &["c.*i"]], &[("on", "")]).unwrap();
+        let rules =
+            NamingRules::compile([&["e"], &["b"], &["c.*i"]], &[("on", "")], NO_DOWNGRADE).unwrap();
         let warnings = rules.apply(&mut medias);
         assert_eq!(warnings, 4);
         assert_eq!(medias, vec![Media("foo".to_owned())]);
