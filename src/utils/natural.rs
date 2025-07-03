@@ -37,10 +37,10 @@ fn compare_num_chunks(a_chars: &mut Peekable<Chars>, b_chars: &mut Peekable<Char
         while let Some(&c) = chars.peek()
             && c.is_ascii_digit()
         {
-            let digit = chars.next().unwrap(); // just peeked.
+            chars.next(); // consume the character.
             value = value
                 .saturating_mul(10) // saturating to prevent overflow for very large numbers.
-                .saturating_add((digit as u32 - '0' as u32) as u64);
+                .saturating_add((c as u32 - '0' as u32) as u64);
             length += 1;
         }
 
@@ -64,12 +64,12 @@ fn compare_text_chunks(a_chars: &mut Peekable<Chars>, b_chars: &mut Peekable<Cha
         }
     }
 
-    while let Some(a_peek) = a_chars.peek()
-        && !a_peek.is_ascii_digit()
-        && let Some(b_peek) = b_chars.peek()
-        && !b_peek.is_ascii_digit()
+    while let Some(&a) = a_chars.peek()
+        && !a.is_ascii_digit()
+        && let Some(&b) = b_chars.peek()
+        && !b.is_ascii_digit()
     {
-        let (a, b) = (a_chars.next().unwrap(), b_chars.next().unwrap()); // just peeked.
+        (a_chars.next(), b_chars.next()); // consume the characters.
 
         // fast path for ASCII characters - direct case conversion is much faster.
         let ordering = if a.is_ascii() && b.is_ascii() {
