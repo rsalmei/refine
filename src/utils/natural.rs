@@ -70,7 +70,14 @@ fn compare_text_chunks(a_chars: &mut Peekable<Chars>, b_chars: &mut Peekable<Cha
         && !b_peek.is_ascii_digit()
     {
         let (a, b) = (a_chars.next().unwrap(), b_chars.next().unwrap()); // just peeked.
-        let ordering = a.to_lowercase().cmp(b.to_lowercase());
+
+        // fast path for ASCII characters - direct case conversion is much faster.
+        let ordering = if a.is_ascii() && b.is_ascii() {
+            a.to_ascii_lowercase().cmp(&b.to_ascii_lowercase())
+        } else {
+            a.to_lowercase().cmp(b.to_lowercase())
+        };
+
         if ordering != Ordering::Equal {
             // consume remaining text characters from both iterators before returning.
             consume_remaining_text(a_chars);
