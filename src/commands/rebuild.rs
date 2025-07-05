@@ -100,7 +100,7 @@ impl Refine for Rebuild {
         }
 
         // step: apply naming rules.
-        let warnings = self.naming.compile()?.apply(&mut medias);
+        let blocked = self.naming.compile()?.apply(&mut medias);
 
         // step: reset names if forcing a new one.
         if let Some(force) = &self.force {
@@ -179,12 +179,12 @@ impl Refine for Rebuild {
             .for_each(|m| println!("{} --> {}", m.entry, m.new_name));
 
         // step: display a summary receipt.
-        if !medias.is_empty() || warnings > 0 {
+        if !medias.is_empty() || blocked > 0 {
             println!();
         }
         println!("total files: {total_files} ({unique_names} unique names)");
         println!("  changes: {}", medias.len());
-        println!("  warnings: {warnings}");
+        println!("  blocked: {blocked}");
         if medias.is_empty() {
             return Ok(());
         }

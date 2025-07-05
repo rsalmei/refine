@@ -49,7 +49,7 @@ impl Refine for Rename {
         let total_files = medias.len();
 
         // step: apply naming rules.
-        let mut warnings = self.naming.compile()?.apply(&mut medias);
+        let mut blocked = self.naming.compile()?.apply(&mut medias);
 
         // step: re-include extension in the names.
         medias
@@ -130,7 +130,7 @@ impl Refine for Rename {
         }
         println!("total files: {total_files}");
         println!("  changes: {}", medias.len());
-        println!("  warnings: {warnings}");
+        println!("  blocked: {blocked}");
         if medias.is_empty() {
             return Ok(());
         }

@@ -111,7 +111,7 @@ impl NamingRules {
             });
 
             if name.is_empty() {
-                eprintln!("warning: rules cleared name: {}", m.src_entry());
+                eprintln!("blocked: rules cleared name: {}", m.src_entry());
                 return false;
             }
             *m.new_name_mut() = name;
