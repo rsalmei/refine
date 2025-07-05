@@ -6,14 +6,14 @@ use crate::{impl_new_name, impl_new_name_mut, impl_source_entry};
 use anyhow::Result;
 use clap::{Args, ValueEnum};
 use std::cmp::Reverse;
-use std::fmt::Write;
+use std::fmt::{Display, Write};
 
 #[derive(Debug, Args)]
 pub struct Rename {
     #[command(flatten)]
     naming: NamingSpec,
     /// How to resolve clashes.
-    #[arg(short = 'c', long, default_value_t = Clashes::Forbid, value_name = "STR", value_enum)]
+    #[arg(short = 'c', long, default_value_t = Clashes::Sequence, value_name = "STR", value_enum)]
     clashes: Clashes,
     /// Skip the confirmation prompt, useful for automation.
     #[arg(short = 'y', long)]
@@ -22,12 +22,12 @@ pub struct Rename {
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
 pub enum Clashes {
-    #[value(aliases = ["f", "fb"])]
-    Forbid,
+    #[value(aliases = ["s", "seq"])]
+    Sequence,
     #[value(aliases = ["i", "ig"])]
     Ignore,
-    #[value(aliases = ["s", "sq", "seq", "ns"])]
-    NameSequence,
+    #[value(aliases = ["f", "ff"])]
+    Forbid,
 }
 
 #[derive(Debug)]
@@ -38,6 +38,8 @@ pub struct Media {
     new_name: String,
     /// A cached version of the file extension.
     ext: &'static str,
+    /// Marks resolution of clashes.
+    resolution: &'static str,
 }
 
 impl Refine for Rename {
@@ -57,7 +59,8 @@ impl Refine for Rename {
             .filter(|m| !m.ext.is_empty())
             .try_for_each(|m| write!(m.new_name, ".{}", m.ext))?;
 
-        // step: disallow changes in directories where clashes are detected.
+        // step: clashes resolution.
+        let mut clashes = 0;
         medias.sort_unstable_by(|m, n| {
             (m.entry.parent(), &m.new_name).cmp(&(n.entry.parent(), &n.new_name))
         });
@@ -79,17 +82,30 @@ impl Refine for Rename {
                             .map(|m| m.entry.file_name())
                             .filter(|f| f != k)
                             .collect::<Vec<_>>();
-                        warnings += list.len();
-                        let exists = if g.len() != list.len() { " exists" } else { "" };
-                        eprintln!("  > {} --> {k}{exists}", list.join(", "));
+                        clashes += list.len();
+                        use yansi::Paint;
+                        let msg = match g.len() != list.len() {
+                            true => " name already exists",
+                            false => " multiple names clash",
+                        };
+                        eprintln!(
+                            "  > {} --> {k}{}",
+                            list.join(", "),
+                            msg.paint(yansi::Color::BrightMagenta)
+                        );
                     });
                 match self.clashes {
-                    Clashes::Forbid => g.iter_mut().for_each(|m| m.new_name.clear()),
+                    Clashes::Forbid => {
+                        let count = g.iter().filter(|m| m.is_changed()).count();
+                        blocked += count;
+                        eprintln!("  ...blocked {count} changes in this folder");
+                        g.iter_mut().for_each(|m| m.new_name.clear());
+                    }
                     Clashes::Ignore => g
                         .chunk_by_mut(|m, n| m.new_name == n.new_name)
                         .filter(|g| g.len() > 1)
                         .for_each(|g| g.iter_mut().for_each(|m| m.new_name.clear())),
-                    Clashes::NameSequence => {
+                    Clashes::Sequence => {
                         g.chunk_by_mut(|m, n| m.new_name == n.new_name)
                             .filter(|g| g.len() > 1)
                             .for_each(|g| {
@@ -97,6 +113,7 @@ impl Refine for Rename {
                                     |(m, i)| {
                                         m.new_name.truncate(m.new_name.len() - m.ext.len() - 1);
                                         write!(m.new_name, "-{i}.{}", m.ext).unwrap();
+                                        m.resolution = " (added sequence number)";
                                     },
                                 )
                             })
@@ -120,16 +137,24 @@ impl Refine for Rename {
             .chunk_by(|m, n| m.entry.parent() == n.entry.parent())
             .for_each(|g| {
                 println!("{}", g[0].entry.parent().unwrap());
-                g.iter()
-                    .for_each(|m| println!("  {} --> {}", m.entry.display_filename(), m.new_name));
+                use yansi::Paint;
+                g.iter().for_each(|m| {
+                    println!(
+                        "  {} --> {}{}",
+                        m.entry.display_filename(),
+                        m.new_name,
+                        m.resolution.paint(yansi::Color::BrightBlue)
+                    )
+                });
             });
 
         // step: display a summary receipt.
-        if !medias.is_empty() || warnings > 0 {
+        if !medias.is_empty() || blocked > 0 {
             println!();
         }
         println!("total files: {total_files}");
         println!("  changes: {}", medias.len());
+        println!("  clashes: {clashes} ({})", self.clashes);
         println!("  blocked: {blocked}");
         if medias.is_empty() {
             return Ok(());
@@ -146,6 +171,16 @@ impl Refine for Rename {
             false => println!("found {} errors", medias.len()),
         }
         Ok(())
+    }
+}
+
+impl Display for Clashes {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Clashes::Sequence => write!(f, "resolved by adding a sequence number"),
+            Clashes::Ignore => write!(f, "ignored, folders processed as usual"),
+            Clashes::Forbid => write!(f, "whole folders with clashes blocked"),
+        }
     }
 }
 
@@ -168,6 +203,7 @@ impl TryFrom<&Entry> for Media {
             new_name: stem.trim().to_owned(),
             ext: utils::intern(ext),
             entry: entry.to_owned(),
+            resolution: "",
         })
     }
 }
