@@ -40,12 +40,12 @@ fn main() -> Result<()> {
 }
 
 fn show(entries: impl Iterator<Item = Entry>) {
-    println!("\nthis command will process:\n");
+    println!("\nentries this command will process:\n");
     let mut entries = entries.collect::<Vec<_>>();
     entries.sort_unstable_by(|e, f| natural_cmp(e.to_str(), f.to_str()));
     entries.iter().for_each(|e| println!("{e}"));
     match entries.len() {
         0 => println!("no entries found"),
-        n => println!("\nentries found: {n}"),
+        n => println!("\ntotal entries: {n}"),
     }
 }
