@@ -66,15 +66,16 @@ impl FilterRules {
         let (stem, ext) = entry.filename_parts();
         (!stem.starts_with('.')).then_some(())?; // exclude hidden files and directories.
 
-        let ret = self.all.is_match(entry.to_str())
+        let parent = entry.parent()?;
+        let full = format!("{}{stem}", parent.to_str()); // generate the full path without extension.
+        let ret = self.all.is_match(&full)
             && match entry.is_dir() {
                 true => {
-                    self.dir.is_match(entry.file_name())
-                        && self.path.is_match(entry.to_str())
+                    self.dir.is_match(entry.file_name()) // entry is a directory.
+                        && self.path.is_match(entry.to_str()) // the str is the full path.
                         && !self.only_files
                 }
                 false => {
-                    let parent = entry.parent()?;
                     self.file.is_match(stem)
                         && self.ext.is_match(ext)
                         && self.dir.is_match(parent.file_name())
