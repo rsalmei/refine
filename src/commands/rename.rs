@@ -194,15 +194,15 @@ impl Media {
     }
 }
 
-impl TryFrom<&Entry> for Media {
-    type Error = anyhow::Error;
+impl TryFrom<Entry> for Media {
+    type Error = (Entry, anyhow::Error);
 
-    fn try_from(entry: &Entry) -> Result<Self, Self::Error> {
+    fn try_from(entry: Entry) -> Result<Self, Self::Error> {
         let (stem, ext) = entry.filename_parts();
         Ok(Media {
             new_name: stem.trim().to_owned(),
             ext: utils::intern(ext),
-            entry: entry.to_owned(),
+            entry,
             resolution: "",
         })
     }

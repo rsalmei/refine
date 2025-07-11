@@ -206,10 +206,10 @@ impl Probe {
     }
 }
 
-impl TryFrom<&Entry> for Media {
-    type Error = anyhow::Error;
+impl TryFrom<Entry> for Media {
+    type Error = (Entry, anyhow::Error);
 
-    fn try_from(entry: &Entry) -> Result<Self, Self::Error> {
+    fn try_from(entry: Entry) -> Result<Self, Self::Error> {
         let (name, _, _, _, _) = entry.collection_parts();
         Ok(Media {
             name: name.to_owned(),

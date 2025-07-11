@@ -578,16 +578,16 @@ fn classify_media_kind(ext: &str) -> &'static str {
     }
 }
 
-impl TryFrom<&Entry> for Media {
-    type Error = anyhow::Error;
+impl TryFrom<Entry> for Media {
+    type Error = (Entry, anyhow::Error);
 
-    fn try_from(entry: &Entry) -> Result<Self, Self::Error> {
+    fn try_from(entry: Entry) -> Result<Self, Self::Error> {
         let (stem, ext) = entry.filename_parts();
         Ok(Media {
-            size: entry.metadata()?.len(),
+            size: entry.metadata().map_or(0, |m| m.len()),
             cleaned_name: clean_words(stem),
             kind: classify_media_kind(ext),
-            entry: entry.to_owned(),
+            entry,
             sample: None,
         })
     }

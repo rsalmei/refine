@@ -282,14 +282,14 @@ impl NewEntry for Media {
     }
 }
 
-impl TryFrom<&Entry> for Media {
-    type Error = anyhow::Error;
+impl TryFrom<Entry> for Media {
+    type Error = (Entry, anyhow::Error);
 
-    fn try_from(entry: &Entry) -> Result<Self, Self::Error> {
+    fn try_from(entry: Entry) -> Result<Self, Self::Error> {
         Ok(Media {
-            entry: entry.to_owned(),
             new_name: None,
             skip: Skip::No,
+            entry,
         })
     }
 }

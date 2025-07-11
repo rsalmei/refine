@@ -230,19 +230,20 @@ impl Media {
     }
 }
 
-impl TryFrom<&Entry> for Media {
-    type Error = anyhow::Error;
+impl TryFrom<Entry> for Media {
+    type Error = (Entry, anyhow::Error);
 
-    fn try_from(entry: &Entry) -> Result<Self, Self::Error> {
+    fn try_from(entry: Entry) -> Result<Self, Self::Error> {
         let (name, _, seq, comment, ext) = entry.collection_parts();
+        let created = entry.metadata().map_or(None, |m| m.created().ok());
         Ok(Media {
             new_name: CASE_FN.get().unwrap()(name.trim()),
             smart_match: None,
             seq,
             comment: comment.to_string(),
             ext: utils::intern(ext),
-            created: entry.metadata()?.created()?,
-            entry: entry.to_owned(),
+            created: created.unwrap_or(SystemTime::now()),
+            entry,
         })
     }
 }
