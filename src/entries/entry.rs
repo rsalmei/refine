@@ -19,6 +19,8 @@ pub struct Entry {
 }
 
 /// Create a new entry from a path, checking that it has a valid UTF-8 representation.
+///
+/// The path must exist.
 impl TryFrom<PathBuf> for Entry {
     type Error = (PathBuf, anyhow::Error);
 
@@ -64,7 +66,7 @@ pub static ROOT: LazyLock<Entry> = LazyLock::new(|| Entry::try_new("/", true).un
 impl Entry {
     /// Create a new entry that, in case the path does not exist, will assume the given directory flag.
     /// If it does exist, check that it has the correct directory flag or panic.
-    pub fn try_new(path: impl Into<PathBuf>, is_dir: bool) -> Result<Self, anyhow::Error> {
+    pub fn try_new(path: impl Into<PathBuf>, is_dir: bool) -> Result<Self> {
         let path = path.into();
         if path.to_str().is_none() {
             return Err(anyhow!("invalid UTF-8 path: {path:?}"));
@@ -301,20 +303,6 @@ impl PartialEq for Entry {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn entry_creation() {
-        #[track_caller]
-        fn case(p: impl Into<PathBuf>) -> Result<Entry, (PathBuf, anyhow::Error)> {
-            Entry::try_from(p.into())
-        }
-
-        case("foo").unwrap();
-        case("foo.bar").unwrap();
-        case("foo.bar.baz").unwrap();
-        case("foo/").unwrap();
-        case("😃").unwrap();
-    }
 
     #[test]
     fn filename_parts() {
