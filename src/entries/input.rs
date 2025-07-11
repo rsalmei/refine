@@ -48,7 +48,7 @@ fn validate_dirs(mut dirs: Vec<PathBuf>) -> Result<(Vec<Entry>, InputInfo)> {
     let n = dirs.len();
     let dirs = dirs
         .into_iter()
-        .map(|pb| Entry::try_from(pb.clone()).map_err(|err| (pb, err)))
+        .map(Entry::try_from)
         .filter_map(|res| match res {
             Ok(entry) if entry.is_dir() => Some(entry),
             Ok(entry) => {
