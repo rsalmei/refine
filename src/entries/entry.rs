@@ -20,30 +20,40 @@ pub struct Entry {
 
 /// Create a new entry from a path, checking that it has a valid UTF-8 representation.
 impl TryFrom<PathBuf> for Entry {
-    type Error = anyhow::Error;
+    type Error = (PathBuf, anyhow::Error);
 
     fn try_from(path: PathBuf) -> Result<Self, Self::Error> {
-        let is_dir = path.metadata()?.is_dir(); // verify that the path exists and is a directory.
+        let path_err = |err: anyhow::Error| (path.clone(), err);
+        let is_dir = path
+            .metadata()
+            .map_err(Into::into)
+            .map_err(path_err)?
+            .is_dir(); // verify that the path exists and is a directory.
         if is_dir {
             path.file_name()
                 .unwrap_or_default() // the root dir has no name.
                 .to_str()
-                .ok_or_else(|| anyhow!("no UTF-8 dir name: {path:?}"))?;
+                .ok_or_else(|| anyhow!("no UTF-8 dir name: {path:?}"))
+                .map_err(path_err)?;
         } else {
             path.file_stem()
-                .ok_or_else(|| anyhow!("no file stem: {path:?}"))?
+                .ok_or_else(|| anyhow!("no file stem: {path:?}"))
+                .map_err(path_err)?
                 .to_str()
-                .ok_or_else(|| anyhow!("no UTF-8 file stem: {path:?}"))?;
+                .ok_or_else(|| anyhow!("no UTF-8 file stem: {path:?}"))
+                .map_err(path_err)?;
             path.extension()
                 .unwrap_or_default()
                 .to_str()
-                .ok_or_else(|| anyhow!("no UTF-8 file extension: {path:?}"))?;
+                .ok_or_else(|| anyhow!("no UTF-8 file extension: {path:?}"))
+                .map_err(path_err)?;
         }
         // I could just check that the entire path is valid UTF-8, but I want to give better error messages.
         if let Some(pp) = path.parent() {
             // the root dir has no parent.
             pp.to_str()
-                .ok_or_else(|| anyhow!("no UTF-8 parent: {pp:?}"))?;
+                .ok_or_else(|| anyhow!("no UTF-8 parent: {pp:?}"))
+                .map_err(path_err)?;
         }
         Ok(Entry { path, is_dir })
     }
@@ -295,7 +305,7 @@ mod tests {
     #[test]
     fn entry_creation() {
         #[track_caller]
-        fn case(p: impl Into<PathBuf>) -> Result<Entry, anyhow::Error> {
+        fn case(p: impl Into<PathBuf>) -> Result<Entry, (PathBuf, anyhow::Error)> {
             Entry::try_from(p.into())
         }
 
