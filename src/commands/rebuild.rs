@@ -20,7 +20,7 @@ pub struct Rebuild {
     #[arg(short = 's', long)]
     simple: bool,
     /// Force to overwrite filenames (use the Global options to filter files).
-    #[arg(short = 'f', long, value_name = "STR", conflicts_with_all = ["strip_before", "strip_after", "strip_exact", "replace", "downgrade", "simple", "partial"], value_parser = NonEmptyStringValueParser::new())]
+    #[arg(short = 'f', long, value_name = "STR", conflicts_with_all = ["strip_before", "strip_after", "strip_exact", "replace", "throw", "simple", "partial"], value_parser = NonEmptyStringValueParser::new())]
     force: Option<String>,
     /// Assume not all directories are available, which retains current sequences (but fixes gaps).
     #[arg(short = 'p', long)]

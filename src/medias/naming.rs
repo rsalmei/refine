@@ -22,9 +22,9 @@ pub struct NamingSpec {
     /// Replace occurrences in the filename; separators are not touched, use {S} if needed.
     #[arg(short = 'r', long, value_name = "STR|REGEX=STR|$N", allow_hyphen_values = true, value_parser = utils::parse_key_value::<String, String>)]
     replace: Vec<(String, String)>,
-    /// recipe: Downgrade some prefix to a suffix; use {S} if needed.
+    /// recipe: Throw some prefix to the end; use {S} if needed.
     #[arg(short = 'w', long, value_name = "STR|REGEX=STR", allow_hyphen_values = true, value_parser = utils::parse_key_value::<String, String>)]
-    downgrade: Vec<(String, String)>,
+    throw: Vec<(String, String)>,
 }
 
 impl NamingSpec {
@@ -33,7 +33,7 @@ impl NamingSpec {
         NamingRules::compile(
             [&self.strip_before, &self.strip_after, &self.strip_exact],
             &self.replace,
-            &self.downgrade,
+            &self.throw,
         )
     }
 }
@@ -45,7 +45,7 @@ impl NamingRules {
     fn compile(
         strip_rules: [&[impl AsRef<str>]; 3],
         replace_rules: &[(impl AsRef<str>, impl AsRef<str>)],
-        downgrade_rules: &[(impl AsRef<str>, impl AsRef<str>)],
+        throw_rules: &[(impl AsRef<str>, impl AsRef<str>)],
     ) -> Result<NamingRules> {
         const O: &str = r"[(\[{]"; // enclosing opening.
         const C: &str = r"[)\]}]"; // enclosing closing.
@@ -60,8 +60,8 @@ impl NamingRules {
             )
         };
         let replace_key = |rule: &str| rule.to_owned();
-        let downgrade_key = |rule| format!(r"^{rule}{SEP}+(.+)$");
-        let downgrade_value = |val| format!(r"$1 - {val}");
+        let throw_key = |rule| format!(r"^{rule}{SEP}+(.+)$");
+        let throw_value = |val| format!(r"$1 - {val}");
 
         let rules = strip_rules
             .into_iter()
@@ -74,19 +74,16 @@ impl NamingRules {
                 .iter()
                 .map(|(k, v)| (k.as_ref(), v.as_ref().to_owned()))
                 .collect()])
-            .chain([downgrade_rules
+            .chain([throw_rules
                 .iter()
-                .map(|(k, v)| (k.as_ref(), downgrade_value(v.as_ref())))
+                .map(|(k, v)| (k.as_ref(), throw_value(v.as_ref())))
                 .collect()])
-            .zip([before, after, exact, replace_key, downgrade_key])
+            .zip([before, after, exact, replace_key, throw_key])
             .flat_map(|(g, f)| g.into_iter().map(move |(k, v)| (k, v, f)))
             .map(|(rule, to, f)| {
-                Regex::new(&format!(
-                    "(?i){}",
-                    f(rule).replace("{S}", "{S}*").replace("{S}", SEP)
-                ))
-                .with_context(|| format!("compiling regex: {rule:?}"))
-                .map(|re| (re, to))
+                Regex::new(&format!("(?i){}", f(rule).replace("{S}", SEP))) // support {S} for separators.
+                    .with_context(|| format!("compiling regex: {rule:?}"))
+                    .map(|re| (re, to))
             })
             .collect::<Result<_>>()?;
         Ok(NamingRules(rules))
@@ -128,7 +125,7 @@ mod tests {
 
     const NO_STRIP: [&[&str]; 3] = [&[], &[], &[]];
     const NO_REPLACE: &[(&str, &str)] = &[];
-    const NO_DOWNGRADE: &[(&str, &str)] = &[];
+    const NO_THROW: &[(&str, &str)] = &[];
 
     /// A dummy type that expects it is always changed.
     #[derive(Debug, PartialEq)]
@@ -151,7 +148,7 @@ mod tests {
             let mut strip_rules = [[].as_ref(); 3];
             strip_rules[idx] = rule;
             let mut medias = vec![Media(stem.to_owned())];
-            let rules = NamingRules::compile(strip_rules, NO_REPLACE, NO_DOWNGRADE).unwrap();
+            let rules = NamingRules::compile(strip_rules, NO_REPLACE, NO_THROW).unwrap();
             let warnings = rules.apply(&mut medias);
             assert_eq!(warnings, 0);
             assert_eq!(medias[0].0, new_name);
@@ -210,7 +207,7 @@ mod tests {
         #[track_caller]
         fn case(replace_rules: &[(&str, &str)], stem: &str, new_name: &str) {
             let mut medias = vec![Media(stem.to_owned())];
-            let rules = NamingRules::compile(NO_STRIP, replace_rules, NO_DOWNGRADE).unwrap();
+            let rules = NamingRules::compile(NO_STRIP, replace_rules, NO_THROW).unwrap();
             let warnings = rules.apply(&mut medias);
             assert_eq!(warnings, 0);
             assert_eq!(medias[0].0, new_name);
@@ -222,11 +219,11 @@ mod tests {
     }
 
     #[test]
-    fn downgrade_rules() {
+    fn throw_rules() {
         #[track_caller]
-        fn case(downgrade_rules: &[(&str, &str)], stem: &str, new_name: &str) {
+        fn case(throw_rules: &[(&str, &str)], stem: &str, new_name: &str) {
             let mut medias = vec![Media(stem.to_owned())];
-            let rules = NamingRules::compile(NO_STRIP, NO_REPLACE, downgrade_rules).unwrap();
+            let rules = NamingRules::compile(NO_STRIP, NO_REPLACE, throw_rules).unwrap();
             let warnings = rules.apply(&mut medias);
             assert_eq!(warnings, 0);
             assert_eq!(medias[0].0, new_name);
@@ -285,7 +282,7 @@ mod tests {
             Media("foobar".to_owned()),
         ];
         let rules =
-            NamingRules::compile([&["e"], &["b"], &["c.*i"]], &[("on", "")], NO_DOWNGRADE).unwrap();
+            NamingRules::compile([&["e"], &["b"], &["c.*i"]], &[("on", "")], NO_THROW).unwrap();
         let warnings = rules.apply(&mut medias);
         assert_eq!(warnings, 4);
         assert_eq!(medias, vec![Media("foo".to_owned())]);
