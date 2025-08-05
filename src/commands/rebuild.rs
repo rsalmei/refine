@@ -120,8 +120,19 @@ impl Refine for Rebuild {
             });
         }
 
-        // helper closures to pick names and sequences.
-        let name_idx = if self.simple || self.force.is_some() {
+        // step: sort medias according to partial or full mode.
+        let seq = match self.partial {
+            true => |m: &Media| m.seq.unwrap_or(usize::MAX), // no sequence goes to the end in partial mode.
+            false => |_: &Media| 0,                          // ignore sequences in full mode.
+        };
+        medias.sort_unstable_by(|m, n| {
+            // unfortunately, some file systems have low-resolution creation time, HFS+ for example,
+            // so m.seq is used to disambiguate `created`, which seems to repeat a lot sometimes.
+            (m.group(), seq(m), m.created, m.seq).cmp(&(n.group(), seq(n), n.created, n.seq))
+        });
+
+        // step: generate new names.
+        let name_idx = if self.simple {
             |_g: &[Media]| 0 // all the names are exactly the same within a group.
         } else if self.case {
             // smart matching which chooses the name with the most uppercase characters.
@@ -142,31 +153,21 @@ impl Refine for Rebuild {
                     .0
             }
         };
-        let p_seq = match self.partial {
-            true => |m: &Media| m.seq,    // retain previous sequences.
-            false => |_: &Media| Some(1), // completely ignore previous sequences.
+        let seq_gen = match self.partial {
+            true => |m: &Media, last_seq: usize| m.seq.unwrap_or_else(|| last_seq + 1),
+            false => |_: &Media, last_seq: usize| last_seq + 1,
         };
-        let s_seq = |m: &Media| p_seq(m).unwrap_or(usize::MAX); // files with a sequence first, no sequence last.
-
-        // step: generate new names.
-        medias.sort_unstable_by(|m, n| {
-            // unfortunately, some file systems have low-resolution creation time, HFS+ for example, so seq is used to disambiguate `created`.
-            (m.group(), s_seq(m), m.created, m.seq).cmp(&(n.group(), s_seq(n), n.created, n.seq))
-        });
         let mut unique_names = 0;
         medias
             .chunk_by_mut(|m, n| m.group() == n.group())
             .for_each(|g| {
                 unique_names += 1;
                 let base = std::mem::take(&mut g[name_idx(g)].new_name); // must be taken because `g` will be modified below.
-                let mut seq = p_seq(&g[0]).unwrap_or(1); // the minimum found for this group will be the first.
+                let mut seq = 0; // keep track of the last sequence number used.
                 g.iter_mut().for_each(|m| {
-                    let (dot, ext) = match m.ext.is_empty() {
-                        true => ("", ""),
-                        false => (".", m.ext),
-                    };
-                    m.new_name = format!("{base}~{seq}{}{dot}{ext}", m.comment);
-                    seq += 1; // fixes gaps even in partial mode.
+                    seq = seq_gen(m, seq);
+                    let dot = if m.ext.is_empty() { "" } else { "." };
+                    m.new_name = format!("{base}~{seq}{}{dot}{}", m.comment, m.ext);
                 });
             });
 
