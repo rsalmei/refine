@@ -81,7 +81,7 @@ impl Refine for Rebuild {
             .any(|m| m.seq.is_none() && RE.is_match(m.entry.filename_parts().0))
         {
             eprintln!("warning: detected old-style filenames.");
-            match utils::prompt_yes_no(r#"migrate to new style "name+alias~9"?"#) {
+            match utils::prompt_yes_no(r#"migrate to new style "name~9"?"#) {
                 Ok(()) => {
                     medias.iter_mut().for_each(|m| {
                         if let Some(caps) = RE.captures(m.entry.filename_parts().0) {
