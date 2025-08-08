@@ -55,7 +55,7 @@ pub struct Media {
 impl Refine for Dupes {
     type Media = Media;
     const OPENING_LINE: &'static str = "Detect duplicate files";
-    const MODE: TraversalMode = TraversalMode::Files;
+    const T_MODE: TraversalMode = TraversalMode::Files;
 
     fn tweak(&mut self, _: &InputInfo) {
         if self.threshold < 0.0 || self.threshold > 1.0 {

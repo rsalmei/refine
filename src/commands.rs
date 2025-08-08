@@ -38,7 +38,7 @@ pub trait Refine {
     /// The opening line to display when running the command.
     const OPENING_LINE: &'static str;
     /// The mode of traversal to use when fetching entries.
-    const MODE: TraversalMode;
+    const T_MODE: TraversalMode;
 
     /// Tweak the command options to fix small issues after the opening line, but before fetching
     /// the entries and converting them to the proper Media type.
@@ -55,7 +55,7 @@ impl<R: Refine> Runner for R {
     fn run(mut self, fetcher: Fetcher, info: InputInfo) -> Result<()> {
         println!("=> {}\n", R::OPENING_LINE);
         self.tweak(&info);
-        self.refine(gen_medias(fetcher.fetch(R::MODE)))
+        self.refine(gen_medias(fetcher.fetch(R::T_MODE)))
     }
 }
 
@@ -73,12 +73,12 @@ impl Command {
 
     pub fn traversal_mode(&self) -> TraversalMode {
         match &self {
-            Command::Dupes(_) => dupes::Dupes::MODE,
-            Command::Join(_) => join::Join::MODE,
-            Command::List(_) => list::List::MODE,
-            Command::Rebuild(_) => rebuild::Rebuild::MODE,
-            Command::Rename(_) => rename::Rename::MODE,
-            Command::Probe(_) => probe::Probe::MODE,
+            Command::Dupes(_) => dupes::Dupes::T_MODE,
+            Command::Join(_) => join::Join::T_MODE,
+            Command::List(_) => list::List::T_MODE,
+            Command::Rebuild(_) => rebuild::Rebuild::T_MODE,
+            Command::Rename(_) => rename::Rename::T_MODE,
+            Command::Probe(_) => probe::Probe::T_MODE,
         }
     }
 }

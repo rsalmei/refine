@@ -56,7 +56,7 @@ static CASE_FN: OnceLock<fn(&str) -> String> = OnceLock::new();
 impl Refine for Rebuild {
     type Media = Media;
     const OPENING_LINE: &'static str = "Rebuild collection filenames";
-    const MODE: TraversalMode = TraversalMode::Files;
+    const T_MODE: TraversalMode = TraversalMode::Files;
 
     fn tweak(&mut self, input: &InputInfo) {
         let f = match self.case {

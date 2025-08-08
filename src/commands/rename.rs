@@ -45,7 +45,7 @@ pub struct Media {
 impl Refine for Rename {
     type Media = Media;
     const OPENING_LINE: &'static str = "Rename files";
-    const MODE: TraversalMode = TraversalMode::DirsAndContent;
+    const T_MODE: TraversalMode = TraversalMode::DirsAndContent;
 
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         let total_files = medias.len();

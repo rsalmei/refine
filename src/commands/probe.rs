@@ -77,7 +77,7 @@ enum Verdict {
 impl Refine for Probe {
     type Media = Media;
     const OPENING_LINE: &'static str = "Probe collection names online";
-    const MODE: TraversalMode = TraversalMode::Files;
+    const T_MODE: TraversalMode = TraversalMode::Files;
 
     fn tweak(&mut self, _: &InputInfo) {
         if self.retries < 0 && self.errors == Errors::Last {

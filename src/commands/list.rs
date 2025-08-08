@@ -53,7 +53,7 @@ static CALC_DIR_SIZES: OnceLock<bool> = OnceLock::new();
 impl Refine for List {
     type Media = Media;
     const OPENING_LINE: &'static str = "List files";
-    const MODE: TraversalMode = TraversalMode::ContentOverDirs;
+    const T_MODE: TraversalMode = TraversalMode::ContentOverDirs;
 
     fn tweak(&mut self, input: &InputInfo) {
         self.rev ^= ORDERING.iter().find(|(b, _)| *b == self.by).unwrap().1;

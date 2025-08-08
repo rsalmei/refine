@@ -78,7 +78,7 @@ static SHARED: OnceLock<Shared> = OnceLock::new();
 impl Refine for Join {
     type Media = Media;
     const OPENING_LINE: &'static str = "Join files";
-    const MODE: TraversalMode = TraversalMode::DirsStop;
+    const T_MODE: TraversalMode = TraversalMode::DirsStop;
 
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         if self.target.is_file() {
@@ -98,7 +98,7 @@ impl Refine for Join {
         if target.exists() {
             // if target happens to be inside any input path and is not empty, this will dup the files.
             let fetcher = Fetcher::single(&target, Recurse::Shallow);
-            let in_target = fetcher.fetch(Join::MODE).collect::<Vec<_>>();
+            let in_target = fetcher.fetch(Join::T_MODE).collect::<Vec<_>>();
             target_names.extend(in_target.iter().map(|e| e.file_name().to_string()));
             medias.extend(in_target.into_iter().map(|entry| Media {
                 entry,
