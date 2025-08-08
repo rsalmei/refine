@@ -1,7 +1,6 @@
 use crate::commands::Refine;
 use crate::entries::{Entry, Fetcher, InputInfo, Recurse, TraversalMode};
-use crate::utils;
-use crate::utils::natural_cmp;
+use crate::utils::{display_abort, natural_cmp};
 use anyhow::Result;
 use clap::{Args, ValueEnum};
 use human_repr::HumanCount;
@@ -121,11 +120,7 @@ impl Refine for List {
                 size += s;
                 count += c;
             });
-        println!(
-            "listed entries: {}{}",
-            medias.len(),
-            utils::display_abort(true),
-        );
+        println!("listed entries: {}{}", medias.len(), display_abort(true),);
         println!("  total: {} in {count} files", size.human_count("B"),);
 
         Ok(())
