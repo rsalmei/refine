@@ -64,12 +64,12 @@ pub trait Refine {
 fn refine<R: Refine>(mut opt: R, ei: EffectiveInput) -> Result<()> {
     println!("=> {}\n", R::OPENING_LINE);
     opt.tweak(&ei.info);
-    opt.refine(gen_medias(ei.fetcher.fetch(R::T_MODE)))
+    opt.refine(gen_medias(ei.fetcher().fetch(R::T_MODE)))
 }
 
 fn show<R: Refine>(_: R, ei: EffectiveInput) {
     println!("\nentries this command will process:\n");
-    let mut entries = ei.fetcher.fetch(R::T_MODE).collect::<Vec<_>>();
+    let mut entries = ei.fetcher().fetch(R::T_MODE).collect::<Vec<_>>();
     entries.sort_unstable_by(|e, f| natural_cmp(e.to_str(), f.to_str()));
     entries.iter().for_each(|e| println!("{e}"));
     match entries.len() {

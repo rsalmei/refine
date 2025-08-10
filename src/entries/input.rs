@@ -21,9 +21,15 @@ pub struct Input {
 /// The input data structure that holds the effective paths to scan and their properties.
 #[derive(Debug)]
 pub struct EffectiveInput {
-    pub info: InputInfo,
     pub show: bool,
-    pub fetcher: Fetcher,
+    pub info: InputInfo,
+    fetcher: Fetcher,
+}
+
+impl EffectiveInput {
+    pub fn fetcher(self) -> Fetcher {
+        self.fetcher
+    }
 }
 
 #[derive(Debug)]
@@ -45,8 +51,8 @@ impl TryFrom<Input> for EffectiveInput {
         let filter = input.filter.try_into()?;
         let fetcher = Fetcher::new(dirs, input.recursion.into(), filter);
         let ei = EffectiveInput {
-            info,
             show: input.show,
+            info,
             fetcher,
         };
         Ok(ei)
