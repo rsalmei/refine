@@ -205,11 +205,11 @@ impl Refine for Join {
         };
 
         // step: recover from CrossDevice errors.
-        if !medias.is_empty() {
-            if let By::Move = self.by {
-                println!("attempting to fix {} errors", medias.len());
-                FileOps::cross_move(&mut medias);
-            }
+        if !medias.is_empty()
+            && let By::Move = self.by
+        {
+            println!("attempting to fix {} errors", medias.len());
+            FileOps::cross_move(&mut medias);
         }
 
         // step: remove the empty parent directories.
