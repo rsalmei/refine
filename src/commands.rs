@@ -5,7 +5,8 @@ mod probe;
 mod rebuild;
 mod rename;
 
-use crate::entries::{Entry, Fetcher, InputInfo, TraversalMode};
+use crate::entries::{EffectiveInput, Entry, InputInfo, TraversalMode};
+use crate::utils::natural_cmp;
 use anyhow::Result;
 use clap::Subcommand;
 
@@ -31,7 +32,7 @@ pub enum Command {
     Probe(probe::Probe),
 }
 
-/// The common interface for Refine commands that work with media files.
+/// The common interface for commands that refine media files.
 pub trait Refine {
     type Media: TryFrom<Entry, Error = (Entry, anyhow::Error)>;
 
@@ -47,38 +48,53 @@ pub trait Refine {
     fn refine(&self, medias: Vec<Self::Media>) -> Result<()>;
 }
 
-trait Runner {
-    fn run(self, fetcher: Fetcher, w: InputInfo) -> Result<()>;
+// /// The common interface for commands that change the configuration of Refine commands.
+// pub trait Configure {
+//     /// The opening line to display when running the command.
+//     const OPENING_LINE: &'static str;
+//
+//     /// Actual command implementation.
+//     fn config(&self) -> Result<()>;
+// }
+// fn configure<C: Configure>(mut r: C, fetcher: Fetcher, info: InputSpec) -> Result<()> {
+//     println!("=> {}\n", C::OPENING_LINE);
+//     r.config()
+// }
+
+fn refine<R: Refine>(mut opt: R, ei: EffectiveInput) -> Result<()> {
+    println!("=> {}\n", R::OPENING_LINE);
+    opt.tweak(&ei.info);
+    opt.refine(gen_medias(ei.fetcher.fetch(R::T_MODE)))
 }
 
-impl<R: Refine> Runner for R {
-    fn run(mut self, fetcher: Fetcher, info: InputInfo) -> Result<()> {
-        println!("=> {}\n", R::OPENING_LINE);
-        self.tweak(&info);
-        self.refine(gen_medias(fetcher.fetch(R::T_MODE)))
+fn show<R: Refine>(_: R, ei: EffectiveInput) {
+    println!("\nentries this command will process:\n");
+    let mut entries = ei.fetcher.fetch(R::T_MODE).collect::<Vec<_>>();
+    entries.sort_unstable_by(|e, f| natural_cmp(e.to_str(), f.to_str()));
+    entries.iter().for_each(|e| println!("{e}"));
+    match entries.len() {
+        0 => println!("no entries found"),
+        n => println!("\ntotal entries: {n}"),
     }
 }
 
 impl Command {
-    pub fn run(self, fetcher: Fetcher, info: InputInfo) -> Result<()> {
-        match self {
-            Command::Dupes(opt) => opt.run(fetcher, info),
-            Command::Join(opt) => opt.run(fetcher, info),
-            Command::List(opt) => opt.run(fetcher, info),
-            Command::Rebuild(opt) => opt.run(fetcher, info),
-            Command::Rename(opt) => opt.run(fetcher, info),
-            Command::Probe(opt) => opt.run(fetcher, info),
+    pub fn execute(self, ei: EffectiveInput) -> Result<()> {
+        macro_rules! call {
+            ($opt:expr) => {
+                match ei.show {
+                    false => refine($opt, ei),
+                    true => Ok(show($opt, ei)),
+                }
+            };
         }
-    }
-
-    pub fn traversal_mode(&self) -> TraversalMode {
-        match &self {
-            Command::Dupes(_) => dupes::Dupes::T_MODE,
-            Command::Join(_) => join::Join::T_MODE,
-            Command::List(_) => list::List::T_MODE,
-            Command::Rebuild(_) => rebuild::Rebuild::T_MODE,
-            Command::Rename(_) => rename::Rename::T_MODE,
-            Command::Probe(_) => probe::Probe::T_MODE,
+        match self {
+            Command::Dupes(opt) => call!(opt),
+            Command::Join(opt) => call!(opt),
+            Command::List(opt) => call!(opt),
+            Command::Rebuild(opt) => call!(opt),
+            Command::Rename(opt) => call!(opt),
+            Command::Probe(opt) => call!(opt),
         }
     }
 }

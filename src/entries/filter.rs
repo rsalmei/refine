@@ -5,8 +5,8 @@ use clap::builder::NonEmptyStringValueParser;
 use regex::Regex;
 
 /// A set of rules that allow the user to specify which files and directories to include or exclude.
-#[derive(Debug, Default, Args)]
-pub struct FilterSpec {
+#[derive(Debug, Args)]
+pub struct Filter {
     /// Include only files.
     #[arg(short = 'F', long, global = true, conflicts_with = "only_dirs", help_heading = Some("Fetch"))]
     only_files: bool,
@@ -45,8 +45,8 @@ pub struct FilterSpec {
     ext_ex: Option<String>,
 }
 
-/// The engine that applies the [FilterSpec] rules to a collection of entries.
-#[derive(Debug)]
+/// The engine that applies the [Filter] rules to a collection of entries.
+#[derive(Debug, Default)]
 pub struct FilterRules {
     only_files: bool,
     only_dirs: bool,
@@ -88,7 +88,7 @@ impl FilterRules {
 }
 
 /// A pair of regexes that check strings for inclusion and exclusion.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Constraint {
     re_in: Option<Regex>,
     re_ex: Option<Regex>,
@@ -114,10 +114,10 @@ impl TryFrom<[Param<'_>; 2]> for Constraint {
     }
 }
 
-impl TryFrom<FilterSpec> for FilterRules {
+impl TryFrom<Filter> for FilterRules {
     type Error = anyhow::Error;
 
-    fn try_from(s: FilterSpec) -> Result<Self, Self::Error> {
+    fn try_from(s: Filter) -> Result<Self, Self::Error> {
         Ok(FilterRules {
             only_files: s.only_files,
             only_dirs: s.only_dirs,

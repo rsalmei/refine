@@ -1,10 +1,13 @@
-use crate::entries::{Entry, Fetcher, FilterSpec};
+use crate::entries::{Entry, Fetcher, Filter};
 use anyhow::{Result, anyhow};
 use clap::Args;
 use std::path::PathBuf;
 
 #[derive(Debug, Args)]
 pub struct Input {
+    /// Just show the entries that would be processed, without running any command.
+    #[arg(long, global = true)]
+    show: bool,
     /// Directories to scan.
     #[arg(global = true, help_heading = None)]
     dirs: Vec<PathBuf>,
@@ -12,10 +15,17 @@ pub struct Input {
     #[arg(short = 'R', long, default_value_t = 0, value_name = "INT", global = true, help_heading = Some("Fetch"))]
     recursion: u32,
     #[command(flatten)]
-    filter: FilterSpec,
+    filter: Filter,
 }
 
-/// Information about the input paths provided by the user.
+/// The input data structure that holds the effective paths to scan and their properties.
+#[derive(Debug)]
+pub struct EffectiveInput {
+    pub info: InputInfo,
+    pub show: bool,
+    pub fetcher: Fetcher,
+}
+
 #[derive(Debug)]
 pub struct InputInfo {
     /// The effective number of paths to scan, after deduplication and validation.
@@ -24,17 +34,26 @@ pub struct InputInfo {
     pub has_invalid: bool,
 }
 
-impl TryFrom<Input> for (Fetcher, InputInfo) {
+impl TryFrom<Input> for EffectiveInput {
     type Error = anyhow::Error;
 
-    fn try_from(input: Input) -> Result<(Fetcher, InputInfo)> {
-        let (dirs, info) = validate_dirs(input.dirs)?;
-        let fetcher = Fetcher::new(dirs, input.recursion.into(), input.filter)?;
-        Ok((fetcher, info))
+    fn try_from(input: Input) -> Result<EffectiveInput> {
+        let (dirs, info) = validate(input.dirs)?;
+        if dirs.is_empty() {
+            return Err(anyhow!("no valid paths given"));
+        }
+        let filter = input.filter.try_into()?;
+        let fetcher = Fetcher::new(dirs, input.recursion.into(), filter);
+        let ei = EffectiveInput {
+            info,
+            show: input.show,
+            fetcher,
+        };
+        Ok(ei)
     }
 }
 
-fn validate_dirs(mut dirs: Vec<PathBuf>) -> Result<(Vec<Entry>, InputInfo)> {
+fn validate(mut dirs: Vec<PathBuf>) -> Result<(Vec<Entry>, InputInfo)> {
     if dirs.is_empty() {
         dirs = vec![".".into()]; // use the current directory if no paths are given.
     }

@@ -55,13 +55,13 @@ impl Refine for List {
     const OPENING_LINE: &'static str = "List files";
     const T_MODE: TraversalMode = TraversalMode::ContentOverDirs;
 
-    fn tweak(&mut self, input: &InputInfo) {
+    fn tweak(&mut self, info: &InputInfo) {
         self.rev ^= ORDERING.iter().find(|(b, _)| *b == self.by).unwrap().1;
         if self.by == By::Path && !self.paths {
             self.paths = true;
             eprintln!("Enabling full file paths due to path sorting.\n");
         }
-        if input.num_valid > 1 && !self.paths {
+        if info.num_valid > 1 && !self.paths {
             self.paths = true;
             eprintln!("Enabling full file paths due to multiple input paths.\n");
         }
