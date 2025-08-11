@@ -256,7 +256,7 @@ mod tests {
             "media - God of War",
         );
         case(
-            &[("God{S}of{S}War", "God of War")],
+            &[("God{S}*of{S}*War", "God of War")],
             "godofwar media",
             "media - God of War",
         );
@@ -266,7 +266,7 @@ mod tests {
             "media - God of War",
         );
         case(
-            &[("God{S}of{S}War", "God of War")],
+            &[("God{S}*of{S}*War", "God of War")],
             "godofwar -  media",
             "media - God of War",
         );
