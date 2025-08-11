@@ -17,6 +17,8 @@ use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 use std::sync::{Arc, LazyLock, Mutex};
 use std::time::{Duration, Instant};
 
+// TODO find some way to mark files/groups as "not a dupe".
+
 #[derive(Debug, Args)]
 pub struct Dupes {
     /// Identical (size and sample), or similar (rare tokens and fuzzy matching).
