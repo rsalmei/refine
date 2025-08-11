@@ -18,6 +18,7 @@ use std::sync::{Arc, LazyLock, Mutex};
 use std::time::{Duration, Instant};
 
 // TODO find some way to mark files/groups as "not a dupe".
+// TODO add a way to include new stopwords by the user.
 
 #[derive(Debug, Args)]
 pub struct Dupes {
