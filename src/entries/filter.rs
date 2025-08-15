@@ -13,31 +13,31 @@ pub struct Filter {
     /// Include only directories.
     #[arg(short = 'D', long, global = true, conflicts_with = "only_files", help_heading = Some("Fetch"))]
     only_dirs: bool,
-    /// Include only these files and paths.
+    /// Include everything that matches this (regardless of files or directories/paths).
     #[arg(short = 'i', long, global = true, help_heading = Some("Fetch"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     all_in: Option<String>,
-    /// Include only these local directories.
+    /// Include only these current directories.
     #[arg(short = 'I', long, global = true, help_heading = Some("Fetch"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     dir_in: Option<String>,
     /// Include only these paths.
     #[arg(long, global = true, help_heading = Some("Fetch"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     path_in: Option<String>,
-    /// Include only these files.
+    /// Include only these filenames.
     #[arg(long, global = true, help_heading = Some("Fetch"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     file_in: Option<String>,
     /// Include only these extensions.
     #[arg(long, global = true, help_heading = Some("Fetch"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     ext_in: Option<String>,
-    /// Exclude these files and paths.
+    /// Exclude everything that matches this (regardless of files or directories/paths).
     #[arg(short = 'x', long, global = true, help_heading = Some("Fetch"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     all_ex: Option<String>,
-    /// Exclude these local directories.
+    /// Exclude these current directories.
     #[arg(short = 'X', long, global = true, help_heading = Some("Fetch"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     dir_ex: Option<String>,
     /// Exclude these paths.
     #[arg(long, global = true, help_heading = Some("Fetch"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     path_ex: Option<String>,
-    /// Exclude these files.
+    /// Exclude these filenames.
     #[arg(long, global = true, help_heading = Some("Fetch"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     file_ex: Option<String>,
     /// Exclude these extensions.
