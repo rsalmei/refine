@@ -9,7 +9,7 @@ use std::sync::LazyLock;
 
 /// A set of rules that allows the user to customize filenames.
 #[derive(Debug, Args)]
-pub struct NamingSpec {
+pub struct Naming {
     /// Strip from the start till occurrence; includes separators nearby, use {S} if needed.
     #[arg(short = 'b', long, value_name = "STR|REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
     strip_before: Vec<String>,
@@ -27,7 +27,7 @@ pub struct NamingSpec {
     throw: Vec<(String, String)>,
 }
 
-impl NamingSpec {
+impl Naming {
     /// Compile this set of rules.
     pub fn compile(&self) -> Result<NamingRules> {
         NamingRules::compile(

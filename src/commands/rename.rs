@@ -1,6 +1,6 @@
 use crate::commands::Refine;
 use crate::entries::{Entry, TraversalMode};
-use crate::medias::{FileOps, NamingSpec};
+use crate::medias::{FileOps, Naming};
 use crate::utils;
 use crate::{impl_new_name, impl_new_name_mut, impl_source_entry};
 use anyhow::Result;
@@ -11,7 +11,7 @@ use std::fmt::{Display, Write};
 #[derive(Debug, Args)]
 pub struct Rename {
     #[command(flatten)]
-    naming: NamingSpec,
+    naming: Naming,
     /// How to resolve clashes.
     #[arg(short = 'c', long, default_value_t = Clashes::Sequence, value_name = "STR", value_enum)]
     clashes: Clashes,

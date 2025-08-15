@@ -1,6 +1,6 @@
 use crate::commands::Refine;
 use crate::entries::{Entry, InputInfo, TraversalMode};
-use crate::medias::{FileOps, NamingSpec};
+use crate::medias::{FileOps, Naming};
 use crate::utils::{self, PromptError};
 use crate::{impl_new_name, impl_new_name_mut, impl_source_entry};
 use anyhow::Result;
@@ -15,7 +15,7 @@ use std::time::SystemTime;
 #[derive(Debug, Args)]
 pub struct Rebuild {
     #[command(flatten)]
-    naming: NamingSpec,
+    naming: Naming,
     /// Disable smart matching, so "foo bar.mp4", "FooBar.mp4" and "foo__bar.mp4" are different.
     #[arg(short = 's', long)]
     simple: bool,
