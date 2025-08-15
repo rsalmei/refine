@@ -49,7 +49,7 @@ impl NamingRules {
     ) -> Result<NamingRules> {
         const O: &str = r"[(\[{]"; // enclosing opening.
         const C: &str = r"[)\]}]"; // enclosing closing.
-        const SEP: &str = r"[-\s.,@]";
+        const SEP: &str = r"[-\s.,]";
         let before = |rule| format!("^.*{rule}{C}*{SEP}*");
         let after = |rule| format!("{SEP}*{O}*{rule}.*$");
         let exact = |rule| {
