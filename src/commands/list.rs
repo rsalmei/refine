@@ -59,11 +59,11 @@ impl Refine for List {
         self.rev ^= ORDERING.iter().find(|(b, _)| *b == self.by).unwrap().1;
         if self.by == By::Path && !self.paths {
             self.paths = true;
-            eprintln!("Enabling full file paths due to path sorting.\n");
+            eprintln!("Enabling file paths due to sorting by paths.\n");
         }
         if info.num_valid > 1 && !self.paths {
             self.paths = true;
-            eprintln!("Enabling full file paths due to multiple input paths.\n");
+            eprintln!("Enabling file paths due to multiple input paths.\n");
         }
         CALC_DIR_SIZES.set(!self.no_calc_dirs).unwrap();
     }
