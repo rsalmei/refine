@@ -18,7 +18,8 @@ use std::sync::{Arc, LazyLock, Mutex};
 use std::time::{Duration, Instant};
 
 // TODO find some way to mark files/groups as "not a dupe".
-// TODO add a way to include new stopwords by the user.
+// TODO allow the user to specify custom stopwords, e.g., via a config file or command line argument.
+// TODO allow media type to be used as a fetch option (include in Entry perhaps) for all commands.
 
 #[derive(Debug, Args)]
 pub struct Dupes {
