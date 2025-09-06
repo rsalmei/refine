@@ -206,7 +206,7 @@ pub struct DisplayPath<'a>(&'a Entry);
 pub struct DisplayFilename<'a>(&'a Entry);
 
 const DIR_STYLE: (Style, Style) = {
-    let parent_dir: Style = Style::new().yellow();
+    let parent_dir = Style::new().yellow();
     (parent_dir, parent_dir.bold())
 };
 const FILE_STYLE: (Style, Style) = {
