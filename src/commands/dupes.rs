@@ -557,13 +557,15 @@ fn clean_words(name: &str) -> String {
 }
 
 fn classify_media_kind(ext: &str) -> &'static str {
+    let ext = ext.to_ascii_lowercase();
+    let ext = ext.as_str();
     // guess the mime type from the extension.
     let mime = MimeGuess::from_ext(ext).first_raw().unwrap_or_default();
     let top = mime.split('/').next().unwrap_or_default();
 
     match top {
         "video" | "audio" | "image" | "text" => top,
-        "application" => match ext.to_ascii_lowercase().as_str() {
+        "application" => match ext {
             // video extensions that are misclassified as application.
             "mkv" | "webm" | "rmvb" | "m2ts" | "mts" | "f4v" | "vob" | "ogv" => "video",
             // document.
