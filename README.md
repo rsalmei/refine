@@ -15,7 +15,7 @@ It will help you reasonably find duplicated files both identically and by fuzzy 
 
 > Use it to _refine_ your photos, music, movies, porn, docs, or any other collections, cleaning up and organizing them in a way that makes sense to you.
 
-Note: every command is interactive by default, so don't worry experimenting! This is a key feature of this tool, i.e., allow you to safely experiment with your collections without the risk of changing or losing anything! Just review the results and agree to apply them if you are happy with them.
+Note: every command is dry-run by default, so don't worry experimenting! This is a key feature of this tool, the commands are interactive unless you say otherwise, allowing you to preview what would be done and then confirm or abort the changes. You can thus try out different commands and options without the risk of changing or losing anything!
 
 > I've made this tool to be the fastest and easiest way to organize media collections. It helps me a lot, and I hope it can help you too.
 
