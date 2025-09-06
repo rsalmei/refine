@@ -9,17 +9,21 @@
 
 ## What it does
 
-This tool will revolutionize the way you manage and organize your media collections! It can scan multiple root directories recursively and analyze all the files and directories found as a whole, performing some advanced operations on them.
+This tool will revolutionize the way you manage your media collections! It can simultaneously scan multiple root directories and analyze all the files and directories found as a whole, performing some advanced operations on them. And it is very easy to use, with a simple and intuitive command line interface that will let you quickly get the results you want.
 
-It can help you reasonably find duplicated files based on both size and filename, seamlessly join them into a single directory with advanced conflict resolution, quickly list files from multiple directories sorted together by various criteria, effortlessly rename files and directories using advanced regular expressions, intelligently rebuild entire media collection names, and even reliably probe filenames against a remote server! It is a one-stop solution for all your media needs, allowing you to organize them in a way that makes sense to you.
+It will help you reasonably find duplicated files both identically and by fuzzy filename similarity, seamlessly join them into a single directory with advanced name conflict resolution, quickly list files from multiple directories sorted together by various criteria, effortlessly rename files and directories using advanced regular expression rules, intelligently rebuild entire media collection names by identifying groups and s, and even reliably probe collection filenames against a remote server! It is a one-stop solution for all your media needs, allowing you to organize them in a way that makes sense to you.
 
-> Use it to _refine_ your photo, music, movie, porn, etc., collection in a simple and efficient way!
+> Use it to _refine_ your photos, music, movies, porn, docs, or any other collections, cleaning up and organizing them in a way that makes sense to you.
 
-I've made this tool to be the fastest and easiest way to organize media collections. I use it a lot, and I hope it can help you too.
+Note: every command is interactive by default, so don't worry experimenting! This is a key feature of this tool, i.e., allow you to safely experiment with your collections without the risk of changing or losing anything! Just review the results and agree to apply them if you are happy with them.
 
-And yes, it is blazingly fast, like all Rust 🦀 software!
+> I've made this tool to be the fastest and easiest way to organize media collections. It helps me a lot, and I hope it can help you too.
+
+And yes, it is blazingly fast, like all Rust 🦀 software should be!
 
 Enjoy!
+
+![refine 2.0 list](https://raw.githubusercontent.com/rsalmei/refine/main/img/list-2.0.png)
 
 ## How to use it
 
@@ -31,7 +35,36 @@ cargo install refine
 
 And that's it, you're ready to go! You can now call it anywhere.
 
-## What's new
+## What's new in 3.0
+
+I'm thrilled to announce a release packed with deep, carefully engineered improvements! This update is the culmination of a significant technical effort, bringing both new capabilities and cool new refinements. The straight jump from 2.0 to 3.0 reflects the magnitude of these changes, about 100 commits worth of work over several months, with a strong focus on enhancing the core algorithms and bringing new features to life.
+
+The flagship feature is the completely revamped `dupes` command, now equipped with a sophisticated detection algorithm that combines fuzzy string matching and a novel rare-token scoring system! This innovative approach vastly improves duplicate detection accuracy, even in tricky and non-exact cases. This means you’ll find more duplicates, not just exact matches, making cleanup much more effective!
+
+This new algorithm employs a multi-faceted approach:
+
+- Sophisticated Name Similarity Detection:
+    - Fuzzy String Matching: Combines normalized Levenshtein distance with Sørensen-Dice coefficient for detecting both minor typos and structural similarities
+    - Rare Token Scoring: Builds corpus-wide token frequency maps and weights matches by token rarity using inverse logarithmic frequency
+    - Union-Find Clustering: Employs union-find data structures for efficient grouping with average similarity tracking across group merges
+    - Intelligent Filtering: Includes semantic filters to exclude TV series and sequential files using number pattern analysis
+
+- Advanced Text Processing:
+    - Unicode Normalization: Filenames are preprocessed with transliteration and accent removal to ensure consistent matching
+    - Multi-language Stopword Filtering: Comprehensive stopword lists for English and Portuguese built-in
+    - Media-specific Tag Recognition: Removal of common media tags (`web-dl`, `blu-ray`, codecs, resolutions, etc.)
+    - MIME-aware Classification: Features media type detection combining MIME guessing with extension overrides, so movies are not tagged as similar to their own subtitles
+
+- Other Optimizations:
+    - Parallel Processing: Parallel similarity computation with progress tracking, leveraging multicore CPUs
+    - Inverted Token Indexing: Efficient candidate pair generation using token-based blocking
+    - Advanced Content Sampling: Implements a new three-point sampling strategy (beginning, middle, end) still with configurable sample size, achieving high accuracy for large media files while avoiding full file reads
+
+Also in this release there are several other improvements, such as natural sorting for displaying entries in `list` and the global `--show`, better clash resolution reporting in `join` and `rename`, support for comments in collections in `rebuild`, new fetch options `path_in` and `path_ex` for including and excluding paths, new "recipe type" options in naming rules for advanced transformations, support for on-demand separators in naming rules regexes, etc. There's a lot to explore!
+
+---
+
+<details><summary>(previous versions)</summary>
 
 ### New in 2.0
 
@@ -46,12 +79,6 @@ Another great new feature is the global `--view` option, which allows you to byp
 Everything is again more polished and optimized. Even the usage and help are much more user-friendly!
 
 And last but not least, the input paths can now be relative, which will make all output also be relative and thus easier to read.
-
-Behold the new `refine` command!
-
-![refine 2.0 list](https://raw.githubusercontent.com/rsalmei/refine/main/img/list-2.0.png)
-
-<details><summary>(older versions)</summary>
 
 ### New in 1.4
 
@@ -172,9 +199,6 @@ All commands will:
 2. load the metadata for each file like size and creation date, as required by some commands
 3. execute the command and show the results
 4. ask the user to perform the changes, if applicable
-
-> Everything is always interactive, so don't worry experimenting!
-> <br>It's like you're always in dry-run mode, so nothing will be persisted until you review the results and agree to apply them.
 
 ### The global refine command (help)
 
@@ -462,42 +486,7 @@ $ refine probe ~/media /Volumes/External --url 'https://example.com/$/' -r3 -el
 
 ## Changelog
 
-<details><summary>(click to expand)</summary>
-
-- 2.0.0 Mar 24, 2025: global support for COLORS; `list` command is greatly improved with support for listing directory entries, number of files and full sizes; new precise recursion feature; new global `--view` option; input paths can now be relative.
-  Behold the new `refine` command!
-- 1.4.0 Feb 28, 2025: new `probe` command; rebuild: new `--case` option to keep original case, rename: included support for handling clashes by inserting sequences in the filenames.
-- 1.3.1 Feb 04, 2025: rebuild: fix the last full mode change, to actually reset sequences.
-- 1.3.0 Jan 31, 2025: list: smarter list command, which hides full paths by default (with a flag for showing them if needed) and uses by default descending order for size and ascending for name and path (with a flag to reverse it if needed); join: change no_remove flag to parents (n -> p) and some clash options; rebuild: change simple_match flag to simple and fix full mode, which was not resetting sequences; general polishing.
-- 1.2.1 Nov 19, 2024: just require newer regex, so deps badge won't show "maybe insecure".
-- 1.2.0 Nov 19, 2024: rebuild: much improved partial mode which can alter groups of filenames while preserving sequences, and even detect and fix gaps in sequences caused by deleted files.
-- 1.1.0 Oct 10, 2024: join: support not empty target folders and resolve clashes accordingly; include support for aliases in several enum CLI arguments; fix join by copy still moving files.
-- 1.0.0 Oct 09, 2024: major overhaul; rebuild: new partial mode, new replace feature, auto-enable partial mode in case not all directories are available.
-- 0.18.0 Aug 27, 2024: rebuild: new force implementation that is easier to use with improved memory usage.
-- 0.17.1 Aug 15, 2024: global: fix `--shallow` option.
-- 0.17.0 Aug 05, 2024: global: dedup input directories, enables to select only files by filtering extensions; join: new clash resolve option.
-- 0.16.0 Ago 01, 2024: global: scan with directory support, new `join` command, new magic filter options, new filter options; rename: include full directory support.
-- 0.15.0 Jul 18, 2024: rename: nicer command output by parent directory; new threaded yes/no prompt that can be aborted with CTRL-C.
-- 0.14.0 Jul 11, 2024: rename: disallow by default changes in directories where clashes are detected, including new `--clashes` option to allow them.
-- 0.13.0 Jul 10, 2024: rename: new replace feature; global: make strip rules also remove `.` and `_`, `--include` and `--exclude` options do not check file extensions; dupes: remove case sensitivity option.
-- 0.12.0 Jul 09, 2024: global: new `--dir-in` and `--dir-out` options.
-- 0.11.0 Jul 08, 2024: global: new `rename` command; rebuild, rename: improve strip exact.
-- 0.10.0 Jul 02, 2024: global: new `--exclude`.
-- 0.9.0 Jul 01, 2024: global: support for CTRL-C.
-- 0.8.0 Jun 30, 2024: new `list` command.
-- 0.7.1 Jun 28, 2024: global: `--include` is now case-insensitive; rebuild: fix smart detect not grouping some files, strip rules remove hyphens too.
-- 0.7.0 Jun 27, 2024: global: new `--include`; rebuild: new `--force`, new interactive mode, new `--yes`, auto fix rename errors, smaller memory consumption; dupes: improved performance.
-- 0.6.0 Jun 24, 2024: global: new `rebuild` command, general polishing overall.
-- 0.5.0 Jun 20, 2024: support for shallow scan, verbose mode; dupes: ignores repetition systems.
-- 0.4.0 Jun 17, 2024: include `dupes` command, support match case and changing sample size.
-- 0.3.0 Nov 07, 2023: include dedup by both size and name.
-- 0.2.2 Jun 04, 2022: use 2KB sample size.
-- 0.2.1 Jun 04, 2022: improve error handling.
-- 0.2.0 Jun 01, 2022: publish as `refine`, use split crate `human-repr`.
-- 0.1.1 May 27, 2022: samples the center of the files, which seems to fix false positives.
-- 0.1.0 May 25, 2022: first release, detects duplicated files, simple sampling strategy (1KB from the start of the files).
-
-</details>
+<br>Complete [here](https://github.com/rsalmei/refine/blob/main/CHANGELOG.md).
 
 ## License
 
@@ -506,8 +495,7 @@ directory for the full license text.
 
 
 ---
-Maintaining an open source project is hard and time-consuming, and I've put much ❤️ and effort into
-this.
+Maintaining an open source project is hard and time-consuming, and I've put much ❤️ and effort into this.
 
 If you've appreciated my work, you can back me up with a donation! Thank you. 😊
 
