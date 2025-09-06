@@ -1,11 +1,13 @@
-use super::sequence::Sequence;
 use anyhow::{Result, anyhow};
+use regex::Regex;
 use std::cmp::Ordering;
 use std::convert::Into;
+use std::env;
 use std::fmt::{self, Display};
+use std::fs::Metadata;
 use std::hash::{Hash, Hasher};
-use std::ops::{Deref, DerefMut};
-use std::path::{Path, PathBuf};
+use std::ops::Deref;
+use std::path::{Component, Path, PathBuf};
 use std::sync::LazyLock;
 use yansi::{Paint, Style};
 
@@ -17,32 +19,45 @@ pub struct Entry {
 }
 
 /// Create a new entry from a path, checking that it has a valid UTF-8 representation.
+///
+/// The path must exist.
 impl TryFrom<PathBuf> for Entry {
-    type Error = (anyhow::Error, PathBuf);
+    type Error = (PathBuf, anyhow::Error);
 
-    fn try_from(pb: PathBuf) -> Result<Self, Self::Error> {
-        let is_dir = pb.is_dir();
+    fn try_from(path: PathBuf) -> Result<Self, Self::Error> {
+        let path_err = |err: anyhow::Error| (path.clone(), err);
+        let is_dir = path
+            .metadata()
+            .map_err(Into::into)
+            .map_err(path_err)?
+            .is_dir(); // verify that the path exists and is a directory.
         if is_dir {
-            pb.file_name()
+            path.file_name()
                 .unwrap_or_default() // the root dir has no name.
                 .to_str()
-                .ok_or_else(|| (anyhow!("no UTF-8 dir name: {pb:?}"), pb.clone()))?;
+                .ok_or_else(|| anyhow!("no UTF-8 dir name: {path:?}"))
+                .map_err(path_err)?;
         } else {
-            pb.file_stem()
-                .ok_or_else(|| (anyhow!("no file stem: {pb:?}"), pb.clone()))?
+            path.file_stem()
+                .ok_or_else(|| anyhow!("no file stem: {path:?}"))
+                .map_err(path_err)?
                 .to_str()
-                .ok_or_else(|| (anyhow!("no UTF-8 file stem: {pb:?}"), pb.clone()))?;
-            pb.extension()
+                .ok_or_else(|| anyhow!("no UTF-8 file stem: {path:?}"))
+                .map_err(path_err)?;
+            path.extension()
                 .unwrap_or_default()
                 .to_str()
-                .ok_or_else(|| (anyhow!("no UTF-8 file extension: {pb:?}"), pb.clone()))?;
+                .ok_or_else(|| anyhow!("no UTF-8 file extension: {path:?}"))
+                .map_err(path_err)?;
         }
         // I could just check that the entire path is valid UTF-8, but I want to give better error messages.
-        if let Some(pp) = pb.parent() {
-            pp.to_str() // the root dir has no parent.
-                .ok_or_else(|| (anyhow!("no UTF-8 parent: {pp:?}"), pp.to_owned()))?;
+        if let Some(pp) = path.parent() {
+            // the root dir has no parent.
+            pp.to_str()
+                .ok_or_else(|| anyhow!("no UTF-8 parent: {pp:?}"))
+                .map_err(path_err)?;
         }
-        Ok(Entry { path: pb, is_dir })
+        Ok(Entry { path, is_dir })
     }
 }
 
@@ -51,16 +66,35 @@ pub static ROOT: LazyLock<Entry> = LazyLock::new(|| Entry::try_new("/", true).un
 impl Entry {
     /// Create a new entry that, in case the path does not exist, will assume the given directory flag.
     /// If it does exist, check that it has the correct directory flag or panic.
-    pub fn try_new(
-        path: impl Into<PathBuf>,
-        is_dir: bool,
-    ) -> Result<Self, (anyhow::Error, PathBuf)> {
-        let mut entry = Entry::try_from(path.into())?;
-        match entry.path.exists() {
-            true => assert_eq!(entry.is_dir, is_dir),
-            false => entry.is_dir = is_dir,
+    pub fn try_new(path: impl Into<PathBuf>, is_dir: bool) -> Result<Self> {
+        let path = path.into();
+        if path.to_str().is_none() {
+            return Err(anyhow!("invalid UTF-8 path: {path:?}"));
         }
-        Ok(entry)
+
+        // panic if the entry exists and the directory flag doesn't match.
+        // it should never happen in normal program logic, so if it does it's a bug.
+        match path.try_exists() {
+            Ok(true) => assert_eq!(path.is_dir(), is_dir, "is_dir error in {path:?}: {is_dir}"),
+            Ok(false) => {} // the path was verified to not exist, cool.
+            Err(err) => println!("warning: couldn't verify {path:?}: {err}"),
+        }
+
+        Ok(Entry { path, is_dir })
+    }
+
+    /// Create a new entry with the given name adjoined without checking UTF-8 again.
+    pub fn join(&self, name: impl AsRef<str>) -> Entry {
+        let path = self.path.join(name.as_ref());
+        let is_dir = path.is_dir();
+        Entry { path, is_dir }
+    }
+
+    /// Create a new entry with the given name without checking UTF-8 again.
+    pub fn with_file_name(&self, name: impl AsRef<str>) -> Entry {
+        let path = self.path.with_file_name(name.as_ref());
+        let is_dir = path.is_dir();
+        Entry { path, is_dir }
     }
 
     /// Get the stem and extension from files, or name from directories.
@@ -74,23 +108,24 @@ impl Entry {
         }
     }
 
-    /// Get the name, sequence, and extension from collection medias.
-    pub fn collection_parts(&self) -> (&str, Option<usize>, &str) {
-        // static RE: LazyLock<Regex> =
-        //     LazyLock::new(|| Regex::new(r"^(?<n>[^ ]*) \((?<a>.*)\)$").unwrap());
+    /// Get the canonical name, source alias, sequence, comment, and extension from collections.
+    pub fn collection_parts(&self) -> (&str, Option<&str>, Option<usize>, &str, &str) {
+        // regex: name~24 or name+alias~24.
+        static RE: LazyLock<Regex> =
+            LazyLock::new(|| Regex::new(r"^(\w+)(?:\+(\w+))?~(\d+)(.*)$").unwrap());
 
-        assert!(!self.is_dir, "not a file: {self}");
         let (stem, ext) = self.filename_parts();
-        let seq = Sequence::from(stem);
-        let name = &stem[..seq.true_len];
-        // let (name, alias) = match RE.captures(name).map(|caps| caps.extract()) {
-        //     Some((name, [alias])) => (name, alias),
-        //     _ => (name, ""),
-        // };
-        (name, seq.num, ext)
+        let Some(caps) = RE.captures(stem) else {
+            return (stem, None, None, "", ext);
+        };
+        let canonical = caps.get(1).unwrap().as_str(); // regex guarantees name is present.
+        let alias = caps.get(2).map(|m| m.as_str());
+        let seq = caps.get(3).and_then(|m| m.as_str().parse().ok());
+        let comment = caps.get(4).map_or("", |m| m.as_str());
+        (canonical, alias, seq, comment, ext)
     }
 
-    /// Return a cached directory flag, without touching the filesystem again.
+    /// Return a cached directory flag, which does not touch the filesystem again.
     pub fn is_dir(&self) -> bool {
         self.is_dir
     }
@@ -115,68 +150,81 @@ impl Entry {
         })
     }
 
-    /// Get a new entry with the given file name, without checking UTF-8 again.
-    pub fn with_file_name(&self, name: impl AsRef<str>) -> Entry {
-        let path = self.path.with_file_name(name.as_ref());
-        Entry {
-            is_dir: path.is_dir(),
-            path,
-        }
+    pub fn metadata(&self) -> Result<Metadata> {
+        self.path.metadata().map_err(Into::into)
     }
 
-    /// Get a new entry with the given name adjoined, without checking UTF-8 again.
-    pub fn join(&self, name: impl AsRef<str>) -> Entry {
-        let path = self.path.join(name.as_ref());
-        Entry {
-            is_dir: path.is_dir(),
-            path,
-        }
-    }
-
-    pub fn display_path(&self) -> DisplayPath {
+    pub fn display_path(&self) -> impl Display {
         DisplayPath(self)
     }
 
-    pub fn display_filename(&self) -> DisplayFilename {
+    pub fn display_filename(&self) -> impl Display {
         DisplayFilename(self)
+    }
+
+    pub fn resolve(&self) -> Result<Entry> {
+        let mut it = self.path.components();
+        let mut res = match it.next().unwrap() {
+            Component::Normal(x) if x == "~" => {
+                dirs::home_dir().ok_or_else(|| anyhow!("no home dir"))?
+            }
+            Component::Normal(x) => {
+                let mut dir = env::current_dir()?;
+                dir.push(x);
+                dir
+            }
+            Component::CurDir => env::current_dir()?,
+            Component::ParentDir => {
+                let mut dir = env::current_dir()?;
+                dir.pop();
+                dir
+            }
+            x => PathBuf::from(x.as_os_str()),
+        };
+        for comp in it {
+            match comp {
+                Component::RootDir => res.push(comp), // windows might have returned Prefix above, so RootDir comes here.
+                Component::Normal(_) => res.push(comp),
+                Component::ParentDir => {
+                    if !res.pop() {
+                        return Err(anyhow!("invalid path: {self}"));
+                    }
+                }
+                _ => unreachable!(),
+            }
+        }
+        Entry::try_new(res, self.is_dir) // the paths prepended above are NOT guaranteed to be valid UTF-8.
     }
 }
 
-/// A [Display] implementation for [Entry] that prints its full path.
+/// A [Display] implementation for [Entry] that print its full path.
 #[derive(Debug)]
 pub struct DisplayPath<'a>(&'a Entry);
 
-/// A [Display] implementation for [Entry] that prints only its file name.
+/// A [Display] implementation for [Entry] that print only its file name.
 #[derive(Debug)]
 pub struct DisplayFilename<'a>(&'a Entry);
 
-const PAR_FILE: Style = Style::new().cyan();
-const PAR_DIR: Style = Style::new().yellow();
-const DIR: Style = PAR_DIR.bold();
-const FILE: Style = PAR_FILE.bold();
+const DIR_STYLE: (Style, Style) = {
+    let parent_dir: Style = Style::new().yellow();
+    (parent_dir, parent_dir.bold())
+};
+const FILE_STYLE: (Style, Style) = {
+    let parent_file = Style::new().cyan();
+    (parent_file, parent_file.bold())
+};
 
 impl Display for DisplayPath<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let entry = self.0;
-        let (par, sep) = entry
-            .path
-            .parent()
-            .map(|p| p.to_str().unwrap())
-            .map(|s| (s, if s == "/" { "" } else { "/" }))
-            .unwrap_or_default();
-        let name = entry.file_name();
-        let (dir, file, sep2, style) = match entry.is_dir {
-            true => (name, "", "/", PAR_DIR),
-            false => ("", name, "", PAR_FILE),
-        };
+        let (parent, name, symbol) = display_parts(entry);
+        let (p_style, n_style) = if entry.is_dir { DIR_STYLE } else { FILE_STYLE };
         write!(
             f,
-            "{}{}{}{}{}",
-            par.paint(style),
-            sep.paint(style),
-            dir.paint(DIR),
-            sep2.paint(DIR),
-            file.paint(FILE)
+            "{}{}{}",
+            parent.paint(p_style),
+            name.paint(n_style),
+            symbol.paint(n_style)
         )
     }
 }
@@ -184,13 +232,28 @@ impl Display for DisplayPath<'_> {
 impl Display for DisplayFilename<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let entry = self.0;
-        let name = entry.file_name();
-        let (style, kind) = match entry.is_dir {
-            true => (DIR, "/"),
-            false => (FILE, ""),
-        };
-        write!(f, "{}{}", name.paint(style), kind.paint(style))
+        let (_, name, symbol) = display_parts(entry);
+        let (_, style) = if entry.is_dir { DIR_STYLE } else { FILE_STYLE };
+        write!(f, "{}{}", name.paint(style), symbol.paint(style))
     }
+}
+
+/// Get the parent directory, name, and directory symbol for an entry.
+/// They are used by [DisplayPath] and [DisplayFilename] implementations, which style them.
+fn display_parts(entry: &Entry) -> (&str, &str, &str) {
+    let full = entry.to_str();
+    let (parent, name) = match entry.path.file_name().map(|s| s.to_str().unwrap()) {
+        Some(name) => {
+            let pos = full.rfind(name).unwrap();
+            (&full[..pos], name)
+        }
+        None => ("", full),
+    };
+    let dir_id = match entry.is_dir && !name.ends_with('/') {
+        true => "/",
+        false => "",
+    };
+    (parent, name, dir_id)
 }
 
 impl Display for Entry {
@@ -200,27 +263,16 @@ impl Display for Entry {
 }
 
 impl Deref for Entry {
-    type Target = PathBuf;
-    fn deref(&self) -> &PathBuf {
-        &self.path
-    }
-}
+    type Target = Path;
 
-impl DerefMut for Entry {
-    fn deref_mut(&mut self) -> &mut PathBuf {
-        &mut self.path
+    fn deref(&self) -> &Self::Target {
+        &self.path
     }
 }
 
 impl AsRef<Path> for Entry {
     fn as_ref(&self) -> &Path {
-        self.deref()
-    }
-}
-
-impl From<&Entry> for Entry {
-    fn from(entry: &Entry) -> Self {
-        entry.clone()
+        &self.path
     }
 }
 
@@ -253,25 +305,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn entry_creation() {
-        #[track_caller]
-        fn case(p: impl AsRef<Path>) -> Result<Entry, (anyhow::Error, PathBuf)> {
-            Entry::try_from(p.as_ref().to_owned())
-        }
-
-        case("foo").unwrap();
-        case("foo.bar").unwrap();
-        case("foo.bar.baz").unwrap();
-        case("foo/").unwrap();
-        case("😃").unwrap();
-    }
-
-    #[test]
     fn filename_parts() {
         #[track_caller]
-        fn case(p: impl AsRef<Path>, is_dir: bool, out: (&str, &str)) {
+        fn case(p: impl Into<PathBuf>, is_dir: bool, out: (&str, &str)) {
             let entry = Entry {
-                path: p.as_ref().to_owned(),
+                path: p.into(),
                 is_dir,
             };
             assert_eq!(out, entry.filename_parts())
@@ -281,30 +319,115 @@ mod tests {
         case("foo.bar", false, ("foo", "bar"));
         case("foo.bar.baz", false, ("foo.bar", "baz"));
 
+        case(".foo", false, (".foo", ""));
+        case(".foo.bar", false, (".foo", "bar"));
+        case(".foo.bar.baz", false, (".foo.bar", "baz"));
+
         case("foo", true, ("foo", ""));
         case("foo.bar", true, ("foo.bar", ""));
         case("foo.bar.baz", true, ("foo.bar.baz", ""));
+
+        case(".foo", true, (".foo", ""));
+        case(".foo.bar", true, (".foo.bar", ""));
+        case(".foo.bar.baz", true, (".foo.bar.baz", ""));
     }
 
     #[test]
     fn collection_parts() {
         #[track_caller]
-        fn case(p: impl AsRef<Path>, out: (&str, Option<usize>, &str)) {
-            let entry = Entry {
-                path: p.as_ref().to_owned(),
-                is_dir: false,
-            };
-            assert_eq!(out, entry.collection_parts())
+        fn case(base: &str, out: (&str, Option<&str>, Option<usize>, &str)) {
+            let (name, alias, seq, comment) = out;
+            let entry = Entry::try_new(format!("{base}.ext"), false).unwrap();
+            let out = (name, alias, seq, comment, "ext");
+            assert_eq!(out, entry.collection_parts());
         }
 
-        case("foo", ("foo", None, ""));
-        case("foo.bar", ("foo", None, "bar"));
-        case("foo.bar.baz", ("foo.bar", None, "baz"));
-        case("foo-1.bar.baz", ("foo-1.bar", None, "baz"));
+        // stem only.
+        case("foo", ("foo", None, None, ""));
+        case("foo bar", ("foo bar", None, None, ""));
+        case("foo bar - baz", ("foo bar - baz", None, None, ""));
+        case("foo - 2025 - 24", ("foo - 2025 - 24", None, None, ""));
+        case("_foo_-24", ("_foo_-24", None, None, ""));
+        case("foo ~ 24", ("foo ~ 24", None, None, ""));
+        case("foo~ 24", ("foo~ 24", None, None, ""));
+        case("foo+bar", ("foo+bar", None, None, ""));
+        case("foo+bar,baz", ("foo+bar,baz", None, None, ""));
+        case("foo+bar ~ 24", ("foo+bar ~ 24", None, None, ""));
+        case("foo ~24", ("foo ~24", None, None, ""));
+        case("foo bar~24", ("foo bar~24", None, None, ""));
+        case("foo bar ~24", ("foo bar ~24", None, None, ""));
+        case("_foo_ ~24", ("_foo_ ~24", None, None, ""));
+        case("foo - 33~24", ("foo - 33~24", None, None, ""));
+        case("foo+ ~24", ("foo+ ~24", None, None, ""));
+        case("foo+ asd~24", ("foo+ asd~24", None, None, ""));
+        case("foo+asd ~24", ("foo+asd ~24", None, None, ""));
+        case("foo+~24", ("foo+~24", None, None, ""));
+        case(",~24", (",~24", None, None, ""));
+        case("foo+,~24", ("foo+,~24", None, None, ""));
+        case("foo+bar,~24", ("foo+bar,~24", None, None, ""));
+        case("foo+bar,~24 cool", ("foo+bar,~24 cool", None, None, ""));
 
-        case("foo-1", ("foo", Some(1), ""));
-        case("foo-1.bar", ("foo", Some(1), "bar"));
-        case("foo.bar-1.baz", ("foo.bar", Some(1), "baz"));
-        case("foo-1.bar-2.baz", ("foo-1.bar", Some(2), "baz"));
+        // name and seq.
+        case("foo~24", ("foo", None, Some(24), ""));
+        case("foo_~24", ("foo_", None, Some(24), ""));
+        case("__foo~24", ("__foo", None, Some(24), ""));
+        case("_foo__~24", ("_foo__", None, Some(24), ""));
+
+        // name, aliases and seq.
+        case("foo+bar~24", ("foo", Some("bar"), Some(24), ""));
+        case(
+            "foo_bar__+_baz__~24",
+            ("foo_bar__", Some("_baz__"), Some(24), ""),
+        );
+
+        // name, seq, and comment.
+        case("foo~24cool", ("foo", None, Some(24), "cool"));
+        case("foo~24 cool", ("foo", None, Some(24), " cool"));
+        case("foo_~24-nice!", ("foo_", None, Some(24), "-nice!"));
+        case("__foo~24 ?why?", ("__foo", None, Some(24), " ?why?"));
+        case("_foo__~24 - cut", ("_foo__", None, Some(24), " - cut"));
+
+        // name, aliases, seq, and comment.
+        case(
+            "foo+bar~24 seen 3 times",
+            ("foo", Some("bar"), Some(24), " seen 3 times"),
+        );
+        case(
+            "_foo+__bar_~24 with comment!",
+            ("_foo", Some("__bar_"), Some(24), " with comment!"),
+        );
+    }
+
+    #[test]
+    fn fn_display_parts() {
+        #[track_caller]
+        fn case(p: impl Into<PathBuf>, is_dir: bool, out: (&str, &str, &str)) {
+            let entry = Entry {
+                path: p.into(),
+                is_dir,
+            };
+            assert_eq!(out, display_parts(&entry));
+        }
+
+        // Directory cases (fixed)
+        case(".", true, ("", ".", "/"));
+        case("..", true, ("", "..", "/"));
+        case("/", true, ("", "/", ""));
+        case("./", true, ("", "./", ""));
+        case("../", true, ("", "../", ""));
+        case("dir", true, ("", "dir", "/"));
+        case("dir/", true, ("", "dir", "/"));
+        case("dir/.", true, ("", "dir", "/"));
+        case("./dir", true, ("./", "dir", "/"));
+        case("./dir/", true, ("./", "dir", "/"));
+        case("./dir/.", true, ("./", "dir", "/"));
+
+        // File cases
+        case("file.txt", false, ("", "file.txt", ""));
+        case("./file.txt", false, ("./", "file.txt", ""));
+        case("dir/file.txt", false, ("dir/", "file.txt", ""));
+        case("./dir/file.txt", false, ("./dir/", "file.txt", ""));
+        case(".hidden", false, ("", ".hidden", ""));
+        case("./dir/.hidden", false, ("./dir/", ".hidden", ""));
     }
 }

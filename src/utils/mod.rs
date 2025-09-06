@@ -1,6 +1,8 @@
+mod natural;
 mod running;
 
 use anyhow::{Result, anyhow};
+pub use natural::*;
 pub use running::*;
 use std::collections::HashSet;
 use std::error::Error;
@@ -10,25 +12,47 @@ use std::sync::{LazyLock, Mutex, mpsc};
 use std::thread;
 use std::time::Duration;
 
+#[derive(Debug)]
+pub enum PromptError {
+    No,
+    Quit,
+}
+
+impl From<anyhow::Error> for PromptError {
+    fn from(_: anyhow::Error) -> Self {
+        PromptError::Quit
+    }
+}
+
+impl From<PromptError> for anyhow::Error {
+    fn from(err: PromptError) -> Self {
+        match err {
+            PromptError::No => anyhow!("declined"),
+            PromptError::Quit => anyhow!("cancelled"),
+        }
+    }
+}
+
 /// Prompt the user for confirmation.
-pub fn prompt_yes_no(msg: impl Into<Box<str>>) -> Result<()> {
+pub fn prompt_yes_no(msg: impl Into<Box<str>>) -> Result<(), PromptError> {
     let (tx, rx) = mpsc::channel();
     let msg = msg.into(); // I need ownership of an immutable message here.
-    let fun = move |input: &mut String| {
+    let f = move |input: &mut String| {
         aborted()?;
         print!("{msg} [y|n|q]: ");
         stdout().flush()?;
         input.clear();
         stdin().read_line(input)?;
-        Ok(())
+        Ok::<_, anyhow::Error>(())
     };
     thread::spawn(move || {
         let mut input = String::new();
         let res = loop {
-            match (fun(&mut input), input.trim()) {
-                (Err(err), _) => break Err(err),
-                (Ok(()), "y") => break Ok(()),
-                (Ok(()), "n" | "q") => break Err(anyhow!("cancelled")),
+            match (f(&mut input), input.trim()) {
+                (Err(err), _) => break Err(err.into()),
+                (Ok(()), "y" | "yes") => break Ok(()),
+                (Ok(()), "n" | "no") => break Err(PromptError::No),
+                (Ok(()), "q" | "quit") => break Err(PromptError::Quit),
                 _ => {}
             }
         };
@@ -38,7 +62,7 @@ pub fn prompt_yes_no(msg: impl Into<Box<str>>) -> Result<()> {
     loop {
         match rx.recv_timeout(Duration::from_millis(1000 / 2)) {
             Ok(res) => break res,
-            Err(_) => aborted()?,
+            Err(_) => aborted().map_err(|_| PromptError::Quit)?,
         }
     }
 }
@@ -66,6 +90,6 @@ where
 {
     let pos = s
         .find('=')
-        .ok_or_else(|| anyhow!("invalid key=value: {s:?}"))?;
+        .ok_or_else(|| anyhow!("missing =value in: {s:?}"))?;
     Ok((s[..pos].parse()?, s[pos + 1..].parse()?))
 }

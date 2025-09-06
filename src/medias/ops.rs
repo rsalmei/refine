@@ -1,37 +1,28 @@
-use super::{NewEntry, OriginalEntry};
+use super::{NewEntry, SourceEntry};
 use std::io::Write;
 use std::path::Path;
 use std::{fs, io};
 
-pub trait FileOps {
-    /// Rename files and directories. Works only within the same file system.
-    ///
-    /// Can also be used to move files and directories, when the target path is not the same.
-    fn rename_move_consuming(&mut self);
+/// Implements file operations that consume the original media data on success.
+pub struct FileOps;
 
-    /// Copy files to a new location. Works between file systems.
-    fn copy_consuming(&mut self);
-
-    /// Move files to a new location by copying and removing the original. Works between file systems.
-    fn cross_move_consuming(&mut self);
-}
-
-impl<M: OriginalEntry + NewEntry> FileOps for Vec<M> {
-    fn rename_move_consuming(&mut self) {
-        files_op(self, silent, |p, q| fs::rename(p, q))
+impl FileOps {
+    /// Rename files and directories, or move them within the same file system.
+    pub fn rename_move(medias: &mut Vec<impl SourceEntry + NewEntry>) {
+        files_op(medias, silent, |p, q| fs::rename(p, q))
     }
-
-    fn copy_consuming(&mut self) {
-        files_op(self, verbose, |p, q| copy_path(p, q, false, 0))
+    /// Copy files to a new location, even if the file systems are different.
+    pub fn copy(medias: &mut Vec<impl SourceEntry + NewEntry>) {
+        files_op(medias, verbose, |p, q| copy_path(p, q, false, 0))
     }
-
-    fn cross_move_consuming(&mut self) {
-        files_op(self, verbose, |p, q| copy_path(p, q, true, 0))
+    /// Move files to a new location by copying and removing the original, even if the file systems are different.
+    pub fn cross_move(medias: &mut Vec<impl SourceEntry + NewEntry>) {
+        files_op(medias, verbose, |p, q| copy_path(p, q, true, 0))
     }
 }
 
 fn files_op(
-    paths: &mut Vec<impl OriginalEntry + NewEntry>,
+    paths: &mut Vec<impl SourceEntry + NewEntry>,
     notify: fn(&[u8]),
     op: fn(&Path, &Path) -> io::Result<()>,
 ) {
@@ -39,15 +30,15 @@ fn files_op(
         let target = m.new_entry();
         if target.exists() {
             notify(b"-\n");
-            eprintln!("file already exists: {} -> {target}", m.entry());
+            eprintln!("error: file already exists: {} -> {target}", m.src_entry());
             notify(b"\n");
             return true;
         }
-        match op(m.entry(), &target) {
+        match op(m.src_entry().as_ref(), target.as_ref()) {
             Ok(()) => false,
             Err(err) => {
                 notify(b"x\n");
-                eprintln!("error: {err}: {} -> {target}", m.entry());
+                eprintln!("error: {err}: {} -> {target}", m.src_entry());
                 notify(b"\n");
                 true
             }

@@ -5,34 +5,61 @@ use std::path::PathBuf;
 
 #[derive(Debug, Args)]
 pub struct Input {
+    /// Just show the entries that would be processed, without running any command.
+    #[arg(long, global = true)]
+    show: bool,
     /// Directories to scan.
     #[arg(global = true, help_heading = None)]
     dirs: Vec<PathBuf>,
     /// The maximum recursion depth; use 0 for unlimited.
     #[arg(short = 'R', long, default_value_t = 0, value_name = "INT", global = true, help_heading = Some("Fetch"))]
-    recurse: u32,
+    recursion: u32,
     #[command(flatten)]
     filter: Filter,
 }
 
-/// Warnings that were encountered while parsing the input paths.
+/// The input data structure that holds the effective paths to scan and their properties.
 #[derive(Debug)]
-pub struct Warnings {
-    /// Whether there were missing paths.
-    pub missing: bool,
+pub struct EffectiveInput {
+    pub show: bool,
+    pub info: InputInfo,
+    fetcher: Fetcher,
 }
 
-impl TryFrom<Input> for (Fetcher, Warnings) {
-    type Error = anyhow::Error;
-
-    fn try_from(input: Input) -> Result<(Fetcher, Warnings)> {
-        let (dirs, warnings) = validate_dirs(input.dirs)?;
-        let fetcher = Fetcher::new(dirs, input.recurse.into(), input.filter)?;
-        Ok((fetcher, warnings))
+impl EffectiveInput {
+    pub fn fetcher(self) -> Fetcher {
+        self.fetcher
     }
 }
 
-fn validate_dirs(mut dirs: Vec<PathBuf>) -> Result<(Vec<Entry>, Warnings)> {
+#[derive(Debug)]
+pub struct InputInfo {
+    /// The effective number of paths to scan, after deduplication and validation.
+    pub num_valid: usize,
+    /// Whether there were invalid/not found paths.
+    pub has_invalid: bool,
+}
+
+impl TryFrom<Input> for EffectiveInput {
+    type Error = anyhow::Error;
+
+    fn try_from(input: Input) -> Result<EffectiveInput> {
+        let (dirs, info) = validate(input.dirs)?;
+        if dirs.is_empty() {
+            return Err(anyhow!("no valid paths given"));
+        }
+        let filter = input.filter.try_into()?;
+        let fetcher = Fetcher::new(dirs, input.recursion.into(), filter);
+        let ei = EffectiveInput {
+            show: input.show,
+            info,
+            fetcher,
+        };
+        Ok(ei)
+    }
+}
+
+fn validate(mut dirs: Vec<PathBuf>) -> Result<(Vec<Entry>, InputInfo)> {
     if dirs.is_empty() {
         dirs = vec![".".into()]; // use the current directory if no paths are given.
     }
@@ -43,26 +70,30 @@ fn validate_dirs(mut dirs: Vec<PathBuf>) -> Result<(Vec<Entry>, Warnings)> {
         eprintln!("warning: {} duplicated directories ignored", n - dirs.len());
     }
 
-    let (dirs, missing) = dirs
+    let n = dirs.len();
+    let dirs = dirs
         .into_iter()
         .map(Entry::try_from)
-        .inspect(|res| {
-            if let Err((err, pb)) = res {
-                eprintln!("warning: invalid directory {pb:?}: {err}");
+        .filter_map(|res| match res {
+            Ok(entry) if entry.is_dir() => Some(entry),
+            Ok(entry) => {
+                eprintln!("warning: {entry} is not a directory, skipping");
+                None
+            }
+            Err((pb, err)) => {
+                eprintln!("warning: invalid path {pb:?}: {err}");
+                None
             }
         })
-        .flatten()
-        .partition::<Vec<_>, _>(|entry| entry.is_dir());
+        .collect::<Vec<_>>();
 
-    missing
-        .iter()
-        .for_each(|entry| eprintln!("warning: directory not found: {entry}"));
     if dirs.is_empty() {
         return Err(anyhow!("no valid paths given"));
     }
 
-    let warnings = Warnings {
-        missing: !missing.is_empty(),
+    let info = InputInfo {
+        num_valid: dirs.len(),
+        has_invalid: n != dirs.len(),
     };
-    Ok((dirs, warnings))
+    Ok((dirs, info))
 }
