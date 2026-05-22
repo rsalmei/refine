@@ -75,6 +75,9 @@ impl Refine for Rebuild {
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         let total_files = medias.len();
 
+        // step: apply naming rules.
+        let ignored = self.naming.compile()?.apply(&mut medias); // cleared names are ignored.
+
         // detect if migration is needed.
         static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(\w+)-(\d+)$").unwrap());
         if medias
@@ -95,8 +98,13 @@ impl Refine for Rebuild {
             }
         }
 
-        // step: apply naming rules.
-        let blocked = self.naming.compile()?.apply(&mut medias);
+        // step: extract collection parts from new names (after naming rules).
+        medias.iter_mut().for_each(|m| {
+            let (name, _, seq, comment) = entries::collection_parts(&m.new_name);
+            m.comment = comment.to_owned();
+            m.new_name = name.to_owned(); // m.new_name must be assigned last because of the borrow.
+            m.seq = seq;
+        });
 
         // step: reset names if forcing a new one.
         if let Some(force) = &self.force {
@@ -162,8 +170,9 @@ impl Refine for Rebuild {
                 let mut seq = 0; // keep track of the last sequence number used.
                 g.iter_mut().for_each(|m| {
                     seq = seq_gen(m, seq);
+                    let sep = if m.comment.is_empty() { "" } else { " " };
                     let dot = if m.ext.is_empty() { "" } else { "." };
-                    m.new_name = format!("{base}~{seq}{}{dot}{}", m.comment, m.ext);
+                    m.new_name = format!("{base}~{seq}{sep}{}{dot}{}", m.comment, m.ext);
                 });
             });
 
@@ -176,12 +185,12 @@ impl Refine for Rebuild {
             .for_each(|m| println!("{} --> {}", m.entry, m.new_name));
 
         // step: display a summary receipt.
-        if !medias.is_empty() || blocked > 0 {
+        if !medias.is_empty() || ignored > 0 {
             println!();
         }
         println!("total files: {total_files} ({unique_names} unique names)");
         println!("  changes: {}", medias.len());
-        println!("  blocked: {blocked}");
+        println!("  ignored: {ignored}");
         if medias.is_empty() {
             return Ok(());
         }
@@ -231,14 +240,14 @@ impl TryFrom<Entry> for Media {
     type Error = (Entry, anyhow::Error);
 
     fn try_from(entry: Entry) -> Result<Self, Self::Error> {
-        let (name, _, seq, comment, ext) = entry.collection_parts();
+        let (name, ext) = entry.filename_parts(); // collection parts are extracted later.
         let created = entry.metadata().map_or(None, |m| m.created().ok());
         Ok(Media {
             new_name: CASE_FN.get().unwrap()(name.trim()),
             group_name: None,
-            seq,
-            comment: comment.to_string(),
-            ext: utils::intern(ext),
+            seq: None,
+            comment: String::new(),
+            ext,
             created: created.unwrap_or(SystemTime::now()),
             entry,
         })
