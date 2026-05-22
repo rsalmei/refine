@@ -1,7 +1,8 @@
-use crate::commands::Refine;
-use crate::entries::{Entry, InputInfo, TraversalMode};
+use super::Refine;
+use crate::entries::Entry;
+use crate::fetcher::{DirPolicy, InputInfo};
+use crate::info;
 use crate::utils::{self, display_abort};
-use Verdict::*;
 use anyhow::{Context, Result, anyhow};
 use clap::{Args, ValueEnum};
 use regex::Regex;
@@ -10,6 +11,8 @@ use std::io::{Write, stdout};
 use std::time::Duration;
 use ureq::Agent;
 use ureq::http::StatusCode;
+
+use Verdict::*;
 
 #[derive(Debug, Args)]
 pub struct Probe {
@@ -77,11 +80,11 @@ enum Verdict {
 impl Refine for Probe {
     type Media = Media;
     const OPENING_LINE: &'static str = "Probe collection names online";
-    const T_MODE: TraversalMode = TraversalMode::Files;
+    const DIR_POLICY: DirPolicy = DirPolicy::Never;
 
     fn tweak(&mut self, _: &InputInfo) {
         if self.retries < 0 && self.errors == Errors::Last {
-            eprintln!("Displaying \"last\" error won't show anything with indefinite retries.\n");
+            info!("Displaying \"last\" error won't show anything with indefinite retries.\n");
             self.errors = Errors::Never;
         }
     }
@@ -210,7 +213,7 @@ impl TryFrom<Entry> for Media {
     type Error = (Entry, anyhow::Error);
 
     fn try_from(entry: Entry) -> Result<Self, Self::Error> {
-        let (name, _, _, _, _) = entry.collection_parts();
+        let (name, _, _, _) = entry.collection_parts();
         Ok(Media {
             name: name.to_owned(),
             verdict: Pending,

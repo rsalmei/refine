@@ -1,8 +1,9 @@
-use crate::commands::Refine;
-use crate::entries::{Entry, InputInfo, TraversalMode};
-use crate::medias::{FileOps, Naming};
-use crate::utils::{self, PromptError};
-use crate::{impl_new_name, impl_new_name_mut, impl_source_entry};
+use super::Refine;
+use crate::entries::{self, Entry};
+use crate::fetcher::{DirPolicy, InputInfo};
+use crate::media::{FileOps, Naming};
+use crate::utils::PromptResponse;
+use crate::{error, impl_new_name, impl_new_name_mut, impl_source_entry, info, utils, warning};
 use anyhow::Result;
 use clap::Args;
 use clap::builder::NonEmptyStringValueParser;
@@ -56,23 +57,26 @@ static CASE_FN: OnceLock<fn(&str) -> String> = OnceLock::new();
 impl Refine for Rebuild {
     type Media = Media;
     const OPENING_LINE: &'static str = "Rebuild collection filenames";
-    const T_MODE: TraversalMode = TraversalMode::Files;
+    const DIR_POLICY: DirPolicy = DirPolicy::Never;
 
     fn tweak(&mut self, info: &InputInfo) {
         let f = match self.case {
             false => str::to_lowercase,
             true => str::to_owned,
         };
-        CASE_FN.set(f).unwrap();
+        CASE_FN.set(f).unwrap(); // CASE_FN is used in the TryFrom implementation of Media, so it must be set in tweak().
 
-        if info.has_invalid && !self.partial && self.force.is_none() {
+        if info.had_invalid && !self.partial && self.force.is_none() {
             self.partial = true;
-            eprintln!("Enabling partial mode due to missing directories.\n");
+            info!("Enabling partial mode due to missing directories.\n");
         }
     }
 
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         let total_files = medias.len();
+
+        // step: apply naming rules.
+        let ignored = self.naming.compile()?.apply(&mut medias); // cleared names are ignored.
 
         // detect if migration is needed.
         static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(\w+)-(\d+)$").unwrap());
@@ -80,9 +84,9 @@ impl Refine for Rebuild {
             .iter()
             .any(|m| m.seq.is_none() && RE.is_match(m.entry.filename_parts().0))
         {
-            eprintln!("warning: detected old-style filenames.");
-            match utils::prompt_yes_no(r#"migrate to new style "name~9"?"#) {
-                Ok(()) => {
+            warning!("detected old-style filenames.");
+            match utils::prompt_yes_no_halt("Migrate to the new style `name~9`? (Recommended)")? {
+                PromptResponse::Yes => {
                     medias.iter_mut().for_each(|m| {
                         if let Some(caps) = RE.captures(m.entry.filename_parts().0) {
                             m.new_name.truncate(caps[1].len()); // truncate to the actual name length.
@@ -90,17 +94,17 @@ impl Refine for Rebuild {
                         }
                     });
                 }
-                Err(PromptError::No) => {
-                    eprintln!("filenames might be inconsistent.");
-                }
-                Err(err) => {
-                    return Err(err.into());
-                }
+                PromptResponse::No => eprintln!("filenames might be inconsistent."),
             }
         }
 
-        // step: apply naming rules.
-        let blocked = self.naming.compile()?.apply(&mut medias);
+        // step: extract collection parts from new names (after naming rules).
+        medias.iter_mut().for_each(|m| {
+            let (name, _, seq, comment) = entries::collection_parts(&m.new_name);
+            m.comment = comment.to_owned();
+            m.new_name = name.to_owned(); // m.new_name must be assigned last because of the borrow.
+            m.seq = seq;
+        });
 
         // step: reset names if forcing a new one.
         if let Some(force) = &self.force {
@@ -122,7 +126,7 @@ impl Refine for Rebuild {
 
         // step: sort medias according to partial or full mode.
         let seq = match self.partial {
-            true => |m: &Media| m.seq.unwrap_or(usize::MAX), // no sequence goes to the end in partial mode.
+            true => |m: &Media| m.seq.unwrap_or(usize::MAX), // sequences come first in partial mode.
             false => |_: &Media| 0,                          // ignore sequences in full mode.
         };
         medias.sort_unstable_by(|m, n| {
@@ -166,8 +170,9 @@ impl Refine for Rebuild {
                 let mut seq = 0; // keep track of the last sequence number used.
                 g.iter_mut().for_each(|m| {
                     seq = seq_gen(m, seq);
+                    let sep = if m.comment.is_empty() { "" } else { " " };
                     let dot = if m.ext.is_empty() { "" } else { "." };
-                    m.new_name = format!("{base}~{seq}{}{dot}{}", m.comment, m.ext);
+                    m.new_name = format!("{base}~{seq}{sep}{}{dot}{}", m.comment, m.ext);
                 });
             });
 
@@ -180,19 +185,19 @@ impl Refine for Rebuild {
             .for_each(|m| println!("{} --> {}", m.entry, m.new_name));
 
         // step: display a summary receipt.
-        if !medias.is_empty() || blocked > 0 {
+        if !medias.is_empty() || ignored > 0 {
             println!();
         }
         println!("total files: {total_files} ({unique_names} unique names)");
         println!("  changes: {}", medias.len());
-        println!("  blocked: {blocked}");
+        println!("  ignored: {ignored}");
         if medias.is_empty() {
             return Ok(());
         }
 
         // step: apply changes if the user agrees.
         if !self.yes {
-            utils::prompt_yes_no("apply changes?")?;
+            utils::prompt_apply_changes()?
         }
         FileOps::rename_move(&mut medias);
         if medias.is_empty() {
@@ -207,7 +212,7 @@ impl Refine for Rebuild {
             let dest = m.entry.with_file_name(&temp);
             match fs::rename(&m.entry, &dest) {
                 Ok(()) => m.entry = dest,
-                Err(err) => eprintln!("error: {err}: {} --> {temp:?}", m.entry),
+                Err(err) => error!("{err}: {} --> {temp:?}", m.entry),
             }
         });
         FileOps::rename_move(&mut medias);
@@ -235,14 +240,14 @@ impl TryFrom<Entry> for Media {
     type Error = (Entry, anyhow::Error);
 
     fn try_from(entry: Entry) -> Result<Self, Self::Error> {
-        let (name, _, seq, comment, ext) = entry.collection_parts();
+        let (name, ext) = entry.filename_parts(); // collection parts are extracted later.
         let created = entry.metadata().map_or(None, |m| m.created().ok());
         Ok(Media {
             new_name: CASE_FN.get().unwrap()(name.trim()),
             group_name: None,
-            seq,
-            comment: comment.to_string(),
-            ext: utils::intern(ext),
+            seq: None,
+            comment: String::new(),
+            ext,
             created: created.unwrap_or(SystemTime::now()),
             entry,
         })

@@ -1,3 +1,4 @@
+use crate::error;
 use anyhow::{Result, anyhow};
 use std::fmt::{Display, Formatter};
 use std::sync::atomic::AtomicBool;
@@ -14,7 +15,7 @@ pub fn is_running() -> bool {
 pub fn aborted() -> Result<()> {
     match is_running() {
         true => Ok(()),
-        false => Err(anyhow!("user asked to abort")),
+        false => Err(anyhow!("aborted")),
     }
 }
 
@@ -40,10 +41,13 @@ impl Display for DisplayAbort {
 /// Install a Ctrl-C handler. It must be called only once.
 pub fn install_ctrl_c_handler() {
     let handler = || {
+        if !is_running() {
+            return;
+        }
         eprintln!(" aborting...");
         RUNNING_FLAG.store(false, atomic::Ordering::Relaxed);
     };
     if let Err(err) = ctrlc::set_handler(handler) {
-        eprintln!("error: set Ctrl-C handler: {err:?}");
+        error!("set Ctrl-C handler: {err:?}");
     }
 }

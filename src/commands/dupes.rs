@@ -1,6 +1,8 @@
-use crate::commands::Refine;
-use crate::entries::{Entry, InputInfo, TraversalMode};
-use crate::utils::{self, display_abort};
+use super::Refine;
+use crate::entries::Entry;
+use crate::fetcher::{DirPolicy, InputInfo};
+use crate::utils::display_abort;
+use crate::{error, utils, warning};
 use anyhow::Result;
 use clap::{Args, ValueEnum};
 use deunicode::deunicode;
@@ -59,15 +61,12 @@ pub struct Media {
 impl Refine for Dupes {
     type Media = Media;
     const OPENING_LINE: &'static str = "Detect duplicate files";
-    const T_MODE: TraversalMode = TraversalMode::Files;
+    const DIR_POLICY: DirPolicy = DirPolicy::Never;
 
     fn tweak(&mut self, _: &InputInfo) {
         if self.threshold < 0.0 || self.threshold > 1.0 {
             self.threshold = self.threshold.clamp(0.0, 1.0);
-            eprintln!(
-                "warning: invalid similarity threshold, using {:.1}",
-                self.threshold
-            );
+            warning!("invalid similarity threshold, using {:.1}", self.threshold);
         }
     }
 
@@ -493,7 +492,7 @@ impl Media {
             self.sample = match grab_sample() {
                 Ok(buf) => Some(Some(buf.into_boxed_slice())),
                 Err(err) => {
-                    eprintln!("error: load sample: {err:?}.");
+                    error!("load sample: {err:?}.");
                     Some(None)
                 }
             };

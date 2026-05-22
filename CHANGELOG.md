@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.1.0 - May 22, 2026
+
+- major refactor of the codebase to make it more modular, maintainable, and extensible
+- rebuild: new support for comments in collections, so you can add notes to your files
+- list: improved display of file counts, and auto enable "Show full file paths" option when multiple root dirs are given
+- global: new support for multiple naming rules with commas, in addition to the existing | in regexes
+
 ## 3.0.0 - Sep 05, 2025
 - dupes: totally rewritten search algorithm with similarity detection combining fuzzy string matching (Levenshtein, Sørensen-Dice) and rare-token scoring, normalization, parallel processing, and advanced text processing
 - dupes: sampling uses a three-point strategy (beginning, middle, end)
