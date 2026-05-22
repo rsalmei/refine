@@ -56,19 +56,32 @@ pub struct FilterArgs {
     ext_ex: Vec<String>,
 }
 
-/// The engine that applies the [Filter] rules to a collection of entries.
-#[derive(Debug, Default)]
-pub struct FilterRules {
-    only_files: bool,
-    only_dirs: bool,
-    all: Constraint,
-    dir: Constraint,
-    path: Constraint,
-    file: Constraint,
-    ext: Constraint,
+/// A constraint that applies inclusion and/or exclusion regexes to a string value.
+///
+/// Each variant encodes exactly which regexes are active:
+/// - `Include`: only match values that match the regex.
+/// - `Exclude`: only reject values that match the regex.
+/// - `Both`: match values that match the inclusion AND don't match the exclusion.
+#[derive(Debug)]
+enum Constraint {
+    Include(Regex),
+    Exclude(Regex),
+    Both(Regex, Regex),
 }
 
-impl FilterRules {
+/// The engine that applies the [FilterArgs] rules to a collection of entries.
+#[derive(Debug, Default)]
+pub struct Filter {
+    only_files: bool,
+    only_dirs: bool,
+    all: Option<Constraint>,
+    dir: Option<Constraint>,
+    path: Option<Constraint>,
+    file: Option<Constraint>,
+    ext: Option<Constraint>,
+}
+
+impl Filter {
     pub fn is_in(&self, entry: &Entry) -> bool {
         self.is_included(entry).unwrap_or_default()
     }
@@ -77,76 +90,86 @@ impl FilterRules {
         let (stem, ext) = entry.filename_parts();
         (!stem.starts_with('.')).then_some(())?; // exclude hidden files and directories.
 
-        let parent = entry.parent()?;
-        let full = format!("{}{stem}", parent.to_str()); // generate the full path without extension.
-        let ret = self.all.is_match(&full)
-            && match entry.is_dir() {
-                true => {
-                    self.dir.is_match(entry.file_name()) // entry is a directory.
-                        && self.path.is_match(entry.to_str()) // the str is the full path.
-                        && !self.only_files
+        let ret = if entry.is_dir() {
+            // cheap dir-specific checks first; skip entry.file_name()/to_str() when unconstrained.
+            self.dir.as_ref().is_none_or(|r| r.is_match(entry.file_name()))
+                && self.path.as_ref().is_none_or(|r| r.is_match(entry.to_str()))
+                && !self.only_files
+                // only build parent and the full-path string if the all rule is active.
+                && match &self.all {
+                    None => true,
+                    Some(r) => {
+                        let parent = entry.parent()?;
+                        r.is_match(&format!("{}{stem}", parent.to_str()))
+                    }
                 }
-                false => {
-                    self.file.is_match(stem)
-                        && self.ext.is_match(ext)
-                        && self.dir.is_match(parent.file_name())
-                        && self.path.is_match(parent.to_str())
-                        && !self.only_dirs
-                }
-            };
+        } else {
+            // cheap file-specific checks first; stem/ext are already extracted above.
+            self.file.as_ref().is_none_or(|r| r.is_match(stem))
+                && self.ext.as_ref().is_none_or(|r| r.is_match(ext))
+                && !self.only_dirs
+                // only allocate a parent entry if any parent-dependent rule is active.
+                && (self.all.is_none() && self.dir.is_none() && self.path.is_none()
+                    || {
+                        let parent = entry.parent()?;
+                        self.all.as_ref().is_none_or(|r| r.is_match(&format!("{}{stem}", parent.to_str())))
+                            && self.dir.as_ref().is_none_or(|r| r.is_match(parent.file_name()))
+                            && self.path.as_ref().is_none_or(|r| r.is_match(parent.to_str()))
+                    })
+        };
         Some(ret)
     }
 }
 
-/// A pair of regexes that check strings for inclusion and exclusion.
-#[derive(Debug, Default)]
-pub struct Constraint {
-    re_in: Option<Regex>,
-    re_ex: Option<Regex>,
-}
-
 impl Constraint {
+    /// Check if a value passes this constraint.
     fn is_match(&self, s: &str) -> bool {
-        self.re_ex.as_ref().is_none_or(|re_ex| !re_ex.is_match(s))
-            && self.re_in.as_ref().is_none_or(|re_in| re_in.is_match(s))
+        match self {
+            Constraint::Include(re) => re.is_match(s),
+            Constraint::Exclude(re) => !re.is_match(s),
+            Constraint::Both(re_in, re_ex) => re_in.is_match(s) && !re_ex.is_match(s),
+        }
     }
 }
 
-type Param<'a> = (Option<String>, &'a str);
-
-impl TryFrom<[Param<'_>; 2]> for Constraint {
+impl TryFrom<FilterArgs> for Filter {
     type Error = anyhow::Error;
 
-    fn try_from([(re_in, p_in), (re_ex, p_ex)]: [Param; 2]) -> Result<Self> {
-        Ok(Self {
-            re_in: compile(re_in, p_in)?,
-            re_ex: compile(re_ex, p_ex)?,
-        })
-    }
-}
-
-impl TryFrom<Filter> for FilterRules {
-    type Error = anyhow::Error;
-
-    fn try_from(s: Filter) -> Result<Self, Self::Error> {
-        Ok(FilterRules {
+    fn try_from(s: FilterArgs) -> Result<Self> {
+        Ok(Filter {
             only_files: s.only_files,
             only_dirs: s.only_dirs,
-            all: [(s.all_in, "all-in"), (s.all_ex, "all-ex")].try_into()?,
-            dir: [(s.dir_in, "dir-in"), (s.dir_ex, "dir-ex")].try_into()?,
-            path: [(s.path_in, "path-in"), (s.path_ex, "path-ex")].try_into()?,
-            file: [(s.file_in, "file-in"), (s.file_ex, "file-ex")].try_into()?,
-            ext: [(s.ext_in, "ext-in"), (s.ext_ex, "ext-ex")].try_into()?,
+            all: build((s.inc, "inc"), (s.exc, "all-ex"))?,
+            dir: build((s.dir, "dir"), (s.dir_ex, "dir-ex"))?,
+            path: build((s.path, "path"), (s.path_ex, "path-ex"))?,
+            file: build((s.file, "file"), (s.file_ex, "file-ex"))?,
+            ext: build((s.ext, "ext"), (s.ext_ex, "ext-ex"))?,
         })
     }
 }
 
-// Compile an optional regular expression (case-insensitive).
-fn compile(value: Option<String>, param: &str) -> Result<Option<Regex>> {
-    let compiler = |r| {
-        Regex::new(&format!("(?i){r}"))
-            .with_context(|| format!("compiling regex: {r:?}"))
-            .map_err(|err| anyhow!("error: invalid --{param}: {err:?}"))
-    };
-    value.map(compiler).transpose()
+type Rule<'a> = (Vec<String>, &'a str);
+
+/// Build a rule from an include/exclude pair, returning `None` if both are absent.
+fn build((_in, p_in): Rule, (_ex, p_ex): Rule) -> Result<Option<Constraint>> {
+    Ok(match (compile(_in, p_in)?, compile(_ex, p_ex)?) {
+        (Some(re_in), None) => Some(Constraint::Include(re_in)),
+        (None, Some(re_ex)) => Some(Constraint::Exclude(re_ex)),
+        (Some(re_in), Some(re_ex)) => Some(Constraint::Both(re_in, re_ex)),
+        (None, None) => None,
+    })
+}
+
+/// Compile an optional regular expression (case-insensitive).
+fn compile(value: Vec<String>, param: &str) -> Result<Option<Regex>> {
+    (!value.is_empty())
+        .then(|| {
+            let r = value
+                .iter()
+                .map(|v| format!("(?:{v})")) // wrap each regex in a non-capturing group to preserve the intended precedence when joining them.
+                .collect::<Vec<_>>()
+                .join("|");
+            Regex::new(&format!("(?i){r}")).with_context(|| format!("invalid --{param}"))
+        })
+        .transpose()
 }
