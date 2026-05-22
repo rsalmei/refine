@@ -1,8 +1,9 @@
-use crate::commands::Refine;
-use crate::entries::{Entry, InputInfo, TraversalMode};
-use crate::medias::{FileOps, Naming};
-use crate::utils::{self, PromptError};
-use crate::{impl_new_name, impl_new_name_mut, impl_source_entry};
+use super::Refine;
+use crate::entries::{self, Entry};
+use crate::fetcher::{DirPolicy, InputInfo};
+use crate::media::{FileOps, Naming};
+use crate::utils::PromptResponse;
+use crate::{error, impl_new_name, impl_new_name_mut, impl_source_entry, info, utils, warning};
 use anyhow::Result;
 use clap::Args;
 use clap::builder::NonEmptyStringValueParser;
@@ -56,18 +57,18 @@ static CASE_FN: OnceLock<fn(&str) -> String> = OnceLock::new();
 impl Refine for Rebuild {
     type Media = Media;
     const OPENING_LINE: &'static str = "Rebuild collection filenames";
-    const T_MODE: TraversalMode = TraversalMode::Files;
+    const DIR_POLICY: DirPolicy = DirPolicy::Never;
 
     fn tweak(&mut self, info: &InputInfo) {
         let f = match self.case {
             false => str::to_lowercase,
             true => str::to_owned,
         };
-        CASE_FN.set(f).unwrap();
+        CASE_FN.set(f).unwrap(); // CASE_FN is used in the TryFrom implementation of Media, so it must be set in tweak().
 
-        if info.has_invalid && !self.partial && self.force.is_none() {
+        if info.had_invalid && !self.partial && self.force.is_none() {
             self.partial = true;
-            eprintln!("Enabling partial mode due to missing directories.\n");
+            info!("Enabling partial mode due to missing directories.\n");
         }
     }
 
@@ -80,9 +81,9 @@ impl Refine for Rebuild {
             .iter()
             .any(|m| m.seq.is_none() && RE.is_match(m.entry.filename_parts().0))
         {
-            eprintln!("warning: detected old-style filenames.");
-            match utils::prompt_yes_no(r#"migrate to new style "name~9"?"#) {
-                Ok(()) => {
+            warning!("detected old-style filenames.");
+            match utils::prompt_yes_no_halt("Migrate to the new style `name~9`? (Recommended)")? {
+                PromptResponse::Yes => {
                     medias.iter_mut().for_each(|m| {
                         if let Some(caps) = RE.captures(m.entry.filename_parts().0) {
                             m.new_name.truncate(caps[1].len()); // truncate to the actual name length.
@@ -90,12 +91,7 @@ impl Refine for Rebuild {
                         }
                     });
                 }
-                Err(PromptError::No) => {
-                    eprintln!("filenames might be inconsistent.");
-                }
-                Err(err) => {
-                    return Err(err.into());
-                }
+                PromptResponse::No => eprintln!("filenames might be inconsistent."),
             }
         }
 
@@ -122,7 +118,7 @@ impl Refine for Rebuild {
 
         // step: sort medias according to partial or full mode.
         let seq = match self.partial {
-            true => |m: &Media| m.seq.unwrap_or(usize::MAX), // no sequence goes to the end in partial mode.
+            true => |m: &Media| m.seq.unwrap_or(usize::MAX), // sequences come first in partial mode.
             false => |_: &Media| 0,                          // ignore sequences in full mode.
         };
         medias.sort_unstable_by(|m, n| {
@@ -192,7 +188,7 @@ impl Refine for Rebuild {
 
         // step: apply changes if the user agrees.
         if !self.yes {
-            utils::prompt_yes_no("apply changes?")?;
+            utils::prompt_apply_changes()?
         }
         FileOps::rename_move(&mut medias);
         if medias.is_empty() {
@@ -207,7 +203,7 @@ impl Refine for Rebuild {
             let dest = m.entry.with_file_name(&temp);
             match fs::rename(&m.entry, &dest) {
                 Ok(()) => m.entry = dest,
-                Err(err) => eprintln!("error: {err}: {} --> {temp:?}", m.entry),
+                Err(err) => error!("{err}: {} --> {temp:?}", m.entry),
             }
         });
         FileOps::rename_move(&mut medias);

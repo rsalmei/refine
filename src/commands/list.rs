@@ -1,5 +1,7 @@
-use crate::commands::Refine;
-use crate::entries::{Entry, Fetcher, InputInfo, Recurse, TraversalMode};
+use super::Refine;
+use crate::entries::Entry;
+use crate::fetcher::{DirPolicy, Fetcher, InputInfo, Recursion};
+use crate::info;
 use crate::utils::{display_abort, natural_cmp};
 use anyhow::Result;
 use clap::{Args, ValueEnum};
@@ -16,7 +18,7 @@ pub struct List {
     /// Reverse the default order (size/count:desc, name/path:asc).
     #[arg(short = 'r', long)]
     rev: bool,
-    /// Show full file paths.
+    /// Show file paths.
     #[arg(short = 'p', long)]
     paths: bool,
     /// Do not calculate directory sizes.
@@ -48,22 +50,23 @@ const ORDERING: &[(By, bool)] = &[
     (By::Name, false),
     (By::Path, false),
 ];
+
 static CALC_DIR_SIZES: OnceLock<bool> = OnceLock::new();
 
 impl Refine for List {
     type Media = Media;
     const OPENING_LINE: &'static str = "List files";
-    const T_MODE: TraversalMode = TraversalMode::ContentOverDirs;
+    const DIR_POLICY: DirPolicy = DirPolicy::AtLimit;
 
     fn tweak(&mut self, info: &InputInfo) {
         self.rev ^= ORDERING.iter().find(|(b, _)| *b == self.by).unwrap().1;
         if self.by == By::Path && !self.paths {
             self.paths = true;
-            eprintln!("Enabling file paths due to sorting by paths.\n");
+            info!("Enabling file paths due to sorting by paths.\n");
         }
         if info.num_valid > 1 && !self.paths {
             self.paths = true;
-            eprintln!("Enabling file paths due to multiple input paths.\n");
+            info!("Enabling file paths due to multiple input paths.\n");
         }
         CALC_DIR_SIZES.set(!self.no_calc_dirs).unwrap();
     }
@@ -134,10 +137,10 @@ impl TryFrom<Entry> for Media {
         let size_count = match (entry.is_dir(), CALC_DIR_SIZES.get().unwrap()) {
             (true, false) => None,
             (true, true) => {
-                let fetcher = Fetcher::single(&entry, Recurse::Full);
+                let fetcher = Fetcher::single(&entry, Recursion::Full);
                 let mut count = 0;
                 let sum = fetcher
-                    .fetch(TraversalMode::Files)
+                    .fetch(DirPolicy::Never)
                     .map(|e| {
                         count += 1;
                         e.metadata().map_or(0, |md| md.len())

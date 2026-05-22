@@ -65,12 +65,13 @@ impl TryFrom<PathBuf> for Entry {
     }
 }
 
-pub static ROOT: LazyLock<Entry> = LazyLock::new(|| Entry::try_new("/".into(), true).unwrap());
+pub static ROOT: LazyLock<Entry> = LazyLock::new(|| Entry::try_new("/", true).unwrap());
 
 impl Entry {
     /// Create a new entry that, in case the path does not exist, will assume the given directory flag.
     /// If it does exist, check that it has the correct directory flag or panic.
-    pub fn try_new(path: PathBuf, is_dir: bool) -> Result<Self> {
+    pub fn try_new(path: impl Into<PathBuf>, is_dir: bool) -> Result<Self> {
+        let path = path.into();
         if path.to_str().is_none() {
             return Err(anyhow!("invalid UTF-8 path: {path:?}"));
         }

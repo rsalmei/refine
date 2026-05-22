@@ -1,4 +1,5 @@
 use super::{NewEntry, SourceEntry};
+use crate::error;
 use std::io::Write;
 use std::path::Path;
 use std::{fs, io};
@@ -30,7 +31,7 @@ fn files_op(
         let target = m.new_entry();
         if target.exists() {
             notify(b"-\n");
-            eprintln!("error: file already exists: {} -> {target}", m.src_entry());
+            error!("file already exists: {} -> {target}", m.src_entry());
             notify(b"\n");
             return true;
         }
@@ -38,7 +39,7 @@ fn files_op(
             Ok(()) => false,
             Err(err) => {
                 notify(b"x\n");
-                eprintln!("error: {err}: {} -> {target}", m.src_entry());
+                error!("{err}: {} -> {target}", m.src_entry());
                 notify(b"\n");
                 true
             }

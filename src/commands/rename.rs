@@ -1,8 +1,8 @@
-use crate::commands::Refine;
-use crate::entries::{Entry, TraversalMode};
-use crate::medias::{FileOps, Naming};
-use crate::utils;
-use crate::{impl_new_name, impl_new_name_mut, impl_source_entry};
+use super::Refine;
+use crate::entries::Entry;
+use crate::fetcher::DirPolicy;
+use crate::media::{FileOps, Naming};
+use crate::{impl_new_name, impl_new_name_mut, impl_source_entry, utils, warning};
 use anyhow::Result;
 use clap::{Args, ValueEnum};
 use std::cmp::Reverse;
@@ -45,13 +45,13 @@ pub struct Media {
 impl Refine for Rename {
     type Media = Media;
     const OPENING_LINE: &'static str = "Rename files";
-    const T_MODE: TraversalMode = TraversalMode::DirsAndContent;
+    const DIR_POLICY: DirPolicy = DirPolicy::WithContents;
 
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         let total_files = medias.len();
 
         // step: apply naming rules.
-        let mut blocked = self.naming.compile()?.apply(&mut medias);
+        let mut ignored = self.naming.compile()?.apply(&mut medias); // cleared names are ignored.
 
         // step: re-include extension in the names.
         medias
@@ -72,7 +72,7 @@ impl Refine for Rename {
                     .any(|g| g.len() > 1) // this should be way faster than using a hashmap as before.
             })
             .for_each(|g| {
-                eprintln!("warning: names clash in: {}", g[0].entry.parent().unwrap());
+                warning!("names clash in: {}", g[0].entry.parent().unwrap());
                 g.chunk_by(|m, n| m.new_name == n.new_name)
                     .filter(|g| g.len() > 1)
                     .for_each(|g| {
@@ -97,7 +97,7 @@ impl Refine for Rename {
                 match self.clashes {
                     Clashes::Forbid => {
                         let count = g.iter().filter(|m| m.is_changed()).count();
-                        blocked += count;
+                        ignored += count;
                         eprintln!("  ...blocked {count} changes in this folder");
                         g.iter_mut().for_each(|m| m.new_name.clear());
                     }
@@ -149,20 +149,20 @@ impl Refine for Rename {
             });
 
         // step: display a summary receipt.
-        if !medias.is_empty() || blocked > 0 {
+        if !medias.is_empty() || ignored > 0 {
             println!();
         }
         println!("total files: {total_files}");
         println!("  changes: {}", medias.len());
         println!("  clashes: {clashes} ({})", self.clashes);
-        println!("  blocked: {blocked}");
+        println!("  ignored: {ignored}");
         if medias.is_empty() {
             return Ok(());
         }
 
         // step: apply changes if the user agrees.
         if !self.yes {
-            utils::prompt_yes_no("apply changes?")?;
+            utils::prompt_apply_changes()?
         }
         FileOps::rename_move(&mut medias);
 
@@ -177,9 +177,9 @@ impl Refine for Rename {
 impl Display for Clashes {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Clashes::Sequence => write!(f, "resolved by adding a sequence number"),
-            Clashes::Ignore => write!(f, "ignored, folders processed as usual"),
-            Clashes::Forbid => write!(f, "whole folders with clashes blocked"),
+            Clashes::Sequence => write!(f, "resolving by adding a sequence number"),
+            Clashes::Ignore => write!(f, "ignoring entries that clash"),
+            Clashes::Forbid => write!(f, "ignoring whole folders with clashes"),
         }
     }
 }
@@ -201,7 +201,7 @@ impl TryFrom<Entry> for Media {
         let (stem, ext) = entry.filename_parts();
         Ok(Media {
             new_name: stem.trim().to_owned(),
-            ext: utils::intern(ext),
+            ext,
             entry,
             resolution: "",
         })

@@ -1,8 +1,8 @@
-use crate::commands::Refine;
-use crate::entries::{Entry, Fetcher, ROOT, Recurse, TraversalMode};
-use crate::impl_source_entry;
-use crate::medias::{FileOps, NewEntry, SourceEntry};
-use crate::utils;
+use super::Refine;
+use crate::entries::{Entry, ROOT};
+use crate::fetcher::{DirPolicy, Fetcher, Recursion};
+use crate::media::{FileOps, NewEntry, SourceEntry};
+use crate::{error, impl_source_entry, utils};
 use anyhow::{Context, Result, anyhow};
 use clap::{Args, ValueEnum};
 use std::collections::HashSet;
@@ -78,7 +78,7 @@ static SHARED: OnceLock<Shared> = OnceLock::new();
 impl Refine for Join {
     type Media = Media;
     const OPENING_LINE: &'static str = "Join files";
-    const T_MODE: TraversalMode = TraversalMode::DirsStop;
+    const DIR_POLICY: DirPolicy = DirPolicy::Immediately;
 
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         if self.target.is_file() {
@@ -96,9 +96,9 @@ impl Refine for Join {
         // step: read the target directory, which might not be empty, to detect outer clashes (not in medias).
         let mut target_names = Vec::new();
         if target.exists() {
-            // if target happens to be inside any input path and is not empty, this will dup the files.
-            let fetcher = Fetcher::single(&target, Recurse::Shallow);
-            let in_target = fetcher.fetch(Join::T_MODE).collect::<Vec<_>>();
+            // if target happens to be inside any input path and is not empty, this would dup the files.
+            let fetcher = Fetcher::single(&target, Recursion::Shallow);
+            let in_target = fetcher.fetch(DirPolicy::Immediately).collect::<Vec<_>>();
             target_names.extend(in_target.iter().map(|e| e.file_name().to_string()));
             medias.extend(in_target.into_iter().map(|entry| Media {
                 entry,
@@ -185,7 +185,7 @@ impl Refine for Join {
             return Ok(());
         }
         if !self.yes {
-            utils::prompt_yes_no("apply changes?")?;
+            utils::prompt_apply_changes()?
         }
 
         // step: grab the files' parent directories before the consuming operations.
@@ -226,7 +226,7 @@ impl Refine for Join {
                     {
                         let dstore = dir.join(DS_STORE);
                         if let Err(err) = fs::remove_file(&dstore) {
-                            eprintln!("error: {err}: {dstore:?}");
+                            error!("{err}: {dstore:?}");
                         }
                     }
                 }

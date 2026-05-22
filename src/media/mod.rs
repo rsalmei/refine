@@ -2,6 +2,7 @@ mod naming;
 mod ops;
 
 use crate::entries::Entry;
+
 pub use naming::*;
 pub use ops::*;
 
@@ -32,7 +33,7 @@ impl<M: NewName + SourceEntry> NewEntry for M {
 #[macro_export]
 macro_rules! impl_source_entry {
     ($t:ty) => {
-        impl $crate::medias::SourceEntry for $t {
+        impl $crate::media::SourceEntry for $t {
             fn src_entry(&self) -> &$crate::entries::Entry {
                 &self.entry
             }
@@ -43,7 +44,7 @@ macro_rules! impl_source_entry {
 #[macro_export]
 macro_rules! impl_new_name {
     ($t:ty) => {
-        impl $crate::medias::NewName for $t {
+        impl $crate::media::NewName for $t {
             fn new_name(&self) -> &str {
                 &self.new_name
             }
@@ -54,7 +55,7 @@ macro_rules! impl_new_name {
 #[macro_export]
 macro_rules! impl_new_name_mut {
     ($t:ty) => {
-        impl $crate::medias::NewNameMut for $t {
+        impl $crate::media::NewNameMut for $t {
             fn new_name_mut(&mut self) -> &mut String {
                 &mut self.new_name
             }
