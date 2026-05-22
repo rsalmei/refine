@@ -1,48 +1,59 @@
-use super::Entry;
-use anyhow::{Context, Result, anyhow};
+use crate::entries::Entry;
+use anyhow::{Context, Result};
 use clap::Args;
 use clap::builder::NonEmptyStringValueParser;
 use regex::Regex;
 
 /// A set of rules that allow the user to specify which files and directories to include or exclude.
 #[derive(Debug, Args)]
-pub struct Filter {
+#[command(next_help_heading = Some("Fetch"))]
+pub struct FilterArgs {
     /// Include only files.
-    #[arg(short = 'F', long, global = true, conflicts_with = "only_dirs", help_heading = Some("Fetch"))]
+    #[arg(short = 'F', long, conflicts_with = "only_dirs")]
     only_files: bool,
     /// Include only directories.
-    #[arg(short = 'D', long, global = true, conflicts_with = "only_files", help_heading = Some("Fetch"))]
+    #[arg(short = 'D', long, conflicts_with = "only_files")]
     only_dirs: bool,
-    /// Include everything that matches this (regardless of files or directories/paths).
-    #[arg(short = 'i', long, global = true, help_heading = Some("Fetch"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    all_in: Option<String>,
-    /// Include only these current directories.
-    #[arg(short = 'I', long, global = true, help_heading = Some("Fetch"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    dir_in: Option<String>,
+
+    // general rules that apply to all entries.
+    /// Include files, directories, and paths that matches this.
+    #[arg(short = 'i', long, value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new(), value_delimiter = ',')]
+    inc: Vec<String>,
+    /// Exclude files, directories, and paths that matches this.
+    #[arg(short = 'x', long, value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new(), value_delimiter = ',')]
+    exc: Vec<String>,
+
+    // directory rules.
+    /// Include only these directory names.
+    #[arg(short = 'I', long, value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new(), value_delimiter = ',')]
+    dir: Vec<String>,
+    /// Exclude these directory names.
+    #[arg(short = 'X', long, value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new(), value_delimiter = ',')]
+    dir_ex: Vec<String>,
+
+    // path rules.
     /// Include only these paths.
-    #[arg(long, global = true, help_heading = Some("Fetch"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    path_in: Option<String>,
-    /// Include only these filenames.
-    #[arg(long, global = true, help_heading = Some("Fetch"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    file_in: Option<String>,
-    /// Include only these extensions.
-    #[arg(long, global = true, help_heading = Some("Fetch"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    ext_in: Option<String>,
-    /// Exclude everything that matches this (regardless of files or directories/paths).
-    #[arg(short = 'x', long, global = true, help_heading = Some("Fetch"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    all_ex: Option<String>,
-    /// Exclude these current directories.
-    #[arg(short = 'X', long, global = true, help_heading = Some("Fetch"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    dir_ex: Option<String>,
+    #[arg(long, value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new(), value_delimiter = ',')]
+    path: Vec<String>,
     /// Exclude these paths.
-    #[arg(long, global = true, help_heading = Some("Fetch"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    path_ex: Option<String>,
+    #[arg(long, value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new(), value_delimiter = ',')]
+    path_ex: Vec<String>,
+
+    // filename rules.
+    /// Include only these filenames.
+    #[arg(long, value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new(), value_delimiter = ',')]
+    file: Vec<String>,
     /// Exclude these filenames.
-    #[arg(long, global = true, help_heading = Some("Fetch"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    file_ex: Option<String>,
+    #[arg(long, value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new(), value_delimiter = ',')]
+    file_ex: Vec<String>,
+
+    // extension rules.
+    /// Include only these extensions.
+    #[arg(long, value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new(), value_delimiter = ',')]
+    ext: Vec<String>,
     /// Exclude these extensions.
-    #[arg(long, global = true, help_heading = Some("Fetch"), value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new())]
-    ext_ex: Option<String>,
+    #[arg(long, value_name = "REGEX", allow_hyphen_values = true, value_parser = NonEmptyStringValueParser::new(), value_delimiter = ',')]
+    ext_ex: Vec<String>,
 }
 
 /// The engine that applies the [Filter] rules to a collection of entries.
