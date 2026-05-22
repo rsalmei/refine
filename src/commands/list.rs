@@ -109,15 +109,22 @@ impl Refine for List {
         // step: display the results.
         medias.iter().for_each(|m| {
             let (size, count) = match m.size_count {
-                Some((s, c)) => (&*format!("{}", s.human_count_bytes()), &*format!("{c}")),
-                None => ("?", "?"),
+                Some((s, c)) => (&*format!("{}", s.human_count_bytes()), Some(c)),
+                None => ("?", None),
             };
             match self.paths {
-                true => print!("{size:>8} {}", m.entry.display_path()),
+                true => print!("{size:>8} {}", m.entry.display_inverted_path()),
                 false => print!("{size:>8} {}", m.entry.display_filename()),
             };
-            if m.entry.is_dir() && m.size_count.is_some() {
-                print!(" {} files", count.paint(Color::Blue).linger());
+            if m.entry.is_dir()
+                && let Some(count) = count
+            {
+                print!(" {}", "".paint(Color::Blue).linger());
+                match count {
+                    0 => print!("empty"),
+                    1 => print!("1 file"),
+                    _ => print!("{count} files"),
+                }
             }
             println!("{}", "".resetting());
         });
