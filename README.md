@@ -23,7 +23,7 @@ And yes, it is blazingly fast, like all Rust 🦀 software should be!
 
 Enjoy!
 
-![refine 2.0 list](https://raw.githubusercontent.com/rsalmei/refine/main/img/list-2.0.png)
+![refine 3.1 list](https://raw.githubusercontent.com/rsalmei/refine/main/img/list-3.1.png)
 
 ## How to use it
 
