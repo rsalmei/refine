@@ -71,6 +71,12 @@ pub trait Refine {
     /// Tweak the command options before fetching, for example to automatically enable some options
     /// if the input has multiple directories or invalid ones.
     fn tweak(&mut self, _: &InputInfo) {}
+
+    /// Peek at the fetched media files to also tweak the command options, for example to
+    /// automatically enable some options if the media files are scattered across multiple
+    /// subdirectories or contained in a single one.
+    fn peek(&mut self, _: &[Self::Media]) {}
+
     /// Actual command implementation, called with the fetched media files.
     fn refine(&self, medias: Vec<Self::Media>) -> Result<()>;
 }

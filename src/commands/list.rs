@@ -71,6 +71,17 @@ impl Refine for List {
         CALC_DIR_SIZES.set(!self.no_calc_dirs).unwrap();
     }
 
+    fn peek(&mut self, medias: &[Self::Media]) {
+        // detect if there are entries within subdirectories, and if so, enable paths to disambiguate them.
+        if !self.paths {
+            let first = medias.first().and_then(|m| m.entry.parent());
+            if medias.iter().any(|m| m.entry.parent() != first) {
+                self.paths = true;
+                info!("Enabling file paths due to entries across multiple directories.\n");
+            }
+        }
+    }
+
     fn refine(&self, mut medias: Vec<Self::Media>) -> Result<()> {
         // step: sort the files by size, count, name, or path.
         let compare: fn(&Media, &Media) -> _ = match self.by {
