@@ -35,6 +35,12 @@ cargo install refine
 
 And that's it, you're ready to go! You can now call it anywhere.
 
+## What's new in 3.1
+
+This is a minor release with a major refactor of the codebase, improving the structure and maintainability of the code, as well as optimizing hot paths and polishing the user experience.
+
+The most notable change is the support for comments in the `rebuild` command, which allows you to add comments to the collection media files that will be preserved upon rebuilding. This is useful to add notes or reminders right in the filenames. This provides context, making it easier to identify media and their content without having to open them. The comments are added at the end of the filename, after the sequence number, and are preserved even when the rest of the filename is changed by applying different naming rules.
+
 ## What's new in 3.0
 
 I'm thrilled to announce a release packed with deep, carefully engineered improvements! This update is the culmination of a significant technical effort, bringing both new capabilities and cool new refinements. The straight jump from 2.0 to 3.0 reflects the magnitude of these changes, about 100 commits worth of work over several months, with a strong focus on enhancing the core algorithms and bringing new features to life.
@@ -202,45 +208,28 @@ All commands will:
 
 ### The global refine command (help)
 
-> `$ refine --help`
->
-> ```
-> Refine your file collections using Rust!
-> 
-> Usage: refine <COMMAND> [DIRS]... [FETCH] [OPTIONS]
-> 
-> Commands:
->   dupes    Find possibly duplicated files by both size and filename
->   join     Join files into a single directory with advanced conflict resolution
->   list     List files from multiple disjoint directories sorted together
->   rebuild  Rebuild entire media collections' filenames intelligently
->   rename   Rename files and directories in batch using advanced regex rules
->   probe    Probe collections' filenames against a remote server
->   help     Print this message or the help of the given subcommand(s)
-> 
-> Arguments:
->   [DIRS]...  Directories to scan
-> 
-> Options:
->   -h, --help     Print help
->   -V, --version  Print version
-> 
-> Fetch:
->   -R, --recurse <INT>    The maximum recursion depth; use 0 for unlimited [default: 0]
->   -F, --only-files       Include only files
->   -D, --only-dirs        Include only directories
->   -i, --include <REGEX>  Include only these files and directories
->   -x, --exclude <REGEX>  Exclude these files and directories
->   -I, --dir-in <REGEX>   Include only these directories
->   -X, --dir-ex <REGEX>   Exclude these directories
->       --file-in <REGEX>  Include only these files
->       --file-ex <REGEX>  Exclude these files
->       --ext-in <REGEX>   Include only these extensions
->       --ext-ex <REGEX>   Exclude these extensions
->       --view             Bypass the command execution and preview the filter results to be processed
-> 
-> For more information, see https://github.com/rsalmei/refine
-> ```
+`$ refine --help`
+
+```
+Refine your file collections using Rust!
+
+Usage: refine <COMMAND> [DIRS]... [FETCH] [OPTIONS]
+
+Commands:
+  dupes    Find possibly duplicated files by both size/sample and filename similarity
+  join     Join files into a single directory with advanced conflict resolution
+  list     List files from multiple disjoint directories sorted together
+  rebuild  Rebuild entire media collections' filenames intelligently
+  rename   Rename files and directories in batch using advanced regex rules
+  probe    Probe collections' filenames against a remote server
+  help     Print this message or the help of the given subcommand(s)
+
+Options:
+  -h, --help     Print help
+  -V, --version  Print version
+
+For more information, see https://github.com/rsalmei/refine
+```
 
 ### The `dupes` command
 
@@ -253,27 +242,47 @@ The `dupes` command will analyze and report the possibly duplicated files, eithe
     - the word extractor ignores sequence numbers like file-1, file copy, file-3 copy 2, etc.
 5. run 2. and 3. again, and print the results
 
-> `$ refine dupes --help`
->
-> ```
-> Find reasonably duplicated files by both size and filename
-> 
-> Usage: refine dupes [DIRS]... [FETCH] [OPTIONS]
-> 
-> Arguments:
->   [DIRS]...  Directories to scan
-> 
-> Options:
->   -s, --sample <INT>  Sample size in bytes (0 to disable) [default: 2048]
->   -h, --help          Print help
-> ```
+`$ refine dupes --help`
 
-> There's also the "Fetch" options, which are the same as for the global refine command.
+```
+Find possibly duplicated files by both size/sample and filename similarity
+
+Usage: refine dupes [DIRS]... [FETCH] [OPTIONS]
+
+Arguments:
+  [DIRS]...  The directories to scan
+
+Options:
+  -m, --mode <STR>         Identical (size and sample), or similar (rare tokens and fuzzy matching) [default: all] [possible values: identical, similar, all]
+  -s, --sample <INT>       Sample size in kbytes (0 to disable) [default: 4]
+  -t, --threshold <FLOAT>  The threshold for similarity checks (0.0 to 1.0) [default: 0.7]
+  -v, --verbose            Show the cleaned filenames for similarity checks
+  -h, --help               Print help
+
+Fetch:
+  -R, --recursion <INT>  The maximum recursion depth; use 0 for unlimited, 1 for shallow, and n for depth n [default: 0]
+  -F, --only-files       Include only files
+  -D, --only-dirs        Include only directories
+  -i, --inc <REGEX>      Include files, directories, and paths that matches this
+  -x, --exc <REGEX>      Exclude files, directories, and paths that matches this
+  -I, --dir <REGEX>      Include only these directory names
+  -X, --dir-ex <REGEX>   Exclude these directory names
+      --path <REGEX>     Include only these paths
+      --path-ex <REGEX>  Exclude these paths
+      --file <REGEX>     Include only these filenames
+      --file-ex <REGEX>  Exclude these filenames
+      --ext <REGEX>      Include only these extensions
+      --ext-ex <REGEX>   Exclude these extensions
+
+Modifiers:
+      --show  Show the entries that will be processed, and ask for confirmation before proceeding
+      --full  Do not strip the common prefix from the input paths when displaying them
+```
 
 Example:
 
 ```
-$ refine dupes ~/Downloads /Volumes/External --sample 20480
+$ refine dupes ~/Downloads /Volumes/External --sample 20
 ```
 
 ### The `join` command
@@ -288,24 +297,44 @@ The `join` command will let you grab all files and directories in the given dire
 4. if the user confirms, apply the changes
 5. remove any empty parent directories when moving files
 
-> `$ refine join --help`
->
-> ```
-> Join files into a single directory with advanced conflict resolution
-> 
-> Usage: refine join [OPTIONS] [DIRS]...
-> 
-> Options:
->   -t, --target <PATH>  The target directory; will be created if it doesn't exist [default: .]
->   -b, --by <STR>       The type of join to perform [default: move] [possible values: move, copy]
->   -c, --clashes <STR>  How to resolve clashes [default: name-sequence] [possible values: name-sequence, parent-name, name-parent, ignore]
->   -f, --force          Force joining already in place files and directories, i.e. in subdirectories of the target
->   -p, --parents        Do not remove empty parent directories after joining files
->   -y, --yes            Skip the confirmation prompt, useful for automation
->   -h, --help           Print help
-> ```
+`$ refine join --help`
 
-> There's also the "Fetch" options, which are the same as for the global refine command.
+```
+Join files into a single directory with advanced conflict resolution
+
+Usage: refine join [DIRS]... [FETCH] [OPTIONS]
+
+Arguments:
+  [DIRS]...  The directories to scan
+
+Options:
+  -t, --target <PATH>  The target directory; will be created if it doesn't exist [default: .]
+  -b, --by <STR>       The type of join to perform [default: move] [possible values: move, copy]
+  -c, --clashes <STR>  How to resolve clashes [default: name-sequence] [possible values: name-sequence, parent-name, name-parent, ignore]
+  -f, --force          Force joining already in place files and directories, i.e. in subdirectories of the target
+  -p, --parents        Do not remove empty parent directories after joining files
+  -y, --yes            Skip the confirmation prompt, useful for automation
+  -h, --help           Print help
+
+Fetch:
+  -R, --recursion <INT>  The maximum recursion depth; use 0 for unlimited, 1 for shallow, and n for depth n [default: 0]
+  -F, --only-files       Include only files
+  -D, --only-dirs        Include only directories
+  -i, --inc <REGEX>      Include files, directories, and paths that matches this
+  -x, --exc <REGEX>      Exclude files, directories, and paths that matches this
+  -I, --dir <REGEX>      Include only these directory names
+  -X, --dir-ex <REGEX>   Exclude these directory names
+      --path <REGEX>     Include only these paths
+      --path-ex <REGEX>  Exclude these paths
+      --file <REGEX>     Include only these filenames
+      --file-ex <REGEX>  Exclude these filenames
+      --ext <REGEX>      Include only these extensions
+      --ext-ex <REGEX>   Exclude these extensions
+
+Modifiers:
+      --show  Show the entries that will be processed, and ask for confirmation before proceeding
+      --full  Do not strip the common prefix from the input paths when displaying them
+```
 
 Example:
 
@@ -321,25 +350,42 @@ The `list` command will gather all the files in the given directories, sort them
     - ascending by default for name and path, descending for size, or optionally reverse
 2. print the results
 
-> `$ refine list --help`
->
-> ```
-> List files from multiple directories sorted together
-> 
-> Usage: refine list [DIRS]... [FETCH] [OPTIONS]
-> 
-> Arguments:
->   [DIRS]...  Directories to scan
-> 
-> Options:
->   -b, --by <STR>      Sort by [default: size] [possible values: size, count, name, path]
->   -r, --rev           Reverse the default order (size/count:desc, name/path:asc)
->   -p, --paths         Show full file paths
->   -c, --no-calc-dirs  Do not calculate directory sizes
->   -h, --help          Print help
-> ```
+`$ refine list --help`
 
-> There's also the "Fetch" options, which are the same as for the global refine command.
+```
+List files from multiple disjoint directories sorted together
+
+Usage: refine list [DIRS]... [FETCH] [OPTIONS]
+
+Arguments:
+  [DIRS]...  The directories to scan
+
+Options:
+  -b, --by <STR>      Sort by [default: size] [possible values: size, count, name, path]
+  -r, --rev           Reverse the default order (size/count:desc, name/path:asc)
+  -p, --paths         Show file paths
+  -c, --no-calc-dirs  Do not calculate directory sizes
+  -h, --help          Print help
+
+Fetch:
+  -R, --recursion <INT>  The maximum recursion depth; use 0 for unlimited, 1 for shallow, and n for depth n [default: 0]
+  -F, --only-files       Include only files
+  -D, --only-dirs        Include only directories
+  -i, --inc <REGEX>      Include files, directories, and paths that matches this
+  -x, --exc <REGEX>      Exclude files, directories, and paths that matches this
+  -I, --dir <REGEX>      Include only these directory names
+  -X, --dir-ex <REGEX>   Exclude these directory names
+      --path <REGEX>     Include only these paths
+      --path-ex <REGEX>  Exclude these paths
+      --file <REGEX>     Include only these filenames
+      --file-ex <REGEX>  Exclude these filenames
+      --ext <REGEX>      Include only these extensions
+      --ext-ex <REGEX>   Exclude these extensions
+
+Modifiers:
+      --show  Show the entries that will be processed, and ask for confirmation before proceeding
+      --full  Do not strip the common prefix from the input paths when displaying them
+```
 
 Example:
 
@@ -366,30 +412,48 @@ And don't worry as this tool is interactive, so you can review all changes befor
 8. print the resulting changes to the filenames, and ask for confirmation
 9. if the user confirms, apply the changes
 
-> `$ refine rebuild --help`
->
-> ```
-> Rebuild entire media collections intelligently
-> 
-> Usage: refine rebuild [DIRS]... [FETCH] [OPTIONS]
-> 
-> Arguments:
->   [DIRS]...  Directories to scan
-> 
-> Options:
->   -b, --strip-before <STR|REGEX>    Strip from the start of the filename; separators nearby are automatically removed
->   -a, --strip-after <STR|REGEX>     Strip to the end of the filename; separators nearby are automatically removed
->   -e, --strip-exact <STR|REGEX>     Strip all occurrences in the filename; separators nearby are automatically removed
->   -r, --replace <STR|REGEX=STR|$N>  Replace all occurrences in the filename with another; separators are not touched
->   -s, --simple                      Disable smart matching, so "foo bar.mp4", "FooBar.mp4" and "foo__bar.mp4" are different
->   -f, --force <STR>                 Force to overwrite filenames (use the Global options to filter files)
->   -p, --partial                     Assume not all directories are available, which retains current sequences (but fixes gaps)
->   -c, --case                        Keep the original case of filenames, otherwise they are lowercased
->   -y, --yes                         Skip the confirmation prompt, useful for automation
->   -h, --help                        Print help
-> ```
+`$ refine rebuild --help`
 
-> There's also the "Fetch" options, which are the same as for the global refine command.
+```
+Rebuild entire media collections' filenames intelligently
+
+Usage: refine rebuild [DIRS]... [FETCH] [OPTIONS]
+
+Arguments:
+  [DIRS]...  The directories to scan
+
+Options:
+  -b, --strip-before <STR|REGEX>        Strip from the start till occurrence; includes separators nearby, use {S} for separators
+  -a, --strip-after <STR|REGEX>         Strip from occurrence till the end; includes separators nearby, use {S} for separators
+  -e, --strip-exact <STR|REGEX>         Strip exact occurrences; includes separators nearby, use {S} for separators
+  -r, --replace <{STR|REGEX}={STR|$N}>  Replace occurrences in the filename; separators are not touched, use {S} for separators
+  -w, --throw <{STR|REGEX}={STR|$N}>    recipe: Throw some prefix to the end; use {S} for separators
+  -s, --simple                          Disable smart matching, so "foo bar.mp4", "FooBar.mp4" and "foo__bar.mp4" are different
+  -f, --force <STR>                     Force to overwrite filenames (use the Global options to filter files)
+  -p, --partial                         Assume not all directories are available, which retains current sequences (but fixes gaps)
+  -c, --case                            Keep the original case of filenames, otherwise they are lowercased
+  -y, --yes                             Skip the confirmation prompt, useful for automation
+  -h, --help                            Print help
+
+Fetch:
+  -R, --recursion <INT>  The maximum recursion depth; use 0 for unlimited, 1 for shallow, and n for depth n [default: 0]
+  -F, --only-files       Include only files
+  -D, --only-dirs        Include only directories
+  -i, --inc <REGEX>      Include files, directories, and paths that matches this
+  -x, --exc <REGEX>      Exclude files, directories, and paths that matches this
+  -I, --dir <REGEX>      Include only these directory names
+  -X, --dir-ex <REGEX>   Exclude these directory names
+      --path <REGEX>     Include only these paths
+      --path-ex <REGEX>  Exclude these paths
+      --file <REGEX>     Include only these filenames
+      --file-ex <REGEX>  Exclude these filenames
+      --ext <REGEX>      Include only these extensions
+      --ext-ex <REGEX>   Exclude these extensions
+
+Modifiers:
+      --show  Show the entries that will be processed, and ask for confirmation before proceeding
+      --full  Do not strip the common prefix from the input paths when displaying them
+```
 
 Example:
 
@@ -409,27 +473,45 @@ The `rename` command will let you batch rename files like no other tool, serious
 3. print the resulting changes to the filenames and directories, and ask for confirmation
 4. if the user confirms, apply the changes
 
-> `$ refine rename --help`
->
-> ```
-> Rename files and directories using advanced regular expression rules
-> 
-> Usage: refine rename [DIRS]... [FETCH] [OPTIONS]
-> 
-> Arguments:
->   [DIRS]...  Directories to scan
-> 
-> Options:
->   -b, --strip-before <STR|REGEX>    Strip from the start of the filename; separators nearby are automatically removed
->   -a, --strip-after <STR|REGEX>     Strip to the end of the filename; separators nearby are automatically removed
->   -e, --strip-exact <STR|REGEX>     Strip all occurrences in the filename; separators nearby are automatically removed
->   -r, --replace <STR|REGEX=STR|$N>  Replace all occurrences in the filename with another; separators are not touched
->   -c, --clashes <STR>               How to resolve clashes [default: forbid] [possible values: forbid, ignore, name-sequence]
->   -y, --yes                         Skip the confirmation prompt, useful for automation
->   -h, --help                        Print help
-> ```
+`$ refine rename --help`
 
-> There's also the "Fetch" options, which are the same as for the global refine command.
+```
+Rename files and directories in batch using advanced regex rules
+
+Usage: refine rename [DIRS]... [FETCH] [OPTIONS]
+
+Arguments:
+  [DIRS]...  The directories to scan
+
+Options:
+  -b, --strip-before <STR|REGEX>        Strip from the start till occurrence; includes separators nearby, use {S} for separators
+  -a, --strip-after <STR|REGEX>         Strip from occurrence till the end; includes separators nearby, use {S} for separators
+  -e, --strip-exact <STR|REGEX>         Strip exact occurrences; includes separators nearby, use {S} for separators
+  -r, --replace <{STR|REGEX}={STR|$N}>  Replace occurrences in the filename; separators are not touched, use {S} for separators
+  -w, --throw <{STR|REGEX}={STR|$N}>    recipe: Throw some prefix to the end; use {S} for separators
+  -c, --clashes <STR>                   How to resolve clashes [default: sequence] [possible values: sequence, ignore, forbid]
+  -y, --yes                             Skip the confirmation prompt, useful for automation
+  -h, --help                            Print help
+
+Fetch:
+  -R, --recursion <INT>  The maximum recursion depth; use 0 for unlimited, 1 for shallow, and n for depth n [default: 0]
+  -F, --only-files       Include only files
+  -D, --only-dirs        Include only directories
+  -i, --inc <REGEX>      Include files, directories, and paths that matches this
+  -x, --exc <REGEX>      Exclude files, directories, and paths that matches this
+  -I, --dir <REGEX>      Include only these directory names
+  -X, --dir-ex <REGEX>   Exclude these directory names
+      --path <REGEX>     Include only these paths
+      --path-ex <REGEX>  Exclude these paths
+      --file <REGEX>     Include only these filenames
+      --file-ex <REGEX>  Exclude these filenames
+      --ext <REGEX>      Include only these extensions
+      --ext-ex <REGEX>   Exclude these extensions
+
+Modifiers:
+      --show  Show the entries that will be processed, and ask for confirmation before proceeding
+      --full  Do not strip the common prefix from the input paths when displaying them
+```
 
 Example:
 
@@ -454,29 +536,46 @@ It does not support any kind of parallel connections or API rate limiting by des
 4. split the results into Valid, Invalid, Failed, and Pending (in case you press Ctrl+C)
 5. print the invalid ones, along with a summary of the results
 
-> `$ refine probe --help`
->
-> ```
-> Probe filenames against a remote server
-> 
-> Usage: refine probe [DIRS]... [FETCH] [OPTIONS]
-> 
-> Arguments:
->   [DIRS]...  Directories to scan
-> 
-> Options:
->   -p, --pick <REGEX>     Pick a subset of the files to probe
->   -u, --url <URL>        The URL to probe filenames against (use `$` as placeholder, e.g. https://example.com/$/)
->   -t, --timeout <INT>    The HTTP connection and read timeouts in milliseconds [default: 2000]
->   -n, --min-wait <INT>   The initial time to wait between retries in milliseconds [default: 1000]
->   -b, --backoff <FLOAT>  The factor by which to increase the time to wait between retries [default: 1.5]
->   -a, --max-wait <INT>   The maximum time to wait between retries in milliseconds [default: 5000]
->   -r, --retries <INT>    The maximum number of retries; use 0 to disable and -1 to retry indefinitely [default: -1]
->   -e, --errors <STR>     Specify when to display errors [default: each10] [possible values: never, last, always, each10]
->   -h, --help             Print help
-> ```
+`$ refine probe --help`
 
-> There's also the "Fetch" options, which are the same as for the global refine command.
+```
+Probe collections' filenames against a remote server
+
+Usage: refine probe [DIRS]... [FETCH] [OPTIONS]
+
+Arguments:
+  [DIRS]...  The directories to scan
+
+Options:
+  -p, --pick <REGEX>     Pick a subset of the files to probe
+  -u, --url <URL>        The URL to probe filenames against (use `$` as placeholder, e.g. https://example.com/$/)
+  -t, --timeout <INT>    The HTTP connection and read timeouts in milliseconds [default: 2000]
+  -n, --min-wait <INT>   The initial time to wait between retries in milliseconds [default: 1000]
+  -b, --backoff <FLOAT>  The factor by which to increase the time to wait between retries [default: 1.5]
+  -a, --max-wait <INT>   The maximum time to wait between retries in milliseconds [default: 5000]
+  -r, --retries <INT>    The maximum number of retries; use 0 to disable and -1 to retry indefinitely [default: -1]
+  -e, --errors <STR>     Specify when to display errors [default: each10] [possible values: never, last, always, each10]
+  -h, --help             Print help
+
+Fetch:
+  -R, --recursion <INT>  The maximum recursion depth; use 0 for unlimited, 1 for shallow, and n for depth n [default: 0]
+  -F, --only-files       Include only files
+  -D, --only-dirs        Include only directories
+  -i, --inc <REGEX>      Include files, directories, and paths that matches this
+  -x, --exc <REGEX>      Exclude files, directories, and paths that matches this
+  -I, --dir <REGEX>      Include only these directory names
+  -X, --dir-ex <REGEX>   Exclude these directory names
+      --path <REGEX>     Include only these paths
+      --path-ex <REGEX>  Exclude these paths
+      --file <REGEX>     Include only these filenames
+      --file-ex <REGEX>  Exclude these filenames
+      --ext <REGEX>      Include only these extensions
+      --ext-ex <REGEX>   Exclude these extensions
+
+Modifiers:
+      --show  Show the entries that will be processed, and ask for confirmation before proceeding
+      --full  Do not strip the common prefix from the input paths when displaying them
+```
 
 Example:
 
